@@ -11,7 +11,8 @@ applyTo: "change log.md"
 ## Format
 - Top-level heading: `# CHANGE LOG`
 - Sub-heading per release: `## <semver>` (e.g. `## 0.1.13`)
-- Bullet entries use `*` (not `-`) for consistency with the existing entries.
+- Top-level bullet entries use `*`.
+- Sub-bullets use 4 spaces followed by `-`.
 - No date stamps on release headings.
 - Unreleased / in-progress work goes in the **first section** at the top of the file, titled with the next version number. Do not use an "Unreleased" or "WIP" label.
 
@@ -23,7 +24,7 @@ applyTo: "change log.md"
 - Start each bullet with a capital letter; no trailing period.
 - Use **bold** for setting names and UI control names (e.g. **Ore Purity Level**, **Ramp Width**).
 - Fixes start with `Fixed:` followed by a short description.
-- Sub-bullets (indented with 4 spaces + `*`) are used when a single feature has multiple related details worth calling out.
+- Sub-bullets are used when a single feature has multiple related details worth calling out.
 
 ## Versioning
 - Version numbers follow `MAJOR.MINOR.PATCH` (currently in `0.x.y` range).
