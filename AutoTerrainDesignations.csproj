@@ -10,6 +10,7 @@
     <OutputPath>bin\$(Configuration)\</OutputPath>
     <AssemblyName>AutoTerrainDesignations</AssemblyName>
     <RootNamespace>AutoTerrainDesignations</RootNamespace>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
   </PropertyGroup>
 
   <Target Name="CopyModFilesToProjectRoot" AfterTargets="Build">

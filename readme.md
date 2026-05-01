@@ -34,7 +34,7 @@ Leave a :heart: if you found this mod useful.
 - The release zip is created in the project root
 
 ## License
-CC BY-NC 4.0
+MIT. See [LICENSE](LICENSE).
 ## Credits
 @moriarty8501 for encouragement, testing, and general support
 ## User Testimonials

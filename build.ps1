@@ -60,6 +60,7 @@ $filesToInclude = @(
     'Thumbnail.png',
     'change log.md',
     'readme.md',
+    'LICENSE',
     'settings.json'
 )
 

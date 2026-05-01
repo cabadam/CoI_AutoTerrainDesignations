@@ -1,9 +1,5 @@
-/*
-Auto Terrain Designations
-(c)2026 'Kayser' (Discord ID: 229311536827465728)
-
-License: CC BY-NC 4.0 - https://creativecommons.org/licenses/by-nc/4.0/deed.en
-*/
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 using System;
 using System.Collections.Generic;
 using System.Linq;

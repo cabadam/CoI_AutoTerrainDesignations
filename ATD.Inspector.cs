@@ -1,5 +1,6 @@
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 // Auto Terrain Designations - Mine Tower Inspector Patching
-// Part of AutoTerrainDesignations mod - see AutoDepthDesignation.cs for license.
 using System;
 using System.Reflection;
 using HarmonyLib;

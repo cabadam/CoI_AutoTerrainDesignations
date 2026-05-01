@@ -1,5 +1,6 @@
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 // Auto Terrain Designations - Designation Scanning and Resource Sampling
-// Part of AutoTerrainDesignations mod - see AutoDepthDesignation.cs for license.
 using System;
 using System.Collections;
 using System.Collections.Generic;

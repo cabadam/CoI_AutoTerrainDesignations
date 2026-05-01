@@ -1,5 +1,6 @@
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 // Auto Terrain Designations - In-Game Console Commands
-// Part of AutoTerrainDesignations mod - see ATD.Mod.cs for license.
 using System.Text;
 using Mafi;
 using Mafi.Core.Console;

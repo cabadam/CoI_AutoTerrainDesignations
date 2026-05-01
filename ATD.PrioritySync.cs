@@ -1,5 +1,6 @@
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 // Auto Terrain Designations - Excavator Priority Synchronization
-// Part of AutoTerrainDesignations mod - see AutoDepthDesignation.cs for license.
 using System.Collections.Generic;
 using Mafi;
 using Mafi.Core;

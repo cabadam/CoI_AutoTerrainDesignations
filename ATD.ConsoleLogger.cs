@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 using Mafi;
 using Mafi.Logging;
 using UnityEngine;

@@ -1,3 +1,5 @@
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 using System;
 using HarmonyLib;
 using Mafi;

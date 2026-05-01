@@ -1,5 +1,6 @@
+// Copyright (c) 2026 Kayser
+// SPDX-License-Identifier: MIT
 // Auto Terrain Designations - Designation Cleanup
-// Part of AutoTerrainDesignations mod - see AutoDepthDesignation.cs for license.
 using System.Collections.Generic;
 using System.Linq;
 using Mafi;
