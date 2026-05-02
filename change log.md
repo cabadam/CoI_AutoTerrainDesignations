@@ -4,6 +4,7 @@ Kayser's AutoTerrainDesignations
 
 ## 0.2.1
 * Added the mod marker/version tooltip to both inspector panels.
+* Made the Ore Composition panel explicitly collapsible again while keeping it open by default.
 * Fixed clearing terrain designations so it only removes mining designations and preserves other designation types such as forestry. (*Placing* mining designations will still overwrite other designations.)
 
 ## 0.2.0
