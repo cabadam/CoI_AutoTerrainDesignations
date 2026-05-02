@@ -4,7 +4,7 @@ Kayser's AutoTerrainDesignations
 
 ## 0.2.1
 * Added the mod marker/version tooltip to both inspector panels.
-* Fixed clearing terrain designations so it only removes mining designations and preserves other designation types such as forestry.
+* Fixed clearing terrain designations so it only removes mining designations and preserves other designation types such as forestry. (*Placing* mining designations will still overwrite other designations.)
 
 ## 0.2.0
 * Changed project license to MIT and added a repository `LICENSE` file.
