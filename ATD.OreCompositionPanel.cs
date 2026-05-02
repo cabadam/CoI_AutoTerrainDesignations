@@ -192,12 +192,12 @@ namespace AutoTerrainDesignations
         {
             col.Clear();
 
-            var mineTower = tower as MineTower;
-            if (mineTower == null || s_desigManager == null || s_protosDb == null)
+            if (tower == null || s_desigManager == null || s_protosDb == null)
             {
                 col.Add(new Label(new LocStrFormatted("No tower selected.")));
                 return;
             }
+            var mineTower = tower as MineTower;
 
             // Scan live ManagedDesignations fresh each call — no cache.
             var terrMgr = s_desigManager.TerrainManager;
@@ -208,7 +208,7 @@ namespace AutoTerrainDesignations
             var productSet = HybridSet<LooseProductProto>.From(allOres);
             var thicknessByProduct = new Dictionary<LooseProductProto, float>();
 
-            foreach (TerrainDesignation designation in mineTower.ManagedDesignations)
+            foreach (TerrainDesignation designation in tower.ManagedDesignations)
             {
                 if (designation.Prototype.Id.Value == "DumpingDesignator") continue;
 
@@ -264,8 +264,9 @@ namespace AutoTerrainDesignations
             }
 
             float total = results.Sum(r => r.qty);
-            LooseProductProto? selectedPriorityProduct = AutoDepthDesignation.GetTowerExcavatorPriority(mineTower)
-                ?? GetCommonExcavatorMiningFocus(mineTower);
+            LooseProductProto? selectedPriorityProduct = mineTower != null
+                ? AutoDepthDesignation.GetTowerExcavatorPriority(mineTower) ?? GetCommonExcavatorMiningFocus(mineTower)
+                : null;
 
             var cardsRow = new Row().Gap(2.pt());
             var priorityButtons = new List<(LooseProductProto Product, ButtonIcon Button, ColorRgba Color)>();
@@ -322,37 +323,40 @@ namespace AutoTerrainDesignations
                 card.Add(new Label(new LocStrFormatted(string.Format("{0:F1}%", pct)))
                     .FontSize(13).Color(Theme.InactiveColor));
                 
-                // Priority button - centered
-                var priorityBtn = new ButtonIcon(Button.General,
-                    "Assets/Unity/UserInterface/General/Upgrade.svg",
-                    (Action)delegate
-                    {
-                        bool clearFocus = selectedPriorityProduct == cardProduct;
-                        if (clearFocus)
+                if (mineTower != null)
+                {
+                    // Priority button - centered
+                    var priorityBtn = new ButtonIcon(Button.General,
+                        "Assets/Unity/UserInterface/General/Upgrade.svg",
+                        (Action)delegate
                         {
-                            SetExcavatorMiningFocus(mineTower, null);
-                            selectedPriorityProduct = null;
-                        }
-                        else
-                        {
-                            SetExcavatorMiningFocus(mineTower, cardProduct);
-                            selectedPriorityProduct = cardProduct;
-                        }
+                            bool clearFocus = selectedPriorityProduct == cardProduct;
+                            if (clearFocus)
+                            {
+                                SetExcavatorMiningFocus(mineTower, null);
+                                selectedPriorityProduct = null;
+                            }
+                            else
+                            {
+                                SetExcavatorMiningFocus(mineTower, cardProduct);
+                                selectedPriorityProduct = cardProduct;
+                            }
 
-                        AutoDepthDesignation.SetTowerExcavatorPriority(mineTower, selectedPriorityProduct);
+                            AutoDepthDesignation.SetTowerExcavatorPriority(mineTower, selectedPriorityProduct);
 
-                        RefreshPriorityButtons();
-                    })
-                    .Toggleable()
-                    .Selected(selectedPriorityProduct == cardProduct)
-                    .Compact()
-                    .IconSize(14.px())
-                    .AlignSelfCenter()
-                    .Tooltip(new LocStrFormatted(selectedPriorityProduct == cardProduct
-                        ? $"Excavators set to prioritize <b><color=#{barColor.ToHexRgb()}>{name}</color></b>. Click to unset."
-                        : $"Set all excavators to prioritize <b><color=#{barColor.ToHexRgb()}>{name}</color></b>."));
-                priorityButtons.Add((cardProduct, priorityBtn, barColor));
-                card.Add(priorityBtn);
+                            RefreshPriorityButtons();
+                        })
+                        .Toggleable()
+                        .Selected(selectedPriorityProduct == cardProduct)
+                        .Compact()
+                        .IconSize(14.px())
+                        .AlignSelfCenter()
+                        .Tooltip(new LocStrFormatted(selectedPriorityProduct == cardProduct
+                            ? $"Excavators set to prioritize <b><color=#{barColor.ToHexRgb()}>{name}</color></b>. Click to unset."
+                            : $"Set all excavators to prioritize <b><color=#{barColor.ToHexRgb()}>{name}</color></b>."));
+                    priorityButtons.Add((cardProduct, priorityBtn, barColor));
+                    card.Add(priorityBtn);
+                }
 
                 // Add rounded corners and subtle border to card
                 card.BorderRadius(8);
