@@ -1,4 +1,4 @@
-Unreleased
+v0.2.3 | 2026-05-03
 * Added experimental Remove Debris scan support, available as a dedicated action and as an auto fallback when no useful product is found.
 
 v0.2.2 | 2026-05-03
