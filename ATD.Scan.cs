@@ -19,6 +19,7 @@ using Mafi.Core.Products;
 using Mafi.Core.Prototypes;
 using Mafi.Core.Terrain;
 using Mafi.Core.Terrain.Designation;
+using Mafi.Core.Terrain.Props;
 using Mafi.Core.Terrain.Resources;
 using UnityEngine;
 
@@ -35,14 +36,19 @@ namespace AutoTerrainDesignations
 
             var terrMgr = s_desigManager.TerrainManager;
 
-            List<LooseProductProto> scanProducts = GetScanProducts(tower);
-            if (scanProducts.Count == 0) yield break;
+            var bbMin = TerrainDesignation.GetOrigin(area.BoundingBoxMin);
+            var bbMax = TerrainDesignation.GetOrigin(area.BoundingBoxMax);
+            HashSet<Tile2i> debrisOrigins = CollectDebrisDesignationOrigins(tower, area, terrMgr);
+            bool hasSelectedProduct = GetSelectedOre(tower) != null;
+
+            List<LooseProductProto> scanProducts = GetCandidateScanProducts(tower);
+            if (scanProducts.Count == 0)
+            {
+                yield break;
+            }
 
             var productSet = HybridSet<LooseProductProto>.From(scanProducts);
             var tempResults = new Lyst<ProductResource>();
-
-            var bbMin = TerrainDesignation.GetOrigin(area.BoundingBoxMin);
-            var bbMax = TerrainDesignation.GetOrigin(area.BoundingBoxMax);
 
             int scanCount = 0;
 
@@ -115,10 +121,19 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            if (productCounts.Count == 0) yield break;
+            List<LooseProductProto> targetProducts = ResolveTargetScanProducts(hasSelectedProduct, scanProducts, productCounts, debrisOrigins.Count > 0);
+
+            if (targetProducts.Count == 0)
+            {
+                if (!hasSelectedProduct && debrisOrigins.Count > 0)
+                {
+                    yield return CreateDebrisRemovalDesignationsCoroutine(tower, area, terrMgr, debrisOrigins, new HashSet<Tile2i>());
+                }
+                yield break;
+            }
 
             ProductProto? selectedProduct = GetSelectedOre(tower);
-            var targetProductIds = BuildTargetProductIdSet(scanProducts);
+            var targetProductIds = BuildTargetProductIdSet(targetProducts);
             var maxOreDepths = new Dict<Tile2i, int>();
 
             float minBottomOreDensity = s_minBottomOreDensityByLevel[purityLevel];
@@ -170,19 +185,33 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            if (maxOreDepths.Count == 0) yield break;
+            if (maxOreDepths.Count == 0)
+            {
+                if (!hasSelectedProduct && debrisOrigins.Count > 0)
+                {
+                    yield return CreateDebrisRemovalDesignationsCoroutine(tower, area, terrMgr, debrisOrigins, new HashSet<Tile2i>());
+                }
+                yield break;
+            }
 
             LogDebug(string.Format("Before filtering: {0} tiles in designations", maxOreDepths.Count));
             FilterIsolatedDesignations(maxOreDepths, targetProductIds, resourceDetailsByTile, purityLevel);
 
-            if (maxOreDepths.Count == 0) yield break;
+            if (maxOreDepths.Count == 0)
+            {
+                if (!hasSelectedProduct && debrisOrigins.Count > 0)
+                {
+                    yield return CreateDebrisRemovalDesignationsCoroutine(tower, area, terrMgr, debrisOrigins, new HashSet<Tile2i>());
+                }
+                yield break;
+            }
 
             FillRectilinearHull(maxOreDepths, targetProductIds, resourceDetailsByTile, corridorClearance);
 
             LogDebug(string.Format("After filtering+connecting: {0} tiles in designations", maxOreDepths.Count));
             LogDebug(selectedProduct != null
                 ? "Selected product: " + selectedProduct.Id
-                : "Selected product mode: None (all useful products, excluding dirt/rock)");
+                : "Selected product mode: None (useful products, then debris, then dirt)");
 
             var maxOreDepthOverall = maxOreDepths.Values.Min();
 
@@ -269,7 +298,26 @@ namespace AutoTerrainDesignations
             s_coroutineHost?.StartCoroutine(CreateDesignationsCoroutine(tower, towerSettings.RampWidth > 0, panelKey));
         }
 
-        private static List<LooseProductProto> GetScanProducts(IAreaManagingTower tower)
+        internal static void MarkDebrisForRemovalForTower(IAreaManagingTower tower)
+        {
+            s_coroutineHost?.StartCoroutine(MarkDebrisForRemovalCoroutine(tower));
+        }
+
+        private static IEnumerator MarkDebrisForRemovalCoroutine(IAreaManagingTower tower)
+        {
+            if (s_desigManager == null || s_miningProto == null)
+                yield break;
+
+            var area = tower.Area;
+            if (area.IsEmpty)
+                yield break;
+
+            TerrainManager terrMgr = s_desigManager.TerrainManager;
+            HashSet<Tile2i> debrisOrigins = CollectDebrisDesignationOrigins(tower, area, terrMgr);
+            yield return CreateDebrisRemovalDesignationsCoroutine(tower, area, terrMgr, debrisOrigins, new HashSet<Tile2i>());
+        }
+
+        private static List<LooseProductProto> GetCandidateScanProducts(IAreaManagingTower tower)
         {
             if (s_protosDb == null)
             {
@@ -280,6 +328,7 @@ namespace AutoTerrainDesignations
             var allOres = s_protosDb.All<LooseProductProto>()
                 .Where(product => product != LooseProductProto.Phantom)
                 .Where(product => product.CanBeOnTerrain || product.TerrainMaterial != null)
+                .Where(product => !IsRockProduct(product))
                 .Distinct()
                 .ToList();
 
@@ -287,12 +336,60 @@ namespace AutoTerrainDesignations
             var selectedOre = GetSelectedOre(tower);
             if (selectedOre != null && selectedOre is LooseProductProto selectedLoose)
             {
-                // Return only the selected ore if it's available (allow rock/dirt if explicitly selected)
+                // Return only the selected product if it is available (dirt is allowed explicitly).
                 return allOres.Contains(selectedLoose) ? new List<LooseProductProto> { selectedLoose } : new List<LooseProductProto>();
             }
 
-            // Return all ores except rock/dirt if "Auto" mode (null selection)
-            return allOres.Where(product => !IsRockProduct(product)).ToList();
+            return allOres;
+        }
+
+        private static List<LooseProductProto> ResolveTargetScanProducts(
+            bool hasSelectedProduct,
+            List<LooseProductProto> candidateProducts,
+            Dictionary<LooseProductProto, int> productCounts,
+            bool hasDebris)
+        {
+            if (hasSelectedProduct)
+            {
+                return candidateProducts.Where(product => productCounts.ContainsKey(product)).ToList();
+            }
+
+            List<LooseProductProto> usefulProducts = candidateProducts
+                .Where(product => !IsDirtProduct(product) && productCounts.ContainsKey(product))
+                .ToList();
+            if (usefulProducts.Count > 0)
+            {
+                return usefulProducts;
+            }
+
+            if (hasDebris)
+            {
+                return new List<LooseProductProto>();
+            }
+
+            return candidateProducts
+                .Where(product => IsDirtProduct(product) && productCounts.ContainsKey(product))
+                .ToList();
+        }
+
+        internal static int GetProductPickerSortRank(ProductProto product)
+        {
+            if (ReferenceEquals(product, ProductProto.Phantom))
+            {
+                return 1;
+            }
+
+            if (product is LooseProductProto loose && IsDirtProduct(loose))
+            {
+                return 2;
+            }
+
+            if (product is LooseProductProto looseProduct && IsRockProduct(looseProduct))
+            {
+                return 3;
+            }
+
+            return 0;
         }
 
         private static HashSet<string> BuildTargetProductIdSet(IEnumerable<LooseProductProto> products)
@@ -314,6 +411,120 @@ namespace AutoTerrainDesignations
                 {
                     yield return new Tile2i(tileOrigin.X + xOffset, tileOrigin.Y + yOffset);
                 }
+            }
+        }
+
+        private static bool IsDesignatableTileFullyInsideArea(PolygonTerrainArea2i area, Tile2i tileOrigin)
+        {
+            foreach (Tile2i cell in EnumerateDesignatableTileCells(tileOrigin))
+            {
+                if (!area.ContainsTile(cell))
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static HashSet<Tile2i> CollectDebrisDesignationOrigins(
+            IAreaManagingTower tower,
+            PolygonTerrainArea2i area,
+            TerrainManager terrMgr)
+        {
+            var origins = new HashSet<Tile2i>();
+            if (s_terrainPropsManager == null)
+            {
+                return origins;
+            }
+
+            try
+            {
+                var boundingArea = new RectangleTerrainArea2i(area.BoundingBoxMin, area.BoundingBoxSize);
+                var occupiedTiles = new Lyst<Tile2i>();
+
+                foreach (TerrainPropData prop in s_terrainPropsManager.EnumeratePropsInArea(boundingArea))
+                {
+                    if (prop.Proto.DoesNotBlocksVehicles)
+                    {
+                        continue;
+                    }
+
+                    occupiedTiles.Clear();
+                    prop.CalculateOccupiedTiles(terrMgr, occupiedTiles);
+                    for (int i = 0; i < occupiedTiles.Count; i++)
+                    {
+                        Tile2i occupiedTile = occupiedTiles[i];
+                        if (!area.ContainsTile(occupiedTile))
+                        {
+                            continue;
+                        }
+
+                        Tile2i origin = TerrainDesignation.GetOrigin(occupiedTile);
+                        if (IsDesignatableTileFullyInsideArea(area, origin))
+                        {
+                            origins.Add(origin);
+                        }
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning("[ATD] Failed to collect debris props: " + ex.Message);
+            }
+
+            if (origins.Count > 0)
+            {
+                LogDebug(string.Format("Found {0} debris designation tile(s)", origins.Count));
+            }
+
+            return origins;
+        }
+
+        private static IEnumerator CreateDebrisRemovalDesignationsCoroutine(
+            IAreaManagingTower tower,
+            PolygonTerrainArea2i area,
+            TerrainManager terrMgr,
+            HashSet<Tile2i> debrisOrigins,
+            HashSet<Tile2i> oreOrigins)
+        {
+            if (s_desigManager == null || s_miningProto == null)
+            {
+                yield break;
+            }
+
+            int created = 0;
+            foreach (Tile2i origin in debrisOrigins)
+            {
+                if (oreOrigins.Contains(origin) ||
+                    HasTerrainDesignationAtOrigin(tower, origin) ||
+                    !IsDesignatableTileFullyInsideArea(area, origin))
+                {
+                    continue;
+                }
+
+                int hNW = GetSurfaceHeight(terrMgr, origin) + 1;
+                int hNE = GetSurfaceHeight(terrMgr, origin.AddX(4)) + 1;
+                int hSE = GetSurfaceHeight(terrMgr, origin.AddXy(4)) + 1;
+                int hSW = GetSurfaceHeight(terrMgr, origin.AddY(4)) + 1;
+
+                var data = new DesignationData(origin,
+                    new HeightTilesI(hNW), new HeightTilesI(hNE),
+                    new HeightTilesI(hSE), new HeightTilesI(hSW));
+
+                if (s_desigManager.AddOrReplaceDesignation(s_miningProto, data))
+                {
+                    created++;
+                }
+
+                int effectiveBatchSize = GetEffectiveBatchSize();
+                if (created > 0 && created % effectiveBatchSize == 0)
+                    yield return null;
+            }
+
+            if (created > 0)
+            {
+                LogDebug(string.Format("Created {0} debris removal designation(s)", created));
             }
         }
 
@@ -402,8 +613,13 @@ namespace AutoTerrainDesignations
         private static bool IsRockProduct(LooseProductProto product)
         {
             string productId = product.Id.ToString();
-            return productId.IndexOf("rock", StringComparison.OrdinalIgnoreCase) >= 0
-                || productId.IndexOf("dirt", StringComparison.OrdinalIgnoreCase) >= 0;
+            return productId.IndexOf("rock", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private static bool IsDirtProduct(LooseProductProto product)
+        {
+            string productId = product.Id.ToString();
+            return productId.IndexOf("dirt", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private static void GetResourceDetailsNoBedrock(

@@ -19,6 +19,7 @@ using Mafi.Core.Products;
 using Mafi.Core.Prototypes;
 using Mafi.Core.Terrain;
 using Mafi.Core.Terrain.Designation;
+using Mafi.Core.Terrain.Props;
 using Mafi.Core.Terrain.Resources;
 using Mafi.Core.Vehicles.Excavators;
 using Mafi.Core.World;
@@ -35,6 +36,7 @@ namespace AutoTerrainDesignations
         private static ProtosDb? s_protosDb;
         private static WorldMapManager? s_worldMapManager;
         private static IEntitiesManager? s_entitiesManager;
+        private static TerrainPropsManager? s_terrainPropsManager;
         private static string? s_modRootDirectoryPath;
 
         private const int BATCH_SIZE = 30;
@@ -175,7 +177,8 @@ namespace AutoTerrainDesignations
             ProtosDb protosDb,
             IWorldMapManager worldMapManager,
             MonoBehaviour coroutineHost,
-            IEntitiesManager entitiesManager)
+            IEntitiesManager entitiesManager,
+            TerrainPropsManager terrainPropsManager)
         {
             // Load defaults after logging is initialized so diagnostics are visible.
             LoadSettingsFromJson();
@@ -185,6 +188,7 @@ namespace AutoTerrainDesignations
             s_protosDb = protosDb;
             s_worldMapManager = worldMapManager as WorldMapManager;
             s_entitiesManager = entitiesManager;
+            s_terrainPropsManager = terrainPropsManager;
             s_startupTowerPrioritySyncCompleted = false;
             s_startupTowerPrioritySyncAttempts = 0;
 

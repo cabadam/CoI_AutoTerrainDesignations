@@ -1,3 +1,6 @@
+Unreleased
+* Added experimental Remove Debris scan support, available as a dedicated action and as an auto fallback when no useful product is found.
+
 v0.2.2 | 2026-05-03
 * Added concise license and attribution notices to source files and README.
 

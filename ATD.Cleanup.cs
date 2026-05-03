@@ -47,6 +47,19 @@ namespace AutoTerrainDesignations
             return designation.Prototype.Id.Value == "MiningDesignator";
         }
 
+        private static bool HasTerrainDesignationAtOrigin(IAreaManagingTower tower, Tile2i origin)
+        {
+            foreach (TerrainDesignation designation in tower.ManagedDesignations)
+            {
+                if (designation.OriginTileCoord == origin)
+                {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
         internal static void ClearDesignationsForTower(IAreaManagingTower tower)
         {
             ClearDesignationsInArea(tower);

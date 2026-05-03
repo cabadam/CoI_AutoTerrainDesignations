@@ -32,6 +32,7 @@ namespace AutoTerrainDesignations
     internal static class DesignationPanel
     {
         private static ProtosDb? s_protosDb;
+        private static readonly string s_debrisIconPath = Mafi.Unity.Assets.Unity.UserInterface.Toolbar.Sweep_svg;
 
         private sealed class Bindings
         {
@@ -99,6 +100,8 @@ namespace AutoTerrainDesignations
         /// </param>
         internal static PanelWithHeader Build(Func<IAreaManagingTower?> getTower, object key)
         {
+            var initialTower = getTower();
+
             // --- Ore picker ---
             SingleProductPickerUi? orePicker = null;
             if (s_protosDb != null)
@@ -108,6 +111,8 @@ namespace AutoTerrainDesignations
                     var minableProducts = s_protosDb.All<TerrainMaterialProto>()
                         .Select(m => (ProductProto)m.MinedProduct)
                         .Distinct()
+                        .OrderBy(product => AutoDepthDesignation.GetProductPickerSortRank(product))
+                        .ThenBy(product => product.Id.ToString(), StringComparer.OrdinalIgnoreCase)
                         .ToList();
 
                     orePicker = new SingleProductPickerUi(
@@ -117,7 +122,9 @@ namespace AutoTerrainDesignations
                             var tower = getTower();
                             if (tower == null) return;
                             if (selected is LooseProductProto loose)
+                            {
                                 AutoDepthDesignation.SetSelectedOre(tower, loose);
+                            }
                         },
                         () =>
                         {
@@ -132,7 +139,7 @@ namespace AutoTerrainDesignations
                             if (tower == null) return;
                             AutoDepthDesignation.SetSelectedOre(tower, null);
                         },
-                        new LocStrFormatted("None (all useful products)"),
+                        new LocStrFormatted("Auto (useful -> debris -> dirt)"),
                         compact: true,
                         primaryButtonIfNoProtoSet: false
                     );
@@ -161,6 +168,21 @@ namespace AutoTerrainDesignations
             digBtn.Tooltip(new LocStrFormatted("Scan and place mining designations in this tower's area."));
             digBtn.Icon.Size(Px.Auto, 24.px());
 
+            var debrisBtn = new ButtonIcon(
+                Button.General,
+                s_debrisIconPath,
+                (Action)delegate
+                {
+                    try
+                    {
+                        var tower = getTower();
+                        if (tower == null) return;
+                        AutoDepthDesignation.MarkDebrisForRemovalForTower(tower);
+                    }
+                    catch (Exception ex) { Debug.Log($"[ATD] Debris button click EXCEPTION: {ex}"); }
+                })
+                .Tooltip(new LocStrFormatted("Designate all debris in the area for mining/removal. Overrides any forestry designations."));
+
             // --- Clear button ---
             var clearBtn = new ButtonIcon(
                 Button.General,
@@ -178,6 +200,7 @@ namespace AutoTerrainDesignations
                 .Tooltip(new LocStrFormatted("Clear all mining designations in this tower's area."));
 
             digBtn.MarginTopBottom(1.pt());
+            debrisBtn.MarginTopBottom(1.pt()).AlignSelfEnd();
             clearBtn.MarginTopBottom(1.pt()).AlignSelfEnd();
 
             var contentRow = new Row().Gap(3.pt()).AlignItemsEnd();
@@ -185,15 +208,13 @@ namespace AutoTerrainDesignations
             contentRow.Add(digBtn);
             contentRow.Add(new UiComponent().FlexGrow(1f));
             contentRow.Add(clearBtn);
+            contentRow.Add(debrisBtn);
 
             var panel = new PanelWithHeader()
                 .Title(new LocStrFormatted("Terrain Designations"),
                        new LocStrFormatted($"Create automatic terrain designations for this tower. [{AutoTerrainDesignationsMod.ModMarker}]"));
             panel.Collapsed(false);
             panel.BodyAdd(contentRow);
-
-            // Read initial values from tower if available, fall back to globals
-            var initialTower = getTower();
 
             // --- Ramp width ---
             int initRamp = initialTower != null
@@ -335,7 +356,7 @@ namespace AutoTerrainDesignations
             {
                 var oreRow = new Row().MarginTop(1.pt());
                 oreRow.Add(new Label(new LocStrFormatted("Target product:"))
-                    .Tooltip(new LocStrFormatted("Force the scan to target a specific product (None = all useful products, excluding dirt/rock).")));
+                    .Tooltip(new LocStrFormatted("Force the scan to target a specific product. None = useful products first, then debris, then dirt.")));
                 oreRow.Add(new UiComponent().FlexGrow(1f));
                 oreRow.Add(orePicker);
                 panel.BodyAdd(oreRow);

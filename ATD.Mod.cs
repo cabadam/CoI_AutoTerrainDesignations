@@ -17,6 +17,7 @@ using Mafi.Core.Mods;
 using Mafi.Core.Prototypes;
 using Mafi.Core.Console;
 using Mafi.Core.Terrain.Designation;
+using Mafi.Core.Terrain.Props;
 using Mafi.Core.World;
 using UnityEngine;
 
@@ -144,10 +145,11 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             ProtosDb protosDb = resolver.Resolve<ProtosDb>();
             IWorldMapManager worldMapManager = resolver.Resolve<IWorldMapManager>();
             IEntitiesManager entitiesManager = resolver.Resolve<IEntitiesManager>();
+            TerrainPropsManager terrainPropsManager = resolver.Resolve<TerrainPropsManager>();
             AutoTerrainDesignationsTicker ticker = new GameObject("AutoTerrainDesignationsTicker").AddComponent<AutoTerrainDesignationsTicker>();
             UnityEngine.Object.DontDestroyOnLoad(ticker.gameObject);
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
-            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager);
+            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager);
         }
         catch (Exception ex)
         {
