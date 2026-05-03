@@ -1,0 +1,87 @@
+v0.2.2 | 2026-05-03
+* Added concise license and attribution notices to source files and README.
+
+v0.2.1 | 2026-05-03
+* Added the mod marker/version tooltip to both inspector panels.
+* Made the Ore Composition panel explicitly collapsible again while keeping it open by default.
+* Added horizontal scrolling to Ore Composition cards so towers with many ore products no longer overflow the inspector column.
+* Fixed the Ore Composition panel so it can populate for custom IAreaManagingTower implementations; excavator priority controls remain limited to vanilla mine towers.
+* Fixed clearing terrain designations so it only removes mining designations and preserves other designation types such as forestry. Placing mining designations will still overwrite other designations.
+
+v0.2.0 | 2026-05-01
+* Changed project license to MIT and added a repository LICENSE file.
+* Added short MIT/SPDX license annotations to source files.
+
+v0.1.15 | 2026-05-01
+* Fixed incorrect trimming of poor ore near the bottom of the designation.
+* Changed the label Override product to Target product to make it clearer.
+* Added a per-tower Corridor clearance setting for separated ore components and passability.
+* Added in-game console commands for live tuning of all ATD global defaults.
+* Updated the API with initialization checks, per-tower settings accessors, panel builder methods, and ramp-width driven designation creation.
+
+v0.1.14 | 2026-05-01
+* Improved designation logic to reduce the risk of vehicles getting stuck.
+* Connectivity now uses 2-tile-wide designation corridors for mega-vehicle passability.
+* Enclosed interior holes inside designation regions are now automatically filled.
+* Single-tile pinch points inherited from the ore scan are now widened.
+
+v0.1.13 | 2026-05-01
+* Fixed an issue with settings.json not parsing in some locales.
+
+v0.1.12 | 2026-05-01
+* Tower settings are now persistent throughout a session.
+* Excavator priority is now a sticky state per tower and can be reset to None.
+* Ore Purity OFF is now more aggressive when sweeping up ore.
+* Externalized global default parameters to settings.json.
+* Fixed an invalid settings.json path issue.
+
+v0.1.11 | 2026-05-01
+* The Ore Composition panel now refreshes automatically after creating designations.
+* Terrain Designations panel is now collapsible.
+* Added the Ore Purity Level preset setting and externalized its thresholds to settings.json.
+* Ramp generation now tries to avoid all buildings.
+
+v0.1.10 | 2026-05-01
+* Improved ramp generation with selectable ramp width, better z-level targeting, better attachment to designation edges, and tower avoidance.
+* Added buttons on ore composition cards to set mining priority for all tower excavators.
+* Overhauled the UI with a more prominent Create Designations button and visually tuned ore composition cards.
+
+v0.1.9 | 2026-05-01
+* Fixed broken non-tower inspectors.
+* Fixed stale Ore Composition data after switching inspectors.
+* Made the Ore Composition panel always visible and replaced auto-refresh with a manual scan button.
+* Ore Composition panel now clears when switching to a different tower inspector.
+
+v0.1.8 | 2026-05-01
+* Ore Composition panel now refreshes correctly when switching tower inspectors.
+* Ore Composition now counts only material above the designation target level.
+* Dumping designations are excluded from the Ore Composition scan.
+* Redesigned Ore Composition cards with proportional color-coded progress bars and percentage shares.
+
+v0.1.7 | 2026-05-01
+* Added the Ore Composition panel for the mine tower inspector.
+* Ore Composition quantities reflect the current Ore Mining Yield difficulty setting.
+* Ore Composition panel refreshes automatically when designations change.
+* Fixed a mod package extraction issue on Linux.
+
+v0.1.6 | 2026-05-01
+* Added Max layers to excavate and Max depth settings.
+* Clearing designations is now instantaneous regardless of area size.
+* Bedrock is now always excluded from terrain scans.
+* Added the AutoTerrainDesignationsApi integration API.
+
+v0.1.5 | 2026-05-01
+* Adjusted max slope to 1 to prevent dead spots.
+
+v0.1.4 | 2026-05-01
+* Moved UI controls to their own panel for better compatibility and robustness.
+* Updated the placement algorithm to reduce the risk of excavators getting stuck.
+
+v0.1.3 | 2026-05-01
+* Fixed UI collision by changing from text-based buttons to icon-based buttons.
+* Added scanning for any mineable product through the product selector.
+* Improved scanning, particularly along deposit edges.
+* Added thumbnail.
+
+v0.1.0 | 2026-05-01
+* Initial release.

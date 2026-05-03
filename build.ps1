@@ -66,7 +66,7 @@ $filesToInclude = @(
     'AutoTerrainDesignations.dll',
     '0Harmony.dll',
     'Thumbnail.png',
-    'change log.md',
+    'changelog.txt',
     'readme.md',
     'LICENSE',
     'settings.json'
