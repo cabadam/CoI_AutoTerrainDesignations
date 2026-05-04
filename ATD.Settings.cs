@@ -567,18 +567,19 @@ namespace AutoTerrainDesignations
         internal static bool TrySaveSettings(out string savedPath)
         {
             string? target = SavedSettingsPath;
-            if (string.IsNullOrWhiteSpace(target))
+            if (target == null || target.Trim().Length == 0)
             {
                 savedPath = string.Empty;
                 Log.Warning("[ATD] Cannot save ATDsettings.json: mod root path is unknown.");
                 return false;
             }
+            string targetPath = target;
 
             try
             {
-                File.WriteAllText(target, BuildSettingsJson());
-                s_loadedSettingsPath = target;
-                savedPath = target;
+                File.WriteAllText(targetPath, BuildSettingsJson());
+                s_loadedSettingsPath = targetPath;
+                savedPath = targetPath;
                 return true;
             }
             catch (Exception ex)
