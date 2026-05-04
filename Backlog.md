@@ -1,0 +1,3 @@
+- Rename `settings.json` to `ATDsettings.json`.
+- Introduce version handling and programmatic generation of `ATDsettings.json` to avoid distributing it with the mod.
+- Implement a "save settings" command executable from the console.
