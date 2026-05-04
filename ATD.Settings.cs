@@ -24,6 +24,7 @@ namespace AutoTerrainDesignations
         private static float[] s_minOrePurityByLevel;
         private static int[] s_minComponentSizeByLevel;
         private const string SETTINGS_FILE_NAME = "ATDsettings.json";
+        private const string LEGACY_SETTINGS_FILE_NAME = "settings.json";
 
         private static bool s_settingsLoadAttempted;
         private static string? s_loadedSettingsPath;
@@ -96,7 +97,7 @@ namespace AutoTerrainDesignations
 
             try
             {
-                string? settingsPath = ResolveSettingsPath();
+                string? settingsPath = ResolveSettingsPath(out bool isLegacySettingsPath);
                 if (string.IsNullOrWhiteSpace(settingsPath) || !File.Exists(settingsPath))
                 {
                     // File absent — generate defaults next to the mod folder so users can customise
@@ -125,14 +126,20 @@ namespace AutoTerrainDesignations
 
                 string json = File.ReadAllText(settingsPath);
                 string? fileVersion = ParseSettingsJson(json);
-                s_loadedSettingsPath = settingsPath;
+                s_loadedSettingsPath = isLegacySettingsPath
+                    ? Path.Combine(Path.GetDirectoryName(settingsPath) ?? string.Empty, SETTINGS_FILE_NAME)
+                    : settingsPath;
 
-                // If the file predates the current version, rewrite it so new keys and
-                // the updated settingsVersion are present while preserving user values.
-                if (fileVersion != AutoTerrainDesignationsMod.ModVersion)
+                // If the file predates the current version, or was read from the old
+                // settings.json name, rewrite it to the current documented ATDsettings.json
+                // format while preserving user values.
+                if (isLegacySettingsPath || fileVersion != AutoTerrainDesignationsMod.ModVersion)
                 {
                     if (TrySaveSettings(out string migratedPath))
-                        Log.Warning($"[ATD] ATDsettings.json migrated to version {AutoTerrainDesignationsMod.ModVersion}: {migratedPath}");
+                    {
+                        string source = isLegacySettingsPath ? "legacy settings.json" : "ATDsettings.json";
+                        Log.Warning($"[ATD] {source} migrated to version {AutoTerrainDesignationsMod.ModVersion}: {migratedPath}");
+                    }
                 }
             }
             catch (Exception ex)
@@ -142,8 +149,9 @@ namespace AutoTerrainDesignations
             }
         }
 
-        private static string? ResolveSettingsPath()
+        private static string? ResolveSettingsPath(out bool isLegacySettingsPath)
         {
+            isLegacySettingsPath = false;
             var rootDirs = new List<string>();
 
             try
@@ -196,6 +204,8 @@ namespace AutoTerrainDesignations
             {
                 // Prefer directories that look like an actual mod root (manifest + ATDsettings),
                 // but still allow direct sibling ATDsettings.json next to a loaded DLL path.
+                // If the new file is absent, fall back to the old settings.json name so
+                // existing user configuration can be migrated into ATDsettings.json.
                 DirectoryInfo? dir;
                 try
                 {
@@ -209,10 +219,12 @@ namespace AutoTerrainDesignations
                 for (int i = 0; i < 8 && dir != null; i++)
                 {
                     string candidateSettings;
+                    string candidateLegacySettings;
                     string candidateManifest;
                     try
                     {
                         candidateSettings = Path.Combine(dir.FullName, SETTINGS_FILE_NAME);
+                        candidateLegacySettings = Path.Combine(dir.FullName, LEGACY_SETTINGS_FILE_NAME);
                         candidateManifest = Path.Combine(dir.FullName, "manifest.json");
                     }
                     catch
@@ -229,6 +241,18 @@ namespace AutoTerrainDesignations
                     if (i == 0 && File.Exists(candidateSettings))
                     {
                         return candidateSettings;
+                    }
+
+                    if (File.Exists(candidateLegacySettings) && File.Exists(candidateManifest))
+                    {
+                        isLegacySettingsPath = true;
+                        return candidateLegacySettings;
+                    }
+
+                    if (i == 0 && File.Exists(candidateLegacySettings))
+                    {
+                        isLegacySettingsPath = true;
+                        return candidateLegacySettings;
                     }
 
                     dir = dir.Parent;

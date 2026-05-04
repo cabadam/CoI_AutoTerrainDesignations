@@ -1,5 +1,6 @@
 v0.2.4 | 2026-05-04
 * Settings file renamed from **settings.json** to **ATDsettings.json** to avoid conflicts with other mods
+* Existing **settings.json** files are still read as a legacy fallback and migrated into the generated **ATDsettings.json** format
 * **ATDsettings.json** is no longer distributed inside the mod ZIP — it is generated automatically in the mod folder on first run, populated with the current defaults and inline documentation
 * Settings file now contains a **settingsVersion** stamp; when the mod version advances the file is automatically migrated (user values are preserved and any new keys are added)
 * Added **atd_save_settings** console command to write the current in-memory global defaults back to **ATDsettings.json** at any time
