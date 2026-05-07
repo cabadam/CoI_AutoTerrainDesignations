@@ -1,4 +1,4 @@
-v0.2.5-alpha1 | 2026-05-07
+v0.2.5 | 2026-05-07
 * Added **Corner Designation** placement mode — press **K** while in M-mode to activate
     - **LMB drag** fills a rectangular area with a checkerboard of outer/inner corner designations that form a continuous diagonal slope
     - **R** rotates among the four corner orientations (NW, NE, SE, SW)
