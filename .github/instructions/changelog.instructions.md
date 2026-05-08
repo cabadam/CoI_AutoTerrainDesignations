@@ -1,20 +1,19 @@
 ---
 description: Instructions for maintaining the AutoTerrainDesignations change log.
-applyTo: "change log.md"
+applyTo: "changelog.txt"
 ---
 
 # Change Log Maintenance Rules
 
 ## File location
-`change log.md` in the workspace root.
+`changelog.txt` in the workspace root (plain text, required by the Mafi mod portal).
 
 ## Format
-- Top-level heading: `# CHANGE LOG`
-- Sub-heading per release: `## <semver>` (e.g. `## 0.1.13`)
+- Each release starts with `v<semver> | <YYYY-MM-DD>` (e.g. `v0.2.6 | 2026-05-08`)
 - Top-level bullet entries use `*`.
 - Sub-bullets use 4 spaces followed by `-`.
-- No date stamps on release headings.
-- Unreleased / in-progress work goes in the **first section** at the top of the file, titled with the next version number. Do not use an "Unreleased" or "WIP" label.
+- No markdown headings (`#`).
+- Unreleased / in-progress work goes in the **first entry** at the top of the file with the next version number and today's date. Do not use an "Unreleased" or "WIP" label.
 
 ## Content rules
 - One bullet per user-visible change (feature, fix, or behavioral change).
@@ -28,14 +27,14 @@ applyTo: "change log.md"
 
 ## Versioning
 - Version numbers follow `MAJOR.MINOR.PATCH` (currently in `0.x.y` range).
-- Check the manifest version and existing change log entries to determine the current version number:
+- Check the manifest version and existing change log entries to determine the current version number.
 - Increment PATCH for bug fixes and minor additions.
 - Increment MINOR for new features or behavioral changes that are noticeable to the user.
-- After a release is packaged (zip exists in `artifacts/` matching the manifest version), start a new section for the next version.
+- After a release is packaged (zip exists in `artifacts/` matching the manifest version), start a new entry for the next version.
 
 ## Example entry
-```markdown
-## 0.1.13
+```
+v0.1.13 | 2026-05-01
 * **Terrain Designations** panel and **Ore Composition** panel can now be embedded in external mod inspectors via `AutoTerrainDesignationsApi.BuildDesignationPanel` and `BuildOreCompositionPanel`
 * Removed `generateRamps` parameter from `CreateDesignationsForTower` API — ramp generation is now always controlled by the per-tower **Ramp Width** setting (0 = disabled)
 ```

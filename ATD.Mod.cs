@@ -20,6 +20,7 @@ using Mafi.Core.Terrain.Designation;
 using Mafi.Core.Terrain.Props;
 using Mafi.Core.World;
 using Mafi.Unity.InputControl;
+using Mafi.Unity.Terrain.Designation;
 using UnityEngine;
 
 namespace AutoTerrainDesignations;
@@ -54,7 +55,8 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     public void RegisterPrototypes(ProtoRegistrator registrator)
     {
         m_harmony = new Harmony("com.auto-terrain-designations.mod");
-        AutoDepthDesignation.Apply(m_harmony);
+        AutoDepthDesignation.ApplyInspectorPatches(m_harmony);
+        AutoDepthDesignation.ApplyCornerPatches(m_harmony);
     }
 
     public void RegisterDependencies(DependencyResolverBuilder depBuilder, ProtosDb protosDb, bool gameWasLoaded)
@@ -168,12 +170,15 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
             AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager);
 
-            // Corner designation mode — TerrainCursor may only be available on the Unity side;
-            // fail gracefully if it isn't resolvable.
+            // Corner designation mode — TerrainCursor and TerrainDesignationsRenderer may only
+            // be available on the Unity side; fail gracefully if not resolvable.
             TerrainCursor? terrainCursor = null;
+            TerrainDesignationsRenderer? desigRenderer = null;
             try { terrainCursor = resolver.Resolve<TerrainCursor>(); }
             catch (Exception ex2) { Debug.LogWarning("[ATD] TerrainCursor not available: " + ex2.Message); }
-            AutoDepthDesignation.InitializeCornerMode(terrainCursor);
+            try { desigRenderer = resolver.Resolve<TerrainDesignationsRenderer>(); }
+            catch (Exception ex3) { Debug.LogWarning("[ATD] TerrainDesignationsRenderer not available: " + ex3.Message); }
+            AutoDepthDesignation.InitializeCornerMode(terrainCursor, desigRenderer);
         }
         catch (Exception ex)
         {

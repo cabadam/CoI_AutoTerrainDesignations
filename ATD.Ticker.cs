@@ -20,6 +20,7 @@ public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
         try
         {
             AutoDepthDesignation.HandleCornerModeInput();
+            AutoDepthDesignation.UpdateCornerPreview();
         }
         catch { }
 

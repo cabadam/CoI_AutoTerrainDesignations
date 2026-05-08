@@ -31,6 +31,8 @@ namespace AutoTerrainDesignations
     {
         private static TerrainDesignationsManager? s_desigManager;
         private static TerrainDesignationProto? s_miningProto;
+        private static TerrainDesignationProto? s_dumpingProto;
+        private static TerrainDesignationProto? s_levelingProto;
         private static TerrainMaterialProto? s_bedrockTerrainMaterial;
         private static MonoBehaviour? s_coroutineHost;
         private static ProtosDb? s_protosDb;
@@ -196,6 +198,16 @@ namespace AutoTerrainDesignations
                 s_miningProto = proto;
             else
                 UnityEngine.Debug.Log("AutoDepth: MiningDesignator proto not found");
+
+            if (protosDb.TryGetProto(new Proto.ID("DumpingDesignator"), out TerrainDesignationProto dumpProto))
+                s_dumpingProto = dumpProto;
+            else
+                Log.Warning("[ATD] DumpingDesignator proto not found");
+
+            if (protosDb.TryGetProto(new Proto.ID("LevelDesignator"), out TerrainDesignationProto levelProto))
+                s_levelingProto = levelProto;
+            else
+                Log.Warning("[ATD] LevelDesignator proto not found");
 
             if (protosDb.TryGetProto(new Proto.ID("Bedrock_Terrain"), out TerrainMaterialProto bedrockProto))
                 s_bedrockTerrainMaterial = bedrockProto;

@@ -12,7 +12,6 @@ using System.Reflection;
 using HarmonyLib;
 using Mafi;
 using Mafi.Core.Buildings.Towers;
-using Mafi.Core.Terrain.Designation;
 using Mafi.Unity.UiToolkit.Component;
 using Mafi.Unity.UiToolkit.Library;
 using Mafi.Unity.Ui.Library;
@@ -22,12 +21,12 @@ namespace AutoTerrainDesignations
 {
     public static partial class AutoDepthDesignation
     {
-        public static void Apply(Harmony harmony)
+        public static void ApplyInspectorPatches(Harmony harmony)
         {
             try
             {
-                LogDebug("[AutoDepth] Apply() called");
-                
+                LogDebug("[AutoDepth] ApplyInspectorPatches() called");
+
                 var assembly = typeof(Mafi.Unity.Entities.EntityMb).Assembly;
                 var inspectorType = assembly.GetType("Mafi.Unity.Ui.Inspectors.MineTowerInspector");
                 if (inspectorType == null)
@@ -40,7 +39,7 @@ namespace AutoTerrainDesignations
 
                 var ctors = inspectorType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
                 LogDebug($"[AutoDepth] Found {ctors.Length} constructors");
-                
+
                 if (ctors.Length > 0)
                 {
                     harmony.Patch(ctors[0],
@@ -63,58 +62,10 @@ namespace AutoTerrainDesignations
                 {
                     Log.Warning($"[AutoDepth] EXCEPTION patching OnActivated: {ex2}");
                 }
-
-                // Patch TerrainDesignationController.Activate / Deactivate to track when
-                // the player is actively using the mining designation tool (M-mode).
-                try
-                {
-                    var controllerType = assembly.GetType("Mafi.Unity.Ui.Controllers.Designations.TerrainDesignationController");
-                    if (controllerType != null)
-                    {
-                        var activateMethod = controllerType.GetMethod("Activate",
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                        if (activateMethod != null)
-                            harmony.Patch(activateMethod,
-                                postfix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(DesignationToolActivatePostfix)));
-
-                        var deactivateMethod = controllerType.GetMethod("Deactivate",
-                            BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                        if (deactivateMethod != null)
-                            harmony.Patch(deactivateMethod,
-                                postfix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(DesignationToolDeactivatePostfix)));
-                    }
-                    else
-                    {
-                        Log.Warning("[AutoDepth] TerrainDesignationController type not found");
-                    }
-                }
-                catch (Exception ex3)
-                {
-                    Log.Warning($"[AutoDepth] EXCEPTION patching TerrainDesignationController: {ex3}");
-                }
-
-                // Patch TerrainDesignationsManager.AddOrReplaceDesignation to protect
-                // ATD-placed corner tiles from being overwritten by the game's placement command.
-                try
-                {
-                    var desigMgrMethod = typeof(TerrainDesignationsManager).GetMethod(
-                        "AddOrReplaceDesignation",
-                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                    if (desigMgrMethod != null)
-                        harmony.Patch(desigMgrMethod,
-                            prefix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(AddOrReplaceDesignationPrefix)));
-                    else
-                        Log.Warning("[AutoDepth] AddOrReplaceDesignation method not found");
-                }
-                catch (Exception ex4)
-                {
-                    Log.Warning($"[AutoDepth] EXCEPTION patching AddOrReplaceDesignation: {ex4}");
-                }
-
             }
             catch (Exception ex)
-            { 
-                Log.Warning($"AutoDepth.Apply EXCEPTION: {ex}");
+            {
+                Log.Warning($"AutoDepth.ApplyInspectorPatches EXCEPTION: {ex}");
             }
         }
 

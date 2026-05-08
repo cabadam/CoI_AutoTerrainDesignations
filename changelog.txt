@@ -1,10 +1,14 @@
-v0.2.5 | 2026-05-07
-* Added **Corner Designation** placement mode — press **K** while in M-mode to activate
+v0.2.5 | 2026-05-08
+* Added **Corner Designation** placement mode — press **K** while in M-mode, Z-mode, or N-mode to activate
+    - Works with all three terrain designation tools: Mining (**M**), Dumping (**Z**), and Leveling (**N**); placed corners use the correct designation type
     - **LMB drag** fills a rectangular area with a checkerboard of outer/inner corner designations that form a continuous diagonal slope
-    - **R** rotates among the four corner orientations (NW, NE, SE, SW)
+    - **R** rotates the unique corner clockwise (NW → SW → SE → NE)
     - **K** again toggles between outer (+1) and inner (−1) corner type
-    - **Q/E** height bias from the active mining tool is respected, so the placed slope follows the current height offset
-    - Corner mode exits automatically when M-mode is deactivated
+    - **F** exits corner mode
+    - **Q/E** height bias from the active tool is respected, so the placed slope follows the current height offset
+    - Corner mode exits automatically when the designation tool is deactivated
+* Added a **K** toolbar button to the terrain designation toolbox (left of the F buttons); button highlights when corner mode is active
+    - Clicking an F/Fill mode button while in corner mode exits corner mode and restores the previous mode selection
 
 v0.2.4 | 2026-05-04
 * Settings file renamed from **settings.json** to **ATDsettings.json** to avoid conflicts with other mods

@@ -9,10 +9,19 @@
 // Auto Terrain Designations - Corner Designation Placement
 using System;
 using System.Collections.Generic;
+using System.Reflection;
+using HarmonyLib;
 using Mafi;
+using Mafi.Unity.Ui.Controllers.Designations;
+using Mafi.Unity.Ui.Hud;
+using Mafi.Unity.Ui.Library;
+using Mafi.Unity.UiStatic.Controllers;
+using Mafi.Unity.UiToolkit.Component;
+using Mafi.Unity.UiToolkit.Library;
 using Mafi.Core.Terrain;
 using Mafi.Core.Terrain.Designation;
 using Mafi.Unity.InputControl;
+using Mafi.Unity.Terrain.Designation;
 using UnityEngine;
 
 namespace AutoTerrainDesignations
@@ -44,9 +53,9 @@ namespace AutoTerrainDesignations
         private static Tile2i s_dragOrigin;   // snap-aligned tile where LMB went down
         private static int s_dragBaseHeight;  // surface height + bias at drag start
 
-        // True while the player has the game's mining designation tool active (M-mode).
-        private static bool s_miningToolActive;
-        // The live MiningDesignationController instance (needed to read m_heightBias).
+        // True while the player has any terrain designation tool active (M/Z/N-mode).
+        private static bool s_designationToolActive;
+        // The live TerrainDesignationController instance (needed to read m_heightBias).
         private static object? s_miningController;
         private static System.Reflection.FieldInfo? s_heightBiasField;
 
@@ -54,9 +63,34 @@ namespace AutoTerrainDesignations
         // overwrite by the game's async placement command.
         private static readonly HashSet<Tile2i> s_protectedCornerTiles = new HashSet<Tile2i>();
 
-        internal static void InitializeCornerMode(TerrainCursor? terrainCursor)
+        // Preview rendering.
+        private static TerrainDesignationsRenderer? s_desigRenderer;
+        private static readonly HashSet<Tile2i> s_previewedTiles = new HashSet<Tile2i>();
+
+        // Toolbar buttons injected into the game's designation toolboxes (one per ToolType).
+        private static ToolboxItem? s_cornerModeButton;
+        private static AreaToolbox? s_activeAreaToolbox;
+        private static int s_currentAreaMode;
+        private static FieldInfo? s_areaToolboxButtonsField;
+        // The designation proto to use when placing corners (switches per active tool).
+        private static TerrainDesignationProto? s_activeCornerProto;
+        // Per-toolbox state keyed by ToolType int (0=Ramp/Mining, 1=Flat/Dumping, 2=Leveling).
+        private static readonly Dictionary<int, (AreaToolbox toolbox, ToolboxItem button, FieldInfo? buttonsField)>
+            s_toolboxes = new Dictionary<int, (AreaToolbox, ToolboxItem, FieldInfo?)>();
+        private static readonly Dictionary<string, int> s_controllerToToolType = new Dictionary<string, int>
+        {
+            { "MiningDesignationController",       (int)AreaToolbox.ToolType.Mining },
+            { "DumpingDesignationController",      (int)AreaToolbox.ToolType.Dumping },
+            { "LevelTerrainDesignationController", (int)AreaToolbox.ToolType.Leveling },
+        };
+        // True while ATD itself is calling AddOrUpdatePreviewDesignation, to distinguish
+        // our calls from the game's own preview calls (which we suppress in corner mode).
+        private static bool s_atdPreviewActive;
+
+        internal static void InitializeCornerMode(TerrainCursor? terrainCursor, TerrainDesignationsRenderer? renderer)
         {
             s_terrainCursor = terrainCursor;
+            s_desigRenderer = renderer;
             s_cornerModeActive = false;
             s_activeCornerVariant = CornerVariant.OriginHigh;
         }
@@ -70,13 +104,20 @@ namespace AutoTerrainDesignations
             {
                 if (s_cornerModeActive)
                     s_activeCornerVariant = ToggleCornerType(s_activeCornerVariant);
-                else if (s_miningToolActive)
+                else if (s_designationToolActive)
                     EnterCornerMode();
                 return;
             }
 
             if (!s_cornerModeActive)
                 return;
+
+            // F: exit corner mode.
+            if (Input.GetKeyDown(KeyCode.F))
+            {
+                ExitCornerMode();
+                return;
+            }
 
             // R: rotate among the 4 orientations within the current type.
             if (Input.GetKeyDown(KeyCode.R))
@@ -111,7 +152,7 @@ namespace AutoTerrainDesignations
             int bias       = GetHeightBias();
             string biasStr = bias == 0 ? "" : (bias > 0 ? $" +{bias}" : $" {bias}");
 
-            string msg = $"[ATD] Corner: {typeStr} {rotStr}{biasStr}  |  K: toggle inner/outer  |  R: rotate  |  Q/E: height  |  LMB drag: fill area  |  exit M-mode to cancel";
+            string msg = $"[ATD] Corner: {typeStr} {rotStr}{biasStr}  |  K: toggle inner/outer  |  R: rotate  |  Q/E: height  |  LMB drag: fill area  |  F: exit";
 
             var style = new GUIStyle(GUI.skin.label)
             {
@@ -129,43 +170,72 @@ namespace AutoTerrainDesignations
         // player activates the Mining designation tool specifically.
         public static void DesignationToolActivatePostfix(object __instance)
         {
-            if (__instance.GetType().Name == "MiningDesignationController")
+            var typeName = __instance.GetType().Name;
+            if (!s_controllerToToolType.TryGetValue(typeName, out _)) return;
+
+            s_designationToolActive = true;
+            s_miningController = __instance;
+            if (s_heightBiasField == null)
             {
-                s_miningToolActive = true;
-                s_miningController = __instance;
-                // Resolve the height-bias field once and cache it.
-                // m_heightBias is declared on the base class TerrainDesignationController,
-                // so we must walk up the hierarchy — GetField only searches the declared type.
-                if (s_heightBiasField == null)
+                Type? t = __instance.GetType();
+                while (t != null && s_heightBiasField == null)
                 {
-                    Type? t = __instance.GetType();
-                    while (t != null && s_heightBiasField == null)
-                    {
-                        s_heightBiasField = t.GetField("m_heightBias",
-                            System.Reflection.BindingFlags.Instance |
-                            System.Reflection.BindingFlags.NonPublic);
-                        t = t.BaseType;
-                    }
+                    s_heightBiasField = t.GetField("m_heightBias",
+                        System.Reflection.BindingFlags.Instance |
+                        System.Reflection.BindingFlags.NonPublic);
+                    t = t.BaseType;
                 }
-                LogDebug("[ATD] Mining designation tool activated.");
             }
+
+            // Select proto and toolbox entry matching the active controller.
+            s_activeCornerProto = typeName switch
+            {
+                "DumpingDesignationController"      => s_dumpingProto,
+                "LevelTerrainDesignationController" => s_levelingProto,
+                _                                   => s_miningProto,
+            };
+
+            if (s_controllerToToolType.TryGetValue(typeName, out int toolTypeInt) &&
+                s_toolboxes.TryGetValue(toolTypeInt, out var entry))
+            {
+                s_activeAreaToolbox      = entry.toolbox;
+                s_cornerModeButton       = entry.button;
+                s_areaToolboxButtonsField = entry.buttonsField;
+                s_currentAreaMode        = 0;
+            }
+            LogDebug($"[ATD] Designation tool activated: {typeName}");
         }
 
-        // Postfix on TerrainDesignationController.Deactivate — clears s_miningToolActive and
-        // exits corner mode if the player leaves mining designation mode.
+        // Postfix on TerrainDesignationController.Deactivate.
         public static void DesignationToolDeactivatePostfix(object __instance)
         {
-            if (__instance.GetType().Name == "MiningDesignationController")
-            {
-                s_miningToolActive = false;
-                s_miningController = null;
-                if (s_cornerModeActive)
-                    ExitCornerMode();
-                LogDebug("[ATD] Mining designation tool deactivated.");
-            }
+            var typeName = __instance.GetType().Name;
+            if (!s_controllerToToolType.TryGetValue(typeName, out _)) return;
+
+            s_designationToolActive = false;
+            s_miningController = null;
+            s_activeAreaToolbox = null;
+            s_cornerModeButton  = null;
+            s_activeCornerProto = null;
+            if (s_cornerModeActive)
+                ExitCornerMode();
+            LogDebug($"[ATD] Designation tool deactivated: {typeName}");
         }
 
-        // Prefix on TerrainDesignationsManager.AddOrReplaceDesignation — suppresses the game's
+        // Prefix on TerrainDesignationsRenderer.AddOrUpdatePreviewDesignation — suppresses the
+        // game's own preview calls while ATD's corner mode is active, preventing flicker.
+        // ATD's own calls are allowed through via the s_atdPreviewActive flag.
+        public static bool AddOrUpdatePreviewPrefix()
+        {
+            return !s_cornerModeActive || s_atdPreviewActive;
+        }
+
+        // Prefix on TerrainDesignationsRenderer.RemovePreviewDesignation — suppresses the
+        // game's own remove calls while ATD's corner mode is active, preventing flicker.
+        public static bool RemovePreviewPrefix()
+        {
+            return !s_cornerModeActive || s_atdPreviewActive;
+        }
         // async placement command when it would overwrite a corner ATD just placed.
         // Protection is one-shot: consumed on the first suppressed call per tile.
         public static bool AddOrReplaceDesignationPrefix(DesignationData data, ref bool __result)
@@ -212,14 +282,26 @@ namespace AutoTerrainDesignations
         {
             s_cornerModeActive = true;
             s_activeCornerVariant = CornerVariant.OriginHigh;
+            s_cornerModeButton?.Selected(true);
+            // Deselect game mode buttons so K and F don't appear simultaneously active.
+            if (s_activeAreaToolbox != null &&
+                s_areaToolboxButtonsField?.GetValue(s_activeAreaToolbox) is ToolboxItem[] modeButtons)
+                foreach (var b in modeButtons) b.Selected(false);
             LogDebug("[ATD] Corner designation mode entered.");
         }
 
         private static void ExitCornerMode()
         {
+            // Clear ATD's preview tiles first, while s_cornerModeActive is still true
+            // (so the prefix still blocks the game's own calls during cleanup).
+            ClearAllPreviews();
             s_cornerModeActive = false;
             s_dragging = false;
             s_protectedCornerTiles.Clear();
+            s_cornerModeButton?.Selected(false);
+            // Restore the previously active game mode button.
+            if (s_activeAreaToolbox != null)
+                s_activeAreaToolbox.SetMode((AreaMode)s_currentAreaMode);
             LogDebug("[ATD] Corner designation mode exited.");
         }
 
@@ -241,18 +323,118 @@ namespace AutoTerrainDesignations
             if (!s_terrainCursor.TryComputeTerrainPosition(Input.mousePosition, out Tile3f pos3f)) return;
 
             Tile2i end = SnapToDesignationGrid(pos3f.Xy.Tile2i);
+            ClearAllPreviews();
+            foreach (var (tile, v, absHeight) in ComputeCornerFill(s_dragOrigin, end, s_dragBaseHeight))
+                PlaceCornerAt(tile, absHeight, v);
+        }
 
-            int minX = Math.Min(s_dragOrigin.X, end.X);
-            int maxX = Math.Max(s_dragOrigin.X, end.X);
-            int minY = Math.Min(s_dragOrigin.Y, end.Y);
-            int maxY = Math.Max(s_dragOrigin.Y, end.Y);
+        private static void PlaceCornerAt(Tile2i origin, int baseHeight, CornerVariant variant)
+        {
+            if (s_desigManager == null || s_activeCornerProto == null) return;
 
-            // Checkerboard parity is based on the drag-origin grid cell.
-            int originGridX = s_dragOrigin.X / 4;
-            int originGridY = s_dragOrigin.Y / 4;
+            DesignationData data = BuildCornerDesignationData(origin, baseHeight, variant);
+            s_protectedCornerTiles.Remove(origin);
+            bool placed = s_desigManager.AddOrReplaceDesignation(s_activeCornerProto, data);
+            if (placed)
+            {
+                s_protectedCornerTiles.Add(origin);
+                LogDebug($"[ATD] Placed {variant} corner at ({origin.X},{origin.Y}).");
+            }
+        }
+
+        // -- Preview --
+
+        private static void ClearAllPreviews()
+        {
+            if (s_desigRenderer != null)
+            {
+                s_atdPreviewActive = true;
+                try
+                {
+                    foreach (Tile2i tile in s_previewedTiles)
+                        s_desigRenderer.RemovePreviewDesignation(tile);
+                }
+                finally
+                {
+                    s_atdPreviewActive = false;
+                }
+            }
+            s_previewedTiles.Clear();
+        }
+
+        // Called every frame from AutoTerrainDesignationsTicker.Update().
+        internal static void UpdateCornerPreview()
+        {
+            if (!s_cornerModeActive || s_desigRenderer == null || s_activeCornerProto == null || s_desigManager == null)
+            {
+                if (s_previewedTiles.Count > 0)
+                    ClearAllPreviews();
+                return;
+            }
+
+            if (s_terrainCursor == null) return;
+            if (!s_terrainCursor.TryComputeTerrainPosition(Input.mousePosition, out Tile3f pos3f)) return;
+
+            Tile2i cursorTile = SnapToDesignationGrid(pos3f.Xy.Tile2i);
+            List<(Tile2i tile, CornerVariant v, int absHeight)> fill;
+
+            if (s_dragging)
+            {
+                fill = ComputeCornerFill(s_dragOrigin, cursorTile, s_dragBaseHeight);
+            }
+            else
+            {
+                int hoverHeight = GetSurfaceHeight(s_desigManager.TerrainManager, cursorTile) + GetHeightBias();
+                fill = ComputeCornerFill(cursorTile, cursorTile, hoverHeight);
+            }
+
+            // Build new tile set.
+            var newTiles = new HashSet<Tile2i>(fill.Count);
+            foreach (var (tile, _, _) in fill)
+                newTiles.Add(tile);
+
+            // Add/update new tiles first, then remove stale ones — this order ensures there is
+            // never a frame with no preview visible during cell transitions.
+            s_atdPreviewActive = true;
+            try
+            {
+                foreach (var (tile, v, absHeight) in fill)
+                    s_desigRenderer.AddOrUpdatePreviewDesignation(
+                        s_activeCornerProto, BuildCornerDesignationData(tile, absHeight, v));
+
+                // Remove previews for tiles no longer in the new set.
+                foreach (Tile2i old in s_previewedTiles)
+                    if (!newTiles.Contains(old))
+                        s_desigRenderer.RemovePreviewDesignation(old);
+            }
+            finally
+            {
+                s_atdPreviewActive = false;
+            }
+
+            s_previewedTiles.Clear();
+            foreach (Tile2i t in newTiles)
+                s_previewedTiles.Add(t);
+        }
+
+        // Shared fill computation used by both UpdateCornerPreview and TryCommitDrag.
+        private static List<(Tile2i tile, CornerVariant v, int absHeight)> ComputeCornerFill(
+            Tile2i start, Tile2i end, int baseHeight)
+        {
+            int minX = Math.Min(start.X, end.X);
+            int maxX = Math.Max(start.X, end.X);
+            int minY = Math.Min(start.Y, end.Y);
+            int maxY = Math.Max(start.Y, end.Y);
+
+            int originGridX = start.X / 4;
+            int originGridY = start.Y / 4;
             int originParity = ((originGridX + originGridY) % 2 + 2) % 2;
 
             CornerVariant complement = CheckerboardComplement(s_activeCornerVariant);
+            int rot = (int)s_activeCornerVariant % 4;
+            int outerRot = IsOuterVariant(s_activeCornerVariant) ? rot : (rot + 2) % 4;
+
+            var result = new List<(Tile2i, CornerVariant, int)>();
 
             for (int gx = minX; gx <= maxX; gx += 4)
             {
@@ -260,22 +442,14 @@ namespace AutoTerrainDesignations
                 {
                     int gridX = gx / 4;
                     int gridY = gy / 4;
-                    int parity = ((gridX + gridY) % 2 + 2) % 2; // always non-negative
+                    int parity = ((gridX + gridY) % 2 + 2) % 2;
                     bool isSameParity = (parity == originParity);
 
-                    CornerVariant v = (parity == originParity) ? s_activeCornerVariant : complement;
-
-                    // Diagonal slope: height varies along one diagonal axis depending on which
-                    // corner is the elevated one of the checkerboard pair.
-                    // outerRot = the rotation index of the OUTER corner in this pair
-                    //   (for outer variants that's their own rot; for inner, their complement's rot).
-                    int rot = (int)s_activeCornerVariant % 4;
-                    int outerRot = IsOuterVariant(s_activeCornerVariant) ? rot : (rot + 2) % 4;
+                    CornerVariant v = isSameParity ? s_activeCornerVariant : complement;
 
                     int deltaGridX = gridX - originGridX;
                     int deltaGridY = gridY - originGridY;
 
-                    // slopeSum encodes the uphill axis for the given corner direction.
                     int slopeSum;
                     switch (outerRot)
                     {
@@ -285,10 +459,6 @@ namespace AutoTerrainDesignations
                         default: slopeSum =  deltaGridX - deltaGridY; break; // uphill SW
                     }
 
-                    // Same-parity sum is always even → exact integer division.
-                    // Complement sum is always odd → use ceil or floor to avoid C# truncation error.
-                    //   Outer origin: ceil(-sum/2) = -(sum-1)/2
-                    //   Inner origin: floor(-sum/2) = -(sum+1)/2
                     int zOffset;
                     if (isSameParity)
                         zOffset = -(slopeSum / 2);
@@ -297,23 +467,11 @@ namespace AutoTerrainDesignations
                     else
                         zOffset = -(slopeSum + 1) / 2;
 
-                    PlaceCornerAt(new Tile2i(gx, gy), s_dragBaseHeight + zOffset, v);
+                    result.Add((new Tile2i(gx, gy), v, baseHeight + zOffset));
                 }
             }
-        }
 
-        private static void PlaceCornerAt(Tile2i origin, int baseHeight, CornerVariant variant)
-        {
-            if (s_desigManager == null || s_miningProto == null) return;
-
-            DesignationData data = BuildCornerDesignationData(origin, baseHeight, variant);
-            s_protectedCornerTiles.Remove(origin);
-            bool placed = s_desigManager.AddOrReplaceDesignation(s_miningProto, data);
-            if (placed)
-            {
-                s_protectedCornerTiles.Add(origin);
-                LogDebug($"[ATD] Placed {variant} corner at ({origin.X},{origin.Y}).");
-            }
+            return result;
         }
 
         /// <summary>
@@ -355,7 +513,7 @@ namespace AutoTerrainDesignations
         {
             int typeOffset = (int)v / 4 * 4; // 0 for outer, 4 for inner
             int rot        = (int)v % 4;
-            return (CornerVariant)(typeOffset + (rot + 1) % 4);
+            return (CornerVariant)(typeOffset + (rot + 3) % 4);
         }
 
         private static CornerVariant ToggleCornerType(CornerVariant v)
@@ -376,6 +534,174 @@ namespace AutoTerrainDesignations
                 case 2: return "SE";
                 case 3: return "SW";
                 default: return "?";
+            }
+        }
+
+        public static void AreaToolboxCtorPostfix(object __instance, AreaToolbox.ToolType toolType)
+        {
+            if (__instance is not AreaToolbox toolbox) return;
+            try
+            {
+                var buttonsField = typeof(AreaToolbox).GetField(
+                    "m_buttons", BindingFlags.Instance | BindingFlags.NonPublic);
+
+                // Mutual exclusivity: switching game mode exits K-mode.
+                // (Initial mode is captured via the SetMode postfix patch.)
+                toolbox.OnModeChanged += mode =>
+                {
+                    if (s_cornerModeActive) ExitCornerMode();
+                };
+
+                // Insert the K button at position 0 (left of the F buttons) by
+                // directly inserting into the toolbox's internal body Row.
+                var bodyField = typeof(Toolbox).GetField(
+                    "m_body", BindingFlags.Instance | BindingFlags.NonPublic);
+                var smField = typeof(Toolbox).GetField(
+                    "m_shortcutsManager", BindingFlags.Instance | BindingFlags.NonPublic);
+                var body = bodyField?.GetValue(toolbox) as Row;
+                var sm   = smField?.GetValue(toolbox) as ShortcutsManager;
+
+                if (body != null)
+                {
+                    var capturedToolType = toolType;
+                    var item = new ToolboxItem(
+                        _ => KeyBindings.FromKey(KbCategory.Designation, ShortcutMode.Game, KeyCode.K),
+                        "Assets/Unity/UserInterface/General/Connect128.png",
+                        () =>
+                        {
+                            if (s_cornerModeActive) ExitCornerMode();
+                            else if (s_designationToolActive) EnterCornerMode();
+                        });
+                    var divider = new VerticalDivider().AlignSelfStretch().MarginTopBottom(2.pt());
+                    body.InsertAt(0, item);
+                    body.InsertAt(1, divider);
+                    if (sm != null) item.Update(sm);
+
+                    s_toolboxes[(int)capturedToolType] = (toolbox, item, buttonsField);
+                    LogDebug($"[ATD] K-mode button injected into {capturedToolType} toolbox.");
+                }
+                else
+                {
+                    Log.Warning($"[AutoDepth] Could not access toolbox body for {toolType} K-mode button.");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[AutoDepth] EXCEPTION injecting K-mode button: {ex}");
+            }
+        }
+
+        public static void AreaToolboxSetModePostfix(object __instance, AreaMode mode)
+        {
+            if (s_activeAreaToolbox != null && __instance == s_activeAreaToolbox)
+                s_currentAreaMode = (int)mode;
+        }
+
+        public static void ApplyCornerPatches(Harmony harmony)
+        {
+            var assembly = typeof(Mafi.Unity.Entities.EntityMb).Assembly;
+
+            // Patch AreaToolbox constructor to inject the K-mode button into the
+            // mining designation toolbar.
+            try
+            {
+                var areaToolboxType = assembly.GetType("Mafi.Unity.Ui.Controllers.Designations.AreaToolbox");
+                if (areaToolboxType != null)
+                {
+                    var ctors = areaToolboxType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (ctors.Length > 0)
+                        harmony.Patch(ctors[0],
+                            postfix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(AreaToolboxCtorPostfix)));
+
+                    var setModeMethod = areaToolboxType.GetMethod("SetMode",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (setModeMethod != null)
+                        harmony.Patch(setModeMethod,
+                            postfix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(AreaToolboxSetModePostfix)));
+                }
+                else
+                {
+                    Log.Warning("[AutoDepth] AreaToolbox type not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[AutoDepth] EXCEPTION patching AreaToolbox ctor: {ex}");
+            }
+
+            // Patch TerrainDesignationController.Activate / Deactivate to track when
+            // the player is actively using the mining designation tool (M-mode).
+            try
+            {
+                var controllerType = assembly.GetType("Mafi.Unity.Ui.Controllers.Designations.TerrainDesignationController");
+                if (controllerType != null)
+                {
+                    var activateMethod = controllerType.GetMethod("Activate",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (activateMethod != null)
+                        harmony.Patch(activateMethod,
+                            postfix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(DesignationToolActivatePostfix)));
+
+                    var deactivateMethod = controllerType.GetMethod("Deactivate",
+                        BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                    if (deactivateMethod != null)
+                        harmony.Patch(deactivateMethod,
+                            postfix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(DesignationToolDeactivatePostfix)));
+                }
+                else
+                {
+                    Log.Warning("[AutoDepth] TerrainDesignationController type not found");
+                }
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[AutoDepth] EXCEPTION patching TerrainDesignationController: {ex}");
+            }
+
+            // Patch TerrainDesignationsManager.AddOrReplaceDesignation to protect
+            // ATD-placed corner tiles from being overwritten by the game's placement command.
+            try
+            {
+                var desigMgrMethod = typeof(TerrainDesignationsManager).GetMethod(
+                    "AddOrReplaceDesignation",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (desigMgrMethod != null)
+                    harmony.Patch(desigMgrMethod,
+                        prefix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(AddOrReplaceDesignationPrefix)));
+                else
+                    Log.Warning("[AutoDepth] AddOrReplaceDesignation method not found");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[AutoDepth] EXCEPTION patching AddOrReplaceDesignation: {ex}");
+            }
+
+            // Patch TerrainDesignationsRenderer.AddOrUpdatePreviewDesignation and
+            // RemovePreviewDesignation to suppress the game's own preview calls while
+            // ATD's corner mode is active (prevents flicker).
+            try
+            {
+                var addPreviewMethod = typeof(TerrainDesignationsRenderer).GetMethod(
+                    "AddOrUpdatePreviewDesignation",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (addPreviewMethod != null)
+                    harmony.Patch(addPreviewMethod,
+                        prefix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(AddOrUpdatePreviewPrefix)));
+                else
+                    Log.Warning("[AutoDepth] AddOrUpdatePreviewDesignation method not found");
+
+                var removePreviewMethod = typeof(TerrainDesignationsRenderer).GetMethod(
+                    "RemovePreviewDesignation",
+                    BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+                if (removePreviewMethod != null)
+                    harmony.Patch(removePreviewMethod,
+                        prefix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(RemovePreviewPrefix)));
+                else
+                    Log.Warning("[AutoDepth] RemovePreviewDesignation method not found");
+            }
+            catch (Exception ex)
+            {
+                Log.Warning($"[AutoDepth] EXCEPTION patching preview renderer methods: {ex}");
             }
         }
     }
