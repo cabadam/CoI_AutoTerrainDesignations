@@ -115,6 +115,14 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         OrePurityLevel = Math.Max(0, Math.Min(4, value));
     }
 
+    /// <summary>Whether ATD applies the extra bottom-flattening pass before placing designations.</summary>
+    public static bool BottomFlatteningEnabled { get; private set; } = true;
+
+    public static void SetBottomFlatteningEnabled(bool value)
+    {
+        BottomFlatteningEnabled = value;
+    }
+
     /// <summary>
     /// Minimum corridor clearance for designation connectivity.
     /// 0 = disabled — no corridors drawn, components left separate (for vehicle-less excavation);

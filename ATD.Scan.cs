@@ -209,6 +209,17 @@ namespace AutoTerrainDesignations
             }
 
             FillRectilinearHull(maxOreDepths, targetProductIds, resourceDetailsByTile, corridorClearance);
+            if (AutoTerrainDesignationsMod.BottomFlatteningEnabled)
+            {
+                int flattenedBottomTiles = FlattenDesignationBottom(maxOreDepths, purityLevel);
+                if (flattenedBottomTiles > 0)
+                {
+                    LogDebug(string.Format(
+                        "Flattened designation bottom with {0} tile adjustment(s) using {1} mode",
+                        flattenedBottomTiles,
+                        purityLevel <= 0 ? "lower-only" : "leveling"));
+                }
+            }
 
             LogDebug(string.Format("After filtering+connecting: {0} tiles in designations", maxOreDepths.Count));
             LogDebug(selectedProduct != null
@@ -219,7 +230,7 @@ namespace AutoTerrainDesignations
 
             LogDebug(string.Format("Creating designations for {0} tiles with overall max depth {1}", maxOreDepths.Count, maxOreDepthOverall));
 
-            var cornerHeights = BuildAndSmoothCornerHeights(maxOreDepths, maxHeightDiff);
+            var cornerHeights = BuildAndSmoothCornerHeights(maxOreDepths, maxHeightDiff, purityLevel <= 0);
 
             int designCount = 0;
             foreach (var kvp in maxOreDepths)

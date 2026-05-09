@@ -357,6 +357,10 @@ namespace AutoTerrainDesignations
                 if (purityLevel.HasValue)
                     AutoTerrainDesignationsMod.SetOrePurityLevel(purityLevel.Value);
 
+                bool? bottomFlatteningEnabled = ParseBool(json, "bottomFlatteningEnabled");
+                if (bottomFlatteningEnabled.HasValue)
+                    AutoTerrainDesignationsMod.SetBottomFlatteningEnabled(bottomFlatteningEnabled.Value);
+
                 int? corridorClearance = ParseInt(json, "minCorridorClearance");
                 if (corridorClearance.HasValue)
                     AutoTerrainDesignationsMod.SetMinCorridorClearance(corridorClearance.Value);
@@ -569,6 +573,9 @@ namespace AutoTerrainDesignations
             sb.AppendLine();
             sb.AppendLine("  \"_comment_orePurityLevel\": \"Default starting value for the Ore Purity Level on each mine tower (0=Off, 1=Low, 2=Med, 3=High, 4=Max). Controls how aggressively poor-quality tiles and sparse ore are excluded. Can be adjusted per tower in-game. Default: 0.\",");
             sb.AppendLine($"  \"orePurityLevel\": {AutoTerrainDesignationsMod.OrePurityLevel},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_bottomFlatteningEnabled\": \"Whether to run the extra designation-bottom flattening pass before placing mining designations. Off purity uses lower-only flattening; other purity modes use conservative leveling. Can also be changed at runtime with atd_set_bottom_flattening. Default: true.\",");
+            sb.AppendLine($"  \"bottomFlatteningEnabled\": {BoolToJsonStr(AutoTerrainDesignationsMod.BottomFlatteningEnabled)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_minCorridorClearance\": \"Global default corridor clearance used when connecting separated ore components and enforcing passability. Each mine tower can override this individually via the inspector. 0 = disabled \u2014 components are left separate, no corridors or hole-filling (for vehicle-less excavation mods); 1 = 1-tile corridors (small and medium vehicles); 2 = 2-tile corridors (mega vehicles). Default: 2.\",");
             sb.AppendLine($"  \"minCorridorClearance\": {AutoTerrainDesignationsMod.MinCorridorClearance},");

@@ -4,6 +4,7 @@ v0.3.0a | 2026-05-09
     - "Ramp placed but did not reach the surface — excavators may not be able to excavate."
     - "Couldn't find a valid path from the tower to the generated ramp. Check for access problems."
 * Increased generated ramp safety margin around nearby buildings by 1 tile.
+* Added a bottom-flattening pass to reduce rough/bumpy excavation floors; designations floor should now be noticably flatter. Can be toggled on/off with **atd_set_bottom_flattening on/off**.
 * Renamed the **Target product** label to **Scanning filter** to avoid confusion with mining priority.
 
 

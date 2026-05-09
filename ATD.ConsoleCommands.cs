@@ -30,6 +30,7 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  MaxLayersToExcavate   = {AutoTerrainDesignationsMod.MaxLayersToExcavate}");
         sb.AppendLine($"  MaxDepthToDigTo       = {AutoTerrainDesignationsMod.MaxDepthToDigTo?.ToString() ?? "-"}");
         sb.AppendLine($"  OrePurityLevel        = {AutoTerrainDesignationsMod.OrePurityLevel}");
+        sb.AppendLine($"  BottomFlattening      = {AutoTerrainDesignationsMod.BottomFlatteningEnabled}");
         sb.AppendLine($"  MinCorridorClearance  = {AutoTerrainDesignationsMod.MinCorridorClearance}");
         sb.AppendLine($"  TerrainPanelCollapsed = {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}");
         sb.AppendLine($"  OrePanelCollapsed     = {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}");
@@ -63,6 +64,16 @@ public sealed class AtdConsoleCommands
     {
         AutoTerrainDesignationsMod.SetOrePurityLevel(value);
         return $"[ATD] OrePurityLevel set to {AutoTerrainDesignationsMod.OrePurityLevel}.";
+    }
+
+    [ConsoleCommand(false, false, "Enables/disables the extra bottom-flattening pass (true/false, on/off, 1/0).", null)]
+    private string atdSetBottomFlattening(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetBottomFlatteningEnabled(parsed);
+        return $"[ATD] BottomFlattening set to {AutoTerrainDesignationsMod.BottomFlatteningEnabled}.";
     }
 
     [ConsoleCommand(false, false, "Sets the global default max depth to dig to (absolute elevation). Use '-' for no limit.", null)]

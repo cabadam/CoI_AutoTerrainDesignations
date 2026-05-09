@@ -848,7 +848,81 @@ namespace AutoTerrainDesignations
             return true;
         }
 
-        private static Dict<Tile2i, int> BuildAndSmoothCornerHeights(Dict<Tile2i, int> tileDepths, int maxAllowedDiff = 1)
+        private static int FlattenDesignationBottom(Dict<Tile2i, int> tileDepths, int purityLevel)
+        {
+            if (tileDepths.Count == 0)
+                return 0;
+
+            bool lowerOnly = purityLevel <= 0;
+            int totalAdjusted = 0;
+            var visited = new HashSet<Tile2i>();
+            var components = new List<List<Tile2i>>();
+
+            foreach (Tile2i tile in tileDepths.Keys)
+            {
+                if (visited.Contains(tile))
+                {
+                    continue;
+                }
+
+                var component = new List<Tile2i>();
+                FloodFill(tile, tileDepths, visited, component);
+                components.Add(component);
+            }
+
+            var updates = new Dictionary<Tile2i, int>();
+            foreach (List<Tile2i> component in components)
+            {
+                if (component.Count < 4)
+                {
+                    continue;
+                }
+
+                var depths = new List<int>(component.Count);
+                foreach (Tile2i tile in component)
+                {
+                    depths.Add(tileDepths[tile]);
+                }
+                depths.Sort();
+
+                int targetDepth = lowerOnly
+                    ? depths[Math.Max(0, depths.Count / 10)]
+                    : depths[depths.Count / 2];
+
+                foreach (Tile2i tile in component)
+                {
+                    int currentDepth = tileDepths[tile];
+                    int nextDepth = currentDepth;
+
+                    if (lowerOnly)
+                    {
+                        if (currentDepth > targetDepth)
+                        {
+                            nextDepth = targetDepth;
+                        }
+                    }
+                    else
+                    {
+                        nextDepth = targetDepth;
+                    }
+
+                    if (nextDepth != currentDepth)
+                    {
+                        updates[tile] = nextDepth;
+                    }
+                }
+            }
+
+            foreach (var kvp in updates)
+            {
+                tileDepths[kvp.Key] = kvp.Value;
+            }
+            totalAdjusted = updates.Count;
+
+            return totalAdjusted;
+        }
+
+        private static Dict<Tile2i, int> BuildAndSmoothCornerHeights(Dict<Tile2i, int> tileDepths, int maxAllowedDiff = 1, bool preserveDeepestTileBottom = false)
         {
             var corners = new Dict<Tile2i, int>();
 
@@ -858,10 +932,10 @@ namespace AutoTerrainDesignations
                 var tile = kvp.Key;
                 var depth = kvp.Value;
 
-                UpdateCornerHeight(corners, tile,          depth);
-                UpdateCornerHeight(corners, tile.AddX(4),  depth);
-                UpdateCornerHeight(corners, tile.AddXy(4), depth);
-                UpdateCornerHeight(corners, tile.AddY(4),  depth);
+                UpdateCornerHeight(corners, tile,          depth, preserveDeepestTileBottom);
+                UpdateCornerHeight(corners, tile.AddX(4),  depth, preserveDeepestTileBottom);
+                UpdateCornerHeight(corners, tile.AddXy(4), depth, preserveDeepestTileBottom);
+                UpdateCornerHeight(corners, tile.AddY(4),  depth, preserveDeepestTileBottom);
             }
 
             // Slope clamping: iterate over every adjacent corner pair (4 tiles apart in X or Y)
@@ -917,11 +991,13 @@ namespace AutoTerrainDesignations
             return corners;
         }
 
-        private static void UpdateCornerHeight(Dict<Tile2i, int> corners, Tile2i corner, int newHeight)
+        private static void UpdateCornerHeight(Dict<Tile2i, int> corners, Tile2i corner, int newHeight, bool preserveDeepestTileBottom)
         {
             if (corners.TryGetValue(corner, out int existingHeight))
             {
-                corners[corner] = (existingHeight + newHeight) / 2;
+                corners[corner] = preserveDeepestTileBottom
+                    ? Math.Min(existingHeight, newHeight)
+                    : (existingHeight + newHeight) / 2;
             }
             else
             {
