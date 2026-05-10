@@ -25,7 +25,10 @@ namespace AutoTerrainDesignations
             var originsToRemove = new List<Tile2i>();
             foreach (TerrainDesignation designation in tower.ManagedDesignations)
             {
-                originsToRemove.Add(designation.OriginTileCoord);
+                if (IsAutoTerrainDesignation(designation))
+                {
+                    originsToRemove.Add(designation.OriginTileCoord);
+                }
             }
 
             foreach (Tile2i origin in originsToRemove)
@@ -42,6 +45,40 @@ namespace AutoTerrainDesignations
             }
 
             return designation.Prototype.Id.Value == "MiningDesignator";
+        }
+
+        /// <summary>Returns true when the designation uses the dumping designator proto.</summary>
+        /// <param name="designation">Terrain designation to inspect.</param>
+        /// <returns>True when the designation is a dumping designation; otherwise, false.</returns>
+        private static bool IsDumpingDesignation(TerrainDesignation designation)
+        {
+            if (s_dumpingProto != null && designation.Prototype == s_dumpingProto)
+            {
+                return true;
+            }
+
+            return designation.Prototype.Id.Value == "DumpingDesignator";
+        }
+
+        /// <summary>Returns true when the designation uses the leveling designator proto.</summary>
+        /// <param name="designation">Terrain designation to inspect.</param>
+        /// <returns>True when the designation is a leveling designation; otherwise, false.</returns>
+        private static bool IsLevelingDesignation(TerrainDesignation designation)
+        {
+            if (s_levelingProto != null && designation.Prototype == s_levelingProto)
+            {
+                return true;
+            }
+
+            return designation.Prototype.Id.Value == "LevelDesignator";
+        }
+
+        /// <summary>Returns true for any terrain designation type this mod can create automatically.</summary>
+        /// <param name="designation">Terrain designation to inspect.</param>
+        /// <returns>True when the designation is one of the mod-managed designation types; otherwise, false.</returns>
+        private static bool IsAutoTerrainDesignation(TerrainDesignation designation)
+        {
+            return IsMiningDesignation(designation) || IsDumpingDesignation(designation) || IsLevelingDesignation(designation);
         }
 
         private static bool HasTerrainDesignationAtOrigin(IAreaManagingTower tower, Tile2i origin)

@@ -92,6 +92,36 @@ namespace AutoTerrainDesignations
         // CreateDesignationsForTower to apply the new values.
         // -----------------------------------------------------------------------
 
+        /// <summary>Gets the designation mode for this tower.</summary>
+        /// <param name="tower">Tower whose settings should be read.</param>
+        /// <returns>The tower-specific designation mode, or the global default when <paramref name="tower"/> is null.</returns>
+        public static DesignationMode GetDesignationMode(IAreaManagingTower tower) =>
+            tower != null ? AutoDepthDesignation.GetTowerDesignationMode(tower) : AutoTerrainDesignationsMod.DesignationMode;
+
+        /// <summary>Sets the designation mode for this tower.</summary>
+        /// <param name="tower">Tower whose settings should be updated.</param>
+        /// <param name="value">Designation mode to use for this tower.</param>
+        public static void SetDesignationMode(IAreaManagingTower tower, DesignationMode value)
+        {
+            if (tower == null) { Log.Warning("[ATD API] SetDesignationMode called with null tower."); return; }
+            AutoDepthDesignation.SetTowerDesignationMode(tower, value);
+        }
+
+        /// <summary>Gets the flattening-mode designation type for this tower.</summary>
+        /// <param name="tower">Tower whose settings should be read.</param>
+        /// <returns>The tower-specific flattening-mode designation type, or the global default when <paramref name="tower"/> is null.</returns>
+        public static FlatteningDesignationType GetFlatteningDesignationType(IAreaManagingTower tower) =>
+            tower != null ? AutoDepthDesignation.GetTowerFlatteningDesignationType(tower) : AutoTerrainDesignationsMod.FlatteningDesignationType;
+
+        /// <summary>Sets the flattening-mode designation type for this tower.</summary>
+        /// <param name="tower">Tower whose settings should be updated.</param>
+        /// <param name="value">Designation type to place when this tower is in flattening mode.</param>
+        public static void SetFlatteningDesignationType(IAreaManagingTower tower, FlatteningDesignationType value)
+        {
+            if (tower == null) { Log.Warning("[ATD API] SetFlatteningDesignationType called with null tower."); return; }
+            AutoDepthDesignation.SetTowerFlatteningDesignationType(tower, value);
+        }
+
         /// <summary>Gets the maximum height difference (1–3) this tower will designate across.</summary>
         public static int GetMaxHeightDiff(IAreaManagingTower tower) =>
             tower != null ? AutoDepthDesignation.GetTowerMaxHeightDiff(tower) : AutoTerrainDesignationsMod.MaxHeightDiff;

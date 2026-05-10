@@ -6,11 +6,12 @@
 // related trademarks, code, and assets belong to MaFi Games. This repository is
 // intended to contain only original mod code/configuration; if MaFi Games material
 // is included by mistake, I intend to correct it promptly upon discovery or notice.
-using System;
-using System.IO;
+using CoI.AutoHelpers.Localization;
+using CoI.AutoHelpers.Logging;
 using HarmonyLib;
 using Mafi;
 using Mafi.Collections;
+using Mafi.Core.Console;
 using Mafi.Core.Entities;
 using Mafi.Core.Game;
 using Mafi.Core.GameLoop;
@@ -21,19 +22,17 @@ using Mafi.Core.PathFinding;
 using Mafi.Core.Prototypes;
 using Mafi.Core.SaveGame;
 using Mafi.Core.Simulation;
-using Mafi.Core.Console;
 using Mafi.Core.Terrain.Designation;
 using Mafi.Core.Terrain.Props;
 using Mafi.Core.Vehicles.Jobs;
 using Mafi.Core.World;
+using Mafi.Localization;
 using Mafi.Unity.InputControl;
 using Mafi.Unity.Terrain.Designation;
-using Mafi.Localization;
-using Mafi.Unity.UiStatic;
 using Mafi.Unity.UiStatic.Cursors;
+using System;
+using System.IO;
 using UnityEngine;
-using CoI.AutoHelpers.Localization;
-using CoI.AutoHelpers.Logging;
 using CoI.AutoHelpers.Persistence;
 using CoI.AutoHelpers.Settings;
 using Mafi.Unity;
@@ -41,6 +40,33 @@ using Mafi.Unity.Ui.Hud;
 using Mafi.Unity.UiToolkit;
 
 namespace AutoTerrainDesignations;
+
+/// <summary>
+/// Selects which automatic designation workflow the terrain panel runs.
+/// </summary>
+public enum DesignationMode
+{
+    /// <summary>Scan resources and place mining designations around detected deposits.</summary>
+    ResourceMining = 0,
+
+    /// <summary>Ignore resources and fill the tower area at the configured elevation.</summary>
+    Flattening = 1,
+}
+
+/// <summary>
+/// Selects which terrain designation proto flattening mode places.
+/// </summary>
+public enum FlatteningDesignationType
+{
+    /// <summary>Use mining designations for the flattened area.</summary>
+    Mining = 0,
+
+    /// <summary>Use dumping designations for the flattened area.</summary>
+    Dumping = 1,
+
+    /// <summary>Use leveling designations for the flattened area.</summary>
+    Leveling = 2,
+}
 
 public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 {
@@ -98,8 +124,16 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 
     public static int MaxHeightDiff { get; private set; } = 1;
 
+    /// <summary>Automatic designation behavior.</summary>
+    public static DesignationMode DesignationMode { get; private set; } = DesignationMode.ResourceMining;
+
+    /// <summary>Designation proto used by flattening mode.</summary>
+    public static FlatteningDesignationType FlatteningDesignationType { get; private set; } = FlatteningDesignationType.Mining;
+
     public static void ResetGlobalDefaults()
     {
+        SetDesignationMode(DesignationMode.ResourceMining);
+        SetFlatteningDesignationType(FlatteningDesignationType.Mining);
         SetMaxHeightDiff(1);
         SetRampWidth(2);
         SetMaxLayersToExcavate(30);
@@ -119,6 +153,34 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetAccessWorkDistanceScale(1f);
         SetAccessLandslideRunPerHeight(1f);
         SetCornerDesignationKey(KeyCode.K);
+    }
+
+    /// <summary>Sets the global default designation mode.</summary>
+    /// <param name="value">Designation workflow to use for newly initialized tower settings.</param>
+    public static void SetDesignationMode(DesignationMode value)
+    {
+        DesignationMode = value;
+    }
+
+    /// <summary>Sets the global default designation mode from its numeric value.</summary>
+    /// <param name="value">Numeric designation workflow value, clamped to the supported enum range.</param>
+    public static void SetDesignationMode(int value)
+    {
+        SetDesignationMode((DesignationMode)Math.Max(0, Math.Min(1, value)));
+    }
+
+    /// <summary>Sets the global default designation type used by flattening mode.</summary>
+    /// <param name="value">Designation type to place when flattening mode is selected.</param>
+    public static void SetFlatteningDesignationType(FlatteningDesignationType value)
+    {
+        FlatteningDesignationType = value;
+    }
+
+    /// <summary>Sets the global default designation type used by flattening mode from its numeric value.</summary>
+    /// <param name="value">Numeric designation type value, clamped to the supported enum range.</param>
+    public static void SetFlatteningDesignationType(int value)
+    {
+        SetFlatteningDesignationType((FlatteningDesignationType)Math.Max(0, Math.Min(2, value)));
     }
 
     public static void SetMaxHeightDiff(int value)

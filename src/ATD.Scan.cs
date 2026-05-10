@@ -58,8 +58,35 @@ namespace AutoTerrainDesignations
                     : current;
             }
         }
-
+        /// <summary>
+        /// Dispatches the create-designations request to the selected tower workflow.
+        /// </summary>
+        /// <param name="tower">Tower whose managed area should receive designations.</param>
+        /// <param name="generateRamps">Whether resource-mining mode should attempt to generate access ramps.</param>
+        /// <param name="inspectorInstance">Optional inspector key used to refresh attached panels after designation creation.</param>
+        /// <returns>Coroutine enumerator that performs designation creation over multiple frames.</returns>
         private static IEnumerator CreateDesignationsCoroutine(IAreaManagingTower tower, bool generateRamps, object? inspectorInstance = null)
+        {
+            var towerSettings = GetOrCreateTowerSettings(tower);
+            switch (towerSettings.DesignationMode)
+            {
+                case DesignationMode.ResourceMining:
+                    yield return CreateResourceMiningDesignationsCoroutine(tower, generateRamps, inspectorInstance);
+                    break;
+                case DesignationMode.Flattening:
+                    yield return CreatFlatteningDesignationsCoroutine(tower, inspectorInstance);
+                    break;
+            }
+        }
+
+        /// <summary>
+        /// Existing resource-aware mining workflow that scans products and follows deposit depth.
+        /// </summary>
+        /// <param name="tower">Tower whose managed area should be scanned for resources.</param>
+        /// <param name="generateRamps">Whether to generate an access ramp after mining designations are placed.</param>
+        /// <param name="inspectorInstance">Optional inspector key used to refresh attached panels after designation creation.</param>
+        /// <returns>Coroutine enumerator that creates resource-aware mining designations over multiple frames.</returns>
+        private static IEnumerator CreateResourceMiningDesignationsCoroutine(IAreaManagingTower tower, bool generateRamps, object? inspectorInstance = null)
         {
             if (s_desigManager == null || s_miningProto == null) yield break;
 
@@ -330,6 +357,118 @@ namespace AutoTerrainDesignations
             {
                 OreCompositionPanel.ResetContent(inspectorInstance);
                 DesignationPanel.RefreshDisplays(inspectorInstance);
+            }
+        }
+
+        /// <summary>
+        /// Creates full-area flattening designations at the tower's configured target elevation.
+        /// </summary>
+        /// <param name="tower">Tower whose managed area should be filled with flattening designations.</param>
+        /// <param name="inspectorInstance">Optional inspector key used to refresh attached panels after designation creation.</param>
+        /// <returns>Coroutine enumerator that creates flattening designations over multiple frames.</returns>
+        private static IEnumerator CreatFlatteningDesignationsCoroutine(IAreaManagingTower tower, object? inspectorInstance = null)
+        {
+            if (s_desigManager == null)
+            {
+                yield break;
+            }
+
+            var area = tower.Area;
+            if (area.IsEmpty)
+            {
+                yield break;
+            }
+
+            var towerSettings = GetOrCreateTowerSettings(tower);
+            int? targetElevation = towerSettings.MaxDepthToDigTo;
+            if (!targetElevation.HasValue)
+            {
+                Log.Warning("[ATD] Flattening mode requires a configured elevation. Set Elevation limit first.");
+                yield break;
+            }
+
+            TerrainDesignationProto? designationProto = GetFlatteningModeDesignationProto(towerSettings.FlatteningDesignationType);
+            if (designationProto == null)
+            {
+                Log.Warning(string.Format(
+                    "[ATD] Flattening mode unavailable: {0} proto was not initialized.",
+                    FlatteningDesignationTypeText(towerSettings.FlatteningDesignationType)));
+                yield break;
+            }
+
+            var bbMin = TerrainDesignation.GetOrigin(area.BoundingBoxMin);
+            var bbMax = TerrainDesignation.GetOrigin(area.BoundingBoxMax);
+            int target = targetElevation.Value;
+            int designCount = 0;
+
+            LogDebug(string.Format(
+                "Creating {0} flattening-mode designations from {1} to {2} at elevation {3}...",
+                FlatteningDesignationTypeText(towerSettings.FlatteningDesignationType),
+                bbMin,
+                bbMax,
+                target));
+
+            for (int y = bbMin.Y; y < bbMax.Y; y += 4)
+            {
+                for (int x = bbMin.X; x < bbMax.X; x += 4)
+                {
+                    var tile = new Tile2i(x, y);
+                    if (!IsDesignatableTileFullyInsideArea(area, tile))
+                    {
+                        continue;
+                    }
+
+                    var data = new DesignationData(tile,
+                        new HeightTilesI(target), new HeightTilesI(target),
+                        new HeightTilesI(target), new HeightTilesI(target));
+
+                    if (!s_desigManager.AddOrReplaceDesignation(designationProto, data))
+                    {
+                        Log.Warning(string.Format("Failed to create {0} flattening-mode designation for tile {1}", FlatteningDesignationTypeText(towerSettings.FlatteningDesignationType), tile));
+                    }
+
+                    designCount++;
+                    int effectiveBatchSize = GetEffectiveBatchSize();
+                    if (designCount % effectiveBatchSize == 0)
+                        yield return null;
+                }
+            }
+
+            LogDebug(string.Format("Created {0} {1} flattening-mode designations at elevation {2}", designCount, FlatteningDesignationTypeText(towerSettings.FlatteningDesignationType), target));
+            ClearTowerLastRampOutcome(tower);
+
+            if (inspectorInstance != null)
+            {
+                OreCompositionPanel.ResetContent(inspectorInstance);
+                DesignationPanel.RefreshDisplays(inspectorInstance);
+            }
+        }
+
+        /// <summary>Resolves the terrain designation proto used by flattening mode.</summary>
+        /// <param name="flatteningDesignationType">Flattening-mode designation type selected by settings.</param>
+        /// <returns>The initialized terrain designation proto for the requested type, or null when unavailable.</returns>
+        private static TerrainDesignationProto? GetFlatteningModeDesignationProto(FlatteningDesignationType flatteningDesignationType)
+        {
+            switch (flatteningDesignationType)
+            {
+                case FlatteningDesignationType.Mining: return s_miningProto;
+                case FlatteningDesignationType.Dumping: return s_dumpingProto;
+                case FlatteningDesignationType.Leveling: return s_levelingProto;
+                default: return s_levelingProto;
+            }
+        }
+
+        /// <summary>Formats a flattening-mode designation type for logs.</summary>
+        /// <param name="flatteningDesignationType">Designation type to format.</param>
+        /// <returns>Lowercase text suitable for diagnostic log messages.</returns>
+        private static string FlatteningDesignationTypeText(FlatteningDesignationType flatteningDesignationType)
+        {
+            switch (flatteningDesignationType)
+            {
+                case FlatteningDesignationType.Mining: return "mining";
+                case FlatteningDesignationType.Dumping: return "dumping";
+                case FlatteningDesignationType.Leveling: return "leveling";
+                default: return flatteningDesignationType.ToString();
             }
         }
 

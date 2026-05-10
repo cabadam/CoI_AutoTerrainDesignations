@@ -60,6 +60,11 @@ namespace AutoTerrainDesignations
 
         private sealed class ATDTowerSettings
         {
+            /// <summary>Automatic designation workflow selected for this tower.</summary>
+            public DesignationMode DesignationMode { get; private set; }
+
+            /// <summary>Designation proto type used when this tower is in flattening mode.</summary>
+            public FlatteningDesignationType FlatteningDesignationType { get; private set; }
             public int MaxHeightDiff { get; private set; }
             public int RampWidth { get; private set; }
             public int MaxLayersToExcavate { get; private set; }
@@ -72,8 +77,19 @@ namespace AutoTerrainDesignations
             /// <summary>Outcome of the most recent ramp generation attempt. Null = no scan run yet.</summary>
             public RampPlacementOutcome? LastRampOutcome { get; set; }
 
-            public ATDTowerSettings(int maxHeightDiff, int rampWidth, int maxLayersToExcavate, int? maxDepthToDigTo, int orePurityLevel, int corridorClearance, bool autoReleaseExcavatorsWhenIdle = false, bool autoReleaseTrucksWhenIdle = false)
+            /// <summary>Creates a per-tower settings snapshot.</summary>
+            /// <param name="designationMode">Automatic designation workflow selected for the tower.</param>
+            /// <param name="flatteningDesignationType">Designation type to use when the tower is in flattening mode.</param>
+            /// <param name="maxHeightDiff">Maximum allowed corner height difference for generated mining designations.</param>
+            /// <param name="rampWidth">Ramp width to use when generating access ramps.</param>
+            /// <param name="maxLayersToExcavate">Maximum number of terrain layers to excavate from the surface.</param>
+            /// <param name="maxDepthToDigTo">Absolute elevation limit or target elevation, depending on designation mode.</param>
+            /// <param name="orePurityLevel">Ore purity threshold level used by resource mining.</param>
+            /// <param name="corridorClearance">Minimum corridor clearance used when connecting resource mining regions.</param>
+            public ATDTowerSettings(DesignationMode designationMode, FlatteningDesignationType flatteningDesignationType, int maxHeightDiff, int rampWidth, int maxLayersToExcavate, int? maxDepthToDigTo, int orePurityLevel, int corridorClearance, bool autoReleaseExcavatorsWhenIdle = false, bool autoReleaseTrucksWhenIdle = false)
             {
+                SetDesignationMode(designationMode);
+                SetFlatteningDesignationType(flatteningDesignationType);
                 SetMaxHeightDiff(maxHeightDiff);
                 SetRampWidth(rampWidth);
                 SetMaxLayersToExcavate(maxLayersToExcavate);
@@ -84,7 +100,11 @@ namespace AutoTerrainDesignations
                 SetAutoReleaseTrucksWhenIdle(autoReleaseTrucksWhenIdle);
             }
 
+            /// <summary>Creates tower settings from the current global defaults.</summary>
+            /// <returns>A new per-tower settings snapshot initialized from the global default values.</returns>
             public static ATDTowerSettings FromGlobalDefaults() => new ATDTowerSettings(
+                AutoTerrainDesignationsMod.DesignationMode,
+                AutoTerrainDesignationsMod.FlatteningDesignationType,
                 AutoTerrainDesignationsMod.MaxHeightDiff,
                 AutoTerrainDesignationsMod.RampWidth,
                 AutoTerrainDesignationsMod.MaxLayersToExcavate,
@@ -93,6 +113,14 @@ namespace AutoTerrainDesignations
                 AutoTerrainDesignationsMod.MinCorridorClearance,
                 AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle,
                 AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle);
+
+            /// <summary>Sets the tower designation workflow.</summary>
+            /// <param name="value">Designation workflow to use for this tower.</param>
+            public void SetDesignationMode(DesignationMode value) => DesignationMode = value;
+
+            /// <summary>Sets the tower flattening-mode designation type.</summary>
+            /// <param name="value">Designation type to place when this tower is in flattening mode.</param>
+            public void SetFlatteningDesignationType(FlatteningDesignationType value) => FlatteningDesignationType = value;
 
             public void SetMaxHeightDiff(int value) => MaxHeightDiff = Math.Max(1, Math.Min(3, value));
 
@@ -227,6 +255,26 @@ namespace AutoTerrainDesignations
         }
 
         // --- Per-tower settings accessors (used by API) ---
+
+        /// <summary>Gets the designation workflow configured for a tower.</summary>
+        /// <param name="tower">Tower whose settings should be read.</param>
+        /// <returns>The tower-specific designation workflow, or a default-backed value if no settings exist yet.</returns>
+        internal static DesignationMode GetTowerDesignationMode(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).DesignationMode;
+
+        /// <summary>Sets the designation workflow for a tower.</summary>
+        /// <param name="tower">Tower whose settings should be updated.</param>
+        /// <param name="value">Designation workflow to use for this tower.</param>
+        internal static void SetTowerDesignationMode(IAreaManagingTower tower, DesignationMode value) => GetOrCreateTowerSettings(tower).SetDesignationMode(value);
+
+        /// <summary>Gets the flattening-mode designation type configured for a tower.</summary>
+        /// <param name="tower">Tower whose settings should be read.</param>
+        /// <returns>The tower-specific flattening-mode designation type, or a default-backed value if no settings exist yet.</returns>
+        internal static FlatteningDesignationType GetTowerFlatteningDesignationType(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).FlatteningDesignationType;
+
+        /// <summary>Sets the flattening-mode designation type for a tower.</summary>
+        /// <param name="tower">Tower whose settings should be updated.</param>
+        /// <param name="value">Designation type to place when this tower is in flattening mode.</param>
+        internal static void SetTowerFlatteningDesignationType(IAreaManagingTower tower, FlatteningDesignationType value) => GetOrCreateTowerSettings(tower).SetFlatteningDesignationType(value);
 
         internal static int GetTowerMaxHeightDiff(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).MaxHeightDiff;
         internal static void SetTowerMaxHeightDiff(IAreaManagingTower tower, int value) => GetOrCreateTowerSettings(tower).SetMaxHeightDiff(value);

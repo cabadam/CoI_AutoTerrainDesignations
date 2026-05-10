@@ -38,28 +38,84 @@ namespace AutoTerrainDesignations
         {
             public Func<IAreaManagingTower?> GetTower { get; }
             public PanelWithHeader Panel { get; }
+
+            /// <summary>Display showing the selected automatic designation workflow.</summary>
+            public Mafi.Unity.Ui.Library.Display ModeDisplay { get; }
+
+            /// <summary>Display showing the designation type used by flattening mode.</summary>
+            public Mafi.Unity.Ui.Library.Display FlatteningDesignationTypeDisplay { get; }
             public Mafi.Unity.Ui.Library.Display RampWidthDisplay { get; }
             public Mafi.Unity.Ui.Library.Display MaxLayersDisplay { get; }
             public Mafi.Unity.Ui.Library.Display MinElevDisplay { get; }
             public Mafi.Unity.Ui.Library.Display OrePurityDisplay { get; }
             public Mafi.Unity.Ui.Library.Display ClearanceDisplay { get; }
 
+            /// <summary>Row containing the flattening-mode designation type controls.</summary>
+            public Row FlatteningDesignationTypeRow { get; }
+
+            /// <summary>Row containing ramp width controls, disabled during flattening mode.</summary>
+            public Row RampWidthRow { get; }
+
+            /// <summary>Row containing max layer controls, disabled during flattening mode.</summary>
+            public Row MaxLayersRow { get; }
+
+            /// <summary>Row containing ore purity controls, disabled during flattening mode.</summary>
+            public Row OrePurityRow { get; }
+
+            /// <summary>Row containing corridor clearance controls, disabled during flattening mode.</summary>
+            public Row ClearanceRow { get; }
+
+            /// <summary>Optional row containing the product scanning filter, disabled during flattening mode.</summary>
+            public Row? OrePickerRow { get; }
+
+            /// <summary>Creates panel binding references used by refresh and mode-dependent UI state.</summary>
+            /// <param name="getTower">Delegate that returns the currently active tower.</param>
+            /// <param name="panel">Panel instance that owns the bound rows and displays.</param>
+            /// <param name="modeDisplay">Display showing the selected automatic designation workflow.</param>
+            /// <param name="flatteningDesignationTypeDisplay">Display showing the designation type used by flattening mode.</param>
+            /// <param name="rampWidthDisplay">Display showing the configured ramp width.</param>
+            /// <param name="maxLayersDisplay">Display showing the configured maximum excavation layers.</param>
+            /// <param name="minElevDisplay">Display showing the elevation limit or flattening target.</param>
+            /// <param name="orePurityDisplay">Display showing the configured ore purity threshold.</param>
+            /// <param name="clearanceDisplay">Display showing the configured corridor clearance.</param>
+            /// <param name="flatteningDesignationTypeRow">Row containing the flattening-mode designation type controls.</param>
+            /// <param name="rampWidthRow">Row containing ramp width controls.</param>
+            /// <param name="maxLayersRow">Row containing max layer controls.</param>
+            /// <param name="orePurityRow">Row containing ore purity controls.</param>
+            /// <param name="clearanceRow">Row containing corridor clearance controls.</param>
+            /// <param name="orePickerRow">Optional row containing the product scanning filter.</param>
             public Bindings(
                 Func<IAreaManagingTower?> getTower,
                 PanelWithHeader panel,
+                Mafi.Unity.Ui.Library.Display modeDisplay,
+                Mafi.Unity.Ui.Library.Display flatteningDesignationTypeDisplay,
                 Mafi.Unity.Ui.Library.Display rampWidthDisplay,
                 Mafi.Unity.Ui.Library.Display maxLayersDisplay,
                 Mafi.Unity.Ui.Library.Display minElevDisplay,
                 Mafi.Unity.Ui.Library.Display orePurityDisplay,
-                Mafi.Unity.Ui.Library.Display clearanceDisplay)
+                Mafi.Unity.Ui.Library.Display clearanceDisplay,
+                Row flatteningDesignationTypeRow,
+                Row rampWidthRow,
+                Row maxLayersRow,
+                Row orePurityRow,
+                Row clearanceRow,
+                Row? orePickerRow)
             {
                 GetTower = getTower;
                 Panel = panel;
+                ModeDisplay = modeDisplay;
+                FlatteningDesignationTypeDisplay = flatteningDesignationTypeDisplay;
                 RampWidthDisplay = rampWidthDisplay;
                 MaxLayersDisplay = maxLayersDisplay;
                 MinElevDisplay = minElevDisplay;
                 OrePurityDisplay = orePurityDisplay;
                 ClearanceDisplay = clearanceDisplay;
+                FlatteningDesignationTypeRow = flatteningDesignationTypeRow;
+                RampWidthRow = rampWidthRow;
+                MaxLayersRow = maxLayersRow;
+                OrePurityRow = orePurityRow;
+                ClearanceRow = clearanceRow;
+                OrePickerRow = orePickerRow;
             }
         }
 
@@ -83,6 +139,10 @@ namespace AutoTerrainDesignations
             var tower = b.GetTower();
             if (tower == null) return;
             b.Panel.Collapsed(AutoDepthDesignation.GetTowerTerrainPanelCollapsed(tower));
+            DesignationMode designationMode = AutoDepthDesignation.GetTowerDesignationMode(tower);
+            b.ModeDisplay.SetValue(new LocStrFormatted(DesignationModeText(designationMode)));
+            b.FlatteningDesignationTypeDisplay.SetValue(new LocStrFormatted(FlatteningDesignationTypeText(AutoDepthDesignation.GetTowerFlatteningDesignationType(tower))));
+            SetModeDependentRowsEnabled(b, designationMode);
             b.RampWidthDisplay.SetValue(new LocStrFormatted(RampWidthText(AutoDepthDesignation.GetTowerRampWidth(tower))));
             b.MaxLayersDisplay.SetValue(new LocStrFormatted(MaxLayersText(AutoDepthDesignation.GetTowerMaxLayersToExcavate(tower))));
             b.MinElevDisplay.SetValue(new LocStrFormatted(MinElevText(AutoDepthDesignation.GetTowerMaxDepthToDigTo(tower))));
@@ -232,13 +292,89 @@ namespace AutoTerrainDesignations
             });
             panel.BodyAdd(contentRow);
 
+            // --- Designation mode ---
+            DesignationMode initMode = initialTower != null
+                ? AutoDepthDesignation.GetTowerDesignationMode(initialTower)
+                : AutoTerrainDesignationsMod.DesignationMode;
+            var modeDisplay = new Mafi.Unity.Ui.Library.Display(new LocStrFormatted(DesignationModeText(initMode)))
+                .MinDigits(3).AlignSelfStretch().MarginTopBottom(2.px());
+
+            // --- Flattening designation type ---
+            FlatteningDesignationType initFlatteningDesignationType = initialTower != null
+                ? AutoDepthDesignation.GetTowerFlatteningDesignationType(initialTower)
+                : AutoTerrainDesignationsMod.FlatteningDesignationType;
+            var flatteningDesignationTypeDisplay = new Mafi.Unity.Ui.Library.Display(new LocStrFormatted(FlatteningDesignationTypeText(initFlatteningDesignationType)))
+                .MinDigits(3).AlignSelfStretch().MarginTopBottom(2.px());
+            Row? rampWidthRow = null;
+            Row? maxLayersRow = null;
+            Row? orePurityRow = null;
+            Row? clearanceRow = null;
+            Row? oreRow = null;
+            Row? flatteningDesignationTypeRow = null;
+
+            Row modeRow = BuildStepRow(
+                new LocStrFormatted("Mode"),
+                new LocStrFormatted(
+                    "Resource Mining: scan resources and place mining designations.\n" +
+                    "Flattening: ignore resources and set the whole tower area to the configured elevation."),
+                modeDisplay,
+                (Action)delegate
+                {
+                    var tower = getTower(); if (tower == null) return;
+                    AutoDepthDesignation.SetTowerDesignationMode(tower, NextDesignationMode(AutoDepthDesignation.GetTowerDesignationMode(tower)));
+                    DesignationMode mode = AutoDepthDesignation.GetTowerDesignationMode(tower);
+                    modeDisplay.SetValue(new LocStrFormatted(DesignationModeText(mode)));
+                    SetModeDependentRowsEnabled(
+                        flatteningDesignationTypeRow,
+                        rampWidthRow,
+                        maxLayersRow,
+                        orePurityRow,
+                        clearanceRow,
+                        oreRow,
+                        mode);
+                },
+                (Action)delegate
+                {
+                    var tower = getTower(); if (tower == null) return;
+                    AutoDepthDesignation.SetTowerDesignationMode(tower, PreviousDesignationMode(AutoDepthDesignation.GetTowerDesignationMode(tower)));
+                    DesignationMode mode = AutoDepthDesignation.GetTowerDesignationMode(tower);
+                    modeDisplay.SetValue(new LocStrFormatted(DesignationModeText(mode)));
+                    SetModeDependentRowsEnabled(
+                        flatteningDesignationTypeRow,
+                        rampWidthRow,
+                        maxLayersRow,
+                        orePurityRow,
+                        clearanceRow,
+                        oreRow,
+                        mode);
+                });
+            panel.BodyAdd(modeRow);
+
+            flatteningDesignationTypeRow = BuildStepRow(
+                new LocStrFormatted("Level action"),
+                new LocStrFormatted("Designation type to place when Mode is Flattening."),
+                flatteningDesignationTypeDisplay,
+                (Action)delegate
+                {
+                    var tower = getTower(); if (tower == null) return;
+                    AutoDepthDesignation.SetTowerFlatteningDesignationType(tower, NextFlatteningDesignationType(AutoDepthDesignation.GetTowerFlatteningDesignationType(tower)));
+                    flatteningDesignationTypeDisplay.SetValue(new LocStrFormatted(FlatteningDesignationTypeText(AutoDepthDesignation.GetTowerFlatteningDesignationType(tower))));
+                },
+                (Action)delegate
+                {
+                    var tower = getTower(); if (tower == null) return;
+                    AutoDepthDesignation.SetTowerFlatteningDesignationType(tower, PreviousFlatteningDesignationType(AutoDepthDesignation.GetTowerFlatteningDesignationType(tower)));
+                    flatteningDesignationTypeDisplay.SetValue(new LocStrFormatted(FlatteningDesignationTypeText(AutoDepthDesignation.GetTowerFlatteningDesignationType(tower))));
+                });
+            panel.BodyAdd(flatteningDesignationTypeRow);
+
             // --- Ramp width ---
             int initRamp = initialTower != null
                 ? AutoDepthDesignation.GetTowerRampWidth(initialTower)
                 : AutoTerrainDesignationsMod.RampWidth;
             var rampWidthDisplay = new Mafi.Unity.Ui.Library.Display(new LocStrFormatted(RampWidthText(initRamp)))
                 .MinDigits(3).AlignSelfStretch().MarginTopBottom(2.px());
-            panel.BodyAdd(BuildStepRow(
+            rampWidthRow = BuildStepRow(
                 AtdLocalization.DesigRampWidthLabel,
                 AtdLocalization.DesigRampWidthTip,
                 rampWidthDisplay,
@@ -253,7 +389,8 @@ namespace AutoTerrainDesignations
                     var tower = getTower(); if (tower == null) return;
                     AutoDepthDesignation.SetTowerRampWidth(tower, AutoDepthDesignation.GetTowerRampWidth(tower) - ModifierStepSize());
                     rampWidthDisplay.SetValue(new LocStrFormatted(RampWidthText(AutoDepthDesignation.GetTowerRampWidth(tower))));
-                }));
+                });
+            panel.BodyAdd(rampWidthRow);
 
             // --- Max layers ---
             int initLayers = initialTower != null
@@ -261,7 +398,7 @@ namespace AutoTerrainDesignations
                 : AutoTerrainDesignationsMod.MaxLayersToExcavate;
             var maxLayersDisplay = new Mafi.Unity.Ui.Library.Display(new LocStrFormatted(MaxLayersText(initLayers)))
                 .MinDigits(3).AlignSelfStretch().MarginTopBottom(2.px());
-            panel.BodyAdd(BuildStepRow(
+            maxLayersRow = BuildStepRow(
                 AtdLocalization.DesigMaxLayersLabel,
                 AtdLocalization.DesigMaxLayersTip,
                 maxLayersDisplay,
@@ -280,9 +417,10 @@ namespace AutoTerrainDesignations
                     int cur = AutoDepthDesignation.GetTowerMaxLayersToExcavate(tower);
                     AutoDepthDesignation.SetTowerMaxLayersToExcavate(tower, cur == 0 ? 50 : Math.Max(1, cur - ModifierStepSize()));
                     maxLayersDisplay.SetValue(new LocStrFormatted(MaxLayersText(AutoDepthDesignation.GetTowerMaxLayersToExcavate(tower))));
-                }));
+                });
+            panel.BodyAdd(maxLayersRow);
 
-            // --- Elevation limit ---
+            // --- Elevation ---
             int? initElev = initialTower != null
                 ? AutoDepthDesignation.GetTowerMaxDepthToDigTo(initialTower)
                 : AutoTerrainDesignationsMod.MaxDepthToDigTo;
@@ -317,7 +455,7 @@ namespace AutoTerrainDesignations
                 : AutoTerrainDesignationsMod.OrePurityLevel;
             var orePurityDisplay = new Mafi.Unity.Ui.Library.Display(new LocStrFormatted(OrePurityLevelText(initPurity)))
                 .MinDigits(3).AlignSelfStretch().MarginTopBottom(2.px());
-            panel.BodyAdd(BuildStepRow(
+            orePurityRow = BuildStepRow(
                 AtdLocalization.DesigOrePurityLabel,
                 AtdLocalization.DesigOrePurityTip,
                 orePurityDisplay,
@@ -332,7 +470,8 @@ namespace AutoTerrainDesignations
                     var tower = getTower(); if (tower == null) return;
                     AutoDepthDesignation.SetTowerOrePurityLevel(tower, AutoDepthDesignation.GetTowerOrePurityLevel(tower) - 1);
                     orePurityDisplay.SetValue(new LocStrFormatted(OrePurityLevelText(AutoDepthDesignation.GetTowerOrePurityLevel(tower))));
-                }));
+                });
+            panel.BodyAdd(orePurityRow);
 
             // --- Corridor clearance ---
             int initClearance = initialTower != null
@@ -340,7 +479,7 @@ namespace AutoTerrainDesignations
                 : AutoTerrainDesignationsMod.MinCorridorClearance;
             var clearanceDisplay = new Mafi.Unity.Ui.Library.Display(new LocStrFormatted(ClearanceLevelText(initClearance)))
                 .MinDigits(3).AlignSelfStretch().MarginTopBottom(2.px());
-            panel.BodyAdd(BuildStepRow(
+            clearanceRow = BuildStepRow(
                 AtdLocalization.DesigCorridorClearanceLabel,
                 AtdLocalization.DesigCorridorClearanceTip,
                 clearanceDisplay,
@@ -355,12 +494,13 @@ namespace AutoTerrainDesignations
                     var tower = getTower(); if (tower == null) return;
                     AutoDepthDesignation.SetTowerCorridorClearance(tower, AutoDepthDesignation.GetTowerCorridorClearance(tower) - ModifierStepSize());
                     clearanceDisplay.SetValue(new LocStrFormatted(ClearanceLevelText(AutoDepthDesignation.GetTowerCorridorClearance(tower))));
-                }));
+                });
+            panel.BodyAdd(clearanceRow);
 
             // --- Ore picker row ---
             if (orePicker != null)
             {
-                var oreRow = new Row().MarginTop(1.pt());
+                oreRow = new Row().MarginTop(1.pt());
                 oreRow.Add(new Label(AtdLocalization.DesigScanningFilterLabel)
                     .Tooltip(AtdLocalization.DesigScanningFilterTip));
                 oreRow.Add(new UiComponent().FlexGrow(1f));
@@ -368,7 +508,31 @@ namespace AutoTerrainDesignations
                 panel.BodyAdd(oreRow);
             }
 
-            s_bindings[key] = new Bindings(getTower, panel, rampWidthDisplay, maxLayersDisplay, minElevDisplay, orePurityDisplay, clearanceDisplay);
+            SetModeDependentRowsEnabled(
+                flatteningDesignationTypeRow,
+                rampWidthRow,
+                maxLayersRow,
+                orePurityRow,
+                clearanceRow,
+                oreRow,
+                initMode);
+
+            s_bindings[key] = new Bindings(
+                getTower,
+                panel,
+                modeDisplay,
+                flatteningDesignationTypeDisplay,
+                rampWidthDisplay,
+                maxLayersDisplay,
+                minElevDisplay,
+                orePurityDisplay,
+                clearanceDisplay,
+                flatteningDesignationTypeRow!,
+                rampWidthRow!,
+                maxLayersRow!,
+                orePurityRow!,
+                clearanceRow!,
+                oreRow);
             return panel;
         }
 
@@ -400,6 +564,132 @@ namespace AutoTerrainDesignations
         }
 
         private static string RampWidthText(int value) => value.ToString();
+
+        /// <summary>Applies mode-dependent row enabled state to an existing panel binding set.</summary>
+        /// <param name="bindings">Panel binding set containing rows that should be updated.</param>
+        /// <param name="designationMode">Currently selected designation mode.</param>
+        private static void SetModeDependentRowsEnabled(Bindings bindings, DesignationMode designationMode)
+        {
+            SetModeDependentRowsEnabled(
+                bindings.FlatteningDesignationTypeRow,
+                bindings.RampWidthRow,
+                bindings.MaxLayersRow,
+                bindings.OrePurityRow,
+                bindings.ClearanceRow,
+                bindings.OrePickerRow,
+                designationMode);
+        }
+
+        /// <summary>Enables controls that apply to the selected designation mode and disables irrelevant rows.</summary>
+        /// <param name="flatteningDesignationTypeRow">Row containing the flattening-mode designation type controls.</param>
+        /// <param name="rampWidthRow">Row containing ramp width controls.</param>
+        /// <param name="maxLayersRow">Row containing max layer controls.</param>
+        /// <param name="orePurityRow">Row containing ore purity controls.</param>
+        /// <param name="clearanceRow">Row containing corridor clearance controls.</param>
+        /// <param name="orePickerRow">Optional row containing the product scanning filter.</param>
+        /// <param name="designationMode">Currently selected designation mode.</param>
+        private static void SetModeDependentRowsEnabled(
+            Row? flatteningDesignationTypeRow,
+            Row? rampWidthRow,
+            Row? maxLayersRow,
+            Row? orePurityRow,
+            Row? clearanceRow,
+            Row? orePickerRow,
+            DesignationMode designationMode)
+        {
+            bool isResourceMining = designationMode == DesignationMode.ResourceMining;
+            SetRowEnabled(flatteningDesignationTypeRow, !isResourceMining);
+            SetRowEnabled(rampWidthRow, isResourceMining);
+            SetRowEnabled(maxLayersRow, isResourceMining);
+            SetRowEnabled(orePurityRow, isResourceMining);
+            SetRowEnabled(clearanceRow, isResourceMining);
+            SetRowEnabled(orePickerRow, isResourceMining);
+        }
+
+        /// <summary>Enables or disables every interactive child in a row.</summary>
+        /// <param name="row">Row whose children should be enabled or disabled, or null when the row was not built.</param>
+        /// <param name="enabled">True to enable all child components; false to disable them.</param>
+        private static void SetRowEnabled(Row? row, bool enabled)
+        {
+            if (row == null)
+            {
+                return;
+            }
+
+            foreach (UiComponent child in row.AllChildren)
+            {
+                child.Enabled(enabled);
+            }
+        }
+
+        /// <summary>Returns the next designation mode in the inspector's two-state selector.</summary>
+        /// <param name="value">Current designation mode.</param>
+        /// <returns>The next designation mode in UI order.</returns>
+        private static DesignationMode NextDesignationMode(DesignationMode value)
+        {
+            return value == DesignationMode.ResourceMining ? DesignationMode.Flattening : DesignationMode.ResourceMining;
+        }
+
+        /// <summary>Returns the previous designation mode in the inspector's two-state selector.</summary>
+        /// <param name="value">Current designation mode.</param>
+        /// <returns>The previous designation mode in UI order.</returns>
+        private static DesignationMode PreviousDesignationMode(DesignationMode value)
+        {
+            return NextDesignationMode(value);
+        }
+
+        /// <summary>Returns the next flattening-mode designation type in UI order.</summary>
+        /// <param name="value">Current flattening-mode designation type.</param>
+        /// <returns>The next flattening-mode designation type in UI order.</returns>
+        private static FlatteningDesignationType NextFlatteningDesignationType(FlatteningDesignationType value)
+        {
+            switch (value)
+            {
+                case FlatteningDesignationType.Mining: return FlatteningDesignationType.Dumping;
+                case FlatteningDesignationType.Dumping: return FlatteningDesignationType.Leveling;
+                default: return FlatteningDesignationType.Mining;
+            }
+        }
+
+        /// <summary>Returns the previous flattening-mode designation type in UI order.</summary>
+        /// <param name="value">Current flattening-mode designation type.</param>
+        /// <returns>The previous flattening-mode designation type in UI order.</returns>
+        private static FlatteningDesignationType PreviousFlatteningDesignationType(FlatteningDesignationType value)
+        {
+            switch (value)
+            {
+                case FlatteningDesignationType.Leveling: return FlatteningDesignationType.Dumping;
+                case FlatteningDesignationType.Dumping: return FlatteningDesignationType.Mining;
+                default: return FlatteningDesignationType.Leveling;
+            }
+        }
+
+        /// <summary>Formats a designation mode for display in the inspector.</summary>
+        /// <param name="value">Designation mode to format.</param>
+        /// <returns>Display text for the designation mode.</returns>
+        private static string DesignationModeText(DesignationMode value)
+        {
+            switch (value)
+            {
+                case DesignationMode.ResourceMining: return "Resource Mining";
+                case DesignationMode.Flattening: return "Flattening";
+                default: return value.ToString();
+            }
+        }
+
+        /// <summary>Formats a flattening-mode designation type for display in the inspector.</summary>
+        /// <param name="value">Flattening-mode designation type to format.</param>
+        /// <returns>Display text for the flattening-mode designation type.</returns>
+        private static string FlatteningDesignationTypeText(FlatteningDesignationType value)
+        {
+            switch (value)
+            {
+                case FlatteningDesignationType.Mining: return "Mining";
+                case FlatteningDesignationType.Dumping: return "Dumping";
+                case FlatteningDesignationType.Leveling: return "Leveling";
+                default: return value.ToString();
+            }
+        }
 
         private static string MaxLayersText(int value) => value == 0 ? "\u221e" : value.ToString();
 

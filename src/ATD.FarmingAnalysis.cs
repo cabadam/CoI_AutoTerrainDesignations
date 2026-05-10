@@ -336,20 +336,6 @@ namespace AutoTerrainDesignations
                 detail);
         }
 
-        private static bool IsLevelingDesignation(TerrainDesignation designation)
-        {
-            if (s_levelingProto != null && designation.Prototype == s_levelingProto)
-                return true;
-            return designation.Prototype.Id.Value == "LevelDesignator";
-        }
-
-        private static bool IsDumpingDesignation(TerrainDesignation designation)
-        {
-            if (s_dumpingProto != null && designation.Prototype == s_dumpingProto)
-                return true;
-            return designation.Prototype.Id.Value == "DumpingDesignator";
-        }
-
         private static bool IsFarmingPreparationDesignation(
             TerrainDesignation designation,
             FarmingOriginSession originState)
