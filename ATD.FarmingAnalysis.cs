@@ -179,6 +179,21 @@ namespace AutoTerrainDesignations
             if (minFarmableThickness == float.MaxValue)
                 minFarmableThickness = 0f;
 
+            float preparationHeight = targetHeight - 1f;
+            bool belowPreparationBase = minSurface < preparationHeight - FARMING_HEIGHT_EPSILON;
+            if (belowPreparationBase)
+            {
+                return new FarmingAnalysisRow(
+                    origin,
+                    FarmingAnalysisState.NeedsPreparation,
+                    targetHeight,
+                    minSurface,
+                    maxSurface,
+                    nonFarmableCells,
+                    minFarmableThickness,
+                    "below target-1; needs rough fill/leveling with tower dump materials before topsoil fill");
+            }
+
             if (nonFarmableCells > 0)
             {
                 return new FarmingAnalysisRow(
@@ -232,6 +247,29 @@ namespace AutoTerrainDesignations
                 nonFarmableCells,
                 minFarmableThickness,
                 "farmable band clear; below target needs topsoil fill");
+        }
+
+        private static FarmingAnalysisRow AnalyzeFarmingFillingDesignation(
+            TerrainDesignation liveDesignation,
+            int targetHeight,
+            TerrainManager terrMgr)
+        {
+            FarmingAnalysisRow row = AnalyzeFarmingDesignation(liveDesignation.OriginTileCoord, targetHeight, terrMgr);
+            if (row.State != FarmingAnalysisState.Done || liveDesignation.IsFulfilled)
+                return row;
+
+            string detail = liveDesignation.IsDumpingFulfilled
+                ? "farmable top band appears complete, but vanilla level designation is not fulfilled yet"
+                : "farmable top band appears complete, but vanilla dump fulfillment still needs work";
+            return new FarmingAnalysisRow(
+                row.Origin,
+                FarmingAnalysisState.ReadyForFilling,
+                row.TargetHeight,
+                row.MinSurfaceHeight,
+                row.MaxSurfaceHeight,
+                row.NonFarmableCells,
+                row.MinFarmableThicknessInBand,
+                detail);
         }
 
         private static bool IsLevelingDesignation(TerrainDesignation designation)

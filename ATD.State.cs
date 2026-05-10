@@ -15,6 +15,7 @@ using Mafi.Core;
 using Mafi.Core.Buildings.Mine;
 using Mafi.Core.Buildings.Towers;
 using Mafi.Core.Entities;
+using Mafi.Core.Notifications;
 using Mafi.Core.PathFinding;
 using Mafi.Core.Products;
 using Mafi.Core.Prototypes;
@@ -182,8 +183,18 @@ namespace AutoTerrainDesignations
         internal static void SetTowerCorridorClearance(IAreaManagingTower tower, int value) => GetOrCreateTowerSettings(tower).SetCorridorClearance(value);
 
         internal static RampPlacementOutcome? GetTowerLastRampOutcome(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).LastRampOutcome;
-        internal static void SetTowerLastRampOutcome(IAreaManagingTower tower, RampPlacementOutcome outcome) => GetOrCreateTowerSettings(tower).LastRampOutcome = outcome;
-        internal static void ClearTowerLastRampOutcome(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).LastRampOutcome = null;
+
+        internal static void SetTowerLastRampOutcome(IAreaManagingTower tower, RampPlacementOutcome outcome)
+        {
+            GetOrCreateTowerSettings(tower).LastRampOutcome = outcome;
+            UpdateTowerRampWarningNotification(tower, outcome);
+        }
+
+        internal static void ClearTowerLastRampOutcome(IAreaManagingTower tower)
+        {
+            GetOrCreateTowerSettings(tower).LastRampOutcome = null;
+            ClearTowerRampWarningNotification(tower);
+        }
 
         internal static int CurrentWorldGeneration => s_worldGeneration;
 
@@ -216,6 +227,7 @@ namespace AutoTerrainDesignations
             s_startupTowerPrioritySyncCompleted = false;
             s_startupTowerPrioritySyncAttempts = 0;
 
+            ResetTransientNotifications();
             ClearFarmingRuntimeState();
         }
 
@@ -226,7 +238,8 @@ namespace AutoTerrainDesignations
             MonoBehaviour coroutineHost,
             IEntitiesManager entitiesManager,
             TerrainPropsManager terrainPropsManager,
-            IVehiclePathFindingManager? vehiclePathFindingManager = null)
+            IVehiclePathFindingManager? vehiclePathFindingManager = null,
+            INotificationsManager? notificationsManager = null)
         {
             ResetWorldRuntimeState();
 
@@ -261,6 +274,8 @@ namespace AutoTerrainDesignations
                 s_bedrockTerrainMaterial = bedrockProto;
             else
                 Log.Warning("[ATD] Bedrock terrain material not found");
+
+            InitializeTransientNotifications(notificationsManager, protosDb);
 
             OreCompositionPanel.Initialize(s_desigManager, s_protosDb, s_bedrockTerrainMaterial);
             DesignationPanel.Initialize(s_protosDb);

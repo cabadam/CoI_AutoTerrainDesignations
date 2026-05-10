@@ -36,14 +36,6 @@ Important events:
 
 During implementation: use a debug/status bar.
 
-## todo:
-- tower avoidance
-- laggy on big designations, even on 2x speed -- looks like 1/s stutter
-
-## Alpha feedback: farming stutter - high priority
-- Testers report a visible stutter once per second while farming designations are active.
-- Likely cause: the farming automation tick runs once per second and calls the access pathability check for active preparation/filling work. That check calls `UpdateChangedTiles()` and can flood-fill up to 250,000 pathable tiles per active tower while also testing every tracked designation target.
-- Preferred fix direction: keep cheap farming state analysis on the regular tick, but throttle or event-gate access/pathability checks. Access ramp checks should run when a designation enters a work phase, after terrain/designation state changes, or on a much slower retry interval rather than every second.
 
 ## Alpha feedback: adjacent designations can fight each other - high priority
 - Observed issue: two adjacent terrain designations at different target heights can create a perpetual loop. Typical case is mining/leveling on a lower z next to dumping/leveling on a higher z; material slides from the higher tile into the lower tile, then the lower tile is worked again, and the cycle repeats.
@@ -74,3 +66,9 @@ During implementation: use a debug/status bar.
 3. Add sequenced filling batches so trucks preserve access while filling larger areas.
 4. Add sequenced preparation batches so excavators preserve exit/access paths.
 5. Revisit adjacent designation conflict detection only after sequencing is in place; good sequencing may suppress most of these loops without a separate broad blocker.
+
+## Check again if we can use the game's built in player notifications/warnings
+  Either by using an already existing proto or by purging our own in simLoopEvents.BeforeSave.AddNonSaveable(...).
+
+## Refactor out of the temporary .cs files created during development of farming designations
+

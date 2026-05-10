@@ -20,6 +20,7 @@ using Mafi.Core.Entities;
 using Mafi.Core.Products;
 using Mafi.Core.Terrain;
 using Mafi.Core.Terrain.Designation;
+using UnityEngine;
 
 namespace AutoTerrainDesignations
 {
@@ -72,6 +73,7 @@ namespace AutoTerrainDesignations
             public string LastAccessCheckDetail { get; set; } = string.Empty;
             public bool LastAccessCheckReady { get; set; } = true;
             public int LastAccessCheckTick { get; set; } = int.MinValue;
+            public float? FillingAllDoneSinceRealtime { get; set; }
             public HashSet<Tile2i> PreparationAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> FillingAccessRampOrigins { get; } = new HashSet<Tile2i>();
         }
@@ -83,6 +85,7 @@ namespace AutoTerrainDesignations
         private static int s_farmingAutomationTickIndex;
         private static bool s_farmingTowerBootstrapCompleted;
         private static bool s_farmingSaveRestorePending;
+        private const float FARMING_FILLING_STABILIZATION_SECONDS = 3f;
 
         private static void ClearFarmingRuntimeState()
         {
@@ -226,6 +229,7 @@ namespace AutoTerrainDesignations
             session.Active = false;
             session.Tower = tower;
             session.LastAccessRampRequestKey = string.Empty;
+            session.FillingAllDoneSinceRealtime = null;
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             RemoveOwnedFarmingAccessRamps(session, isFilling: true);
             RestoreTowerDumpRulesIfOwned(tower, session);
@@ -530,6 +534,7 @@ namespace AutoTerrainDesignations
                 session.LastAccessCheckDetail = string.Empty;
                 session.LastAccessCheckReady = true;
                 session.LastAccessCheckTick = int.MinValue;
+                session.FillingAllDoneSinceRealtime = null;
 
                 foreach (FarmingOriginSession originState in session.Origins.Values)
                 {
@@ -603,7 +608,10 @@ namespace AutoTerrainDesignations
                     continue;
                 }
 
-                FarmingAnalysisRow row = AnalyzeFarmingDesignation(originState.Origin, originState.TargetHeight, terrMgr);
+                FarmingAnalysisRow row = AnalyzeFarmingFillingDesignation(
+                    currentDesignation.Value,
+                    originState.TargetHeight,
+                    terrMgr);
                 if (row.State == FarmingAnalysisState.Done)
                 {
                     originState.Phase = FarmingOriginPhase.Done;
@@ -628,7 +636,30 @@ namespace AutoTerrainDesignations
             }
 
             session.LastReport = FormatFarmingPreparationReport(session);
-            return session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
+            bool hasFilling = session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
+            bool allDone = session.Origins.Count > 0
+                && session.Origins.Values.All(origin => origin.Phase == FarmingOriginPhase.Done);
+
+            if (hasFilling || !allDone)
+            {
+                session.FillingAllDoneSinceRealtime = null;
+                return hasFilling;
+            }
+
+            float now = Time.realtimeSinceStartup;
+            if (!session.FillingAllDoneSinceRealtime.HasValue)
+                session.FillingAllDoneSinceRealtime = now;
+
+            float stableFor = now - session.FillingAllDoneSinceRealtime.Value;
+            if (stableFor < FARMING_FILLING_STABILIZATION_SECONDS)
+            {
+                session.LastReport = FormatFarmingPreparationReport(session)
+                    + $"\n  Filling stabilization: {stableFor:F1}/{FARMING_FILLING_STABILIZATION_SECONDS:F0}s; keeping farmable dump rules active.";
+                return true;
+            }
+
+            session.FillingAllDoneSinceRealtime = null;
+            return false;
         }
 
         private static void CaptureCurrentFlatFarmingDesignations(
@@ -834,6 +865,7 @@ namespace AutoTerrainDesignations
 
             if (!session.TowerDumpRulesOwned)
                 session.TowerDumpRulesSnapshot = currentProducts.ToList();
+            session.FillingAllDoneSinceRealtime = null;
 
             var farmableSet = new HashSet<LooseProductProto>(farmableDumpProducts);
             foreach (LooseProductProto product in currentProducts)

@@ -31,19 +31,9 @@ Your job is to implement safe code changes, diagnose bugs quickly, and keep mods
 - During normal development, verify with a Debug build by default. Use Release builds only when the user explicitly asks for release validation, packaging, tagging, or publishing.
 - Use `todo` for multi-step work so progress stays visible.
 
-## Modding API Reference
-- Captain of Industry modding documentation: https://github.com/MaFi-Games/Captain-of-industry-modding
-
-## Captain of Industry Wiki
-- Captain of Industry Wiki: https://wiki.coigame.com/
-- Not a 100% reliable source of truth (contains some obsolete information), but still a great place to read up on game mechanics, entity behavior.
-
 ## Output Format
 Return concise implementation notes with:
 - What changed and why.
 - Files touched.
 - Validation performed (build/test/run) and result.
 - Follow-up checks if anything remains uncertain.
-
-## Logging and Debugging
-- There is an in-game command `also_log_to_console` that can be enabled to see mod logs in the console for easier debugging. Use it when diagnosing in-game behavior. So, there's generally no need to log to files or external systems for debugging purposes.

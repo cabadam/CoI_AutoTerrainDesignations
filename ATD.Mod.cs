@@ -14,6 +14,7 @@ using Mafi.Core.Entities;
 using Mafi.Core.Game;
 using Mafi.Core.GameLoop;
 using Mafi.Core.Mods;
+using Mafi.Core.Notifications;
 using Mafi.Core.PathFinding;
 using Mafi.Core.Prototypes;
 using Mafi.Core.SaveGame;
@@ -68,6 +69,8 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         m_harmony = new Harmony("com.auto-terrain-designations.mod");
         AutoDepthDesignation.ApplyInspectorPatches(m_harmony);
         AutoDepthDesignation.ApplyCornerPatches(m_harmony);
+
+        AtdNotifications.RegisterPrototypes(registrator);
     }
 
     public void RegisterDependencies(DependencyResolverBuilder depBuilder, ProtosDb protosDb, bool gameWasLoaded)
@@ -206,9 +209,10 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             IEntitiesManager entitiesManager = resolver.Resolve<IEntitiesManager>();
             TerrainPropsManager terrainPropsManager = resolver.Resolve<TerrainPropsManager>();
             IVehiclePathFindingManager vehiclePathFindingManager = resolver.Resolve<IVehiclePathFindingManager>();
+            INotificationsManager notificationsManager = resolver.Resolve<INotificationsManager>();
             AutoTerrainDesignationsTicker ticker = AutoTerrainDesignationsTicker.CreateForWorld(AutoDepthDesignation.CurrentWorldGeneration + 1);
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
-            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager);
+            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, notificationsManager);
 
             // Corner designation mode — TerrainCursor, TerrainDesignationsRenderer and
             // CursorManager may only be available on the Unity side; fail gracefully if not resolvable.
@@ -234,12 +238,14 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 
     private void beforeSave()
     {
+        AutoDepthDesignation.PurgeTransientNotificationsForSave();
         AutoDepthDesignation.RestoreFarmingRuntimeForSave();
     }
 
     private void onSaveDone(SaveResult result)
     {
         AutoDepthDesignation.ResumeFarmingRuntimeAfterSave();
+        AutoDepthDesignation.RestoreTransientNotificationsAfterSave();
     }
 
     private void onGameTerminated()
