@@ -7,6 +7,9 @@
 // intended to contain only original mod code/configuration; if MaFi Games material
 // is included by mistake, I intend to correct it promptly upon discovery or notice.
 // Auto Terrain Designations - In-Game Console Commands
+
+#pragma warning disable IDE0051 // Remove unused private members
+
 using System.Text;
 using Mafi;
 using Mafi.Core.Console;
@@ -25,19 +28,47 @@ public sealed class AtdConsoleCommands
     {
         var sb = new StringBuilder();
         sb.AppendLine("[ATD] Current settings:");
-        sb.AppendLine($"  MaxHeightDiff         = {AutoTerrainDesignationsMod.MaxHeightDiff}");
-        sb.AppendLine($"  RampWidth             = {AutoTerrainDesignationsMod.RampWidth}");
-        sb.AppendLine($"  MaxLayersToExcavate   = {AutoTerrainDesignationsMod.MaxLayersToExcavate}");
-        sb.AppendLine($"  MaxDepthToDigTo       = {AutoTerrainDesignationsMod.MaxDepthToDigTo?.ToString() ?? "-"}");
-        sb.AppendLine($"  OrePurityLevel        = {AutoTerrainDesignationsMod.OrePurityLevel}");
-        sb.AppendLine($"  BottomFlattening      = {AutoTerrainDesignationsMod.BottomFlatteningEnabled}");
-        sb.AppendLine($"  MinCorridorClearance  = {AutoTerrainDesignationsMod.MinCorridorClearance}");
-        sb.AppendLine($"  TerrainPanelCollapsed = {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}");
-        sb.AppendLine($"  OrePanelCollapsed     = {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}");
-        sb.AppendLine($"  ReEnableFarmingOnLoad = {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}");
-        sb.AppendLine($"  ExcavatorCompleteNtf  = {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}");
+        sb.AppendLine($"  DesignationMode               = {(int)AutoTerrainDesignationsMod.DesignationMode} ({AutoTerrainDesignationsMod.DesignationMode})");
+        sb.AppendLine($"  FlatteningDesignationType     = {(int)AutoTerrainDesignationsMod.FlatteningDesignationType} ({AutoTerrainDesignationsMod.FlatteningDesignationType})");
+        sb.AppendLine($"  MaxHeightDiff                 = {AutoTerrainDesignationsMod.MaxHeightDiff}");
+        sb.AppendLine($"  RampWidth                     = {AutoTerrainDesignationsMod.RampWidth}");
+        sb.AppendLine($"  MaxLayersToExcavate           = {AutoTerrainDesignationsMod.MaxLayersToExcavate}");
+        sb.AppendLine($"  MaxDepthToDigTo               = {AutoTerrainDesignationsMod.MaxDepthToDigTo?.ToString() ?? "-"}");
+        sb.AppendLine($"  OrePurityLevel                = {AutoTerrainDesignationsMod.OrePurityLevel}");
+        sb.AppendLine($"  BottomFlattening              = {AutoTerrainDesignationsMod.BottomFlatteningEnabled}");
+        sb.AppendLine($"  MinCorridorClearance          = {AutoTerrainDesignationsMod.MinCorridorClearance}");
+        sb.AppendLine($"  TerrainPanelCollapsed         = {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}");
+        sb.AppendLine($"  OrePanelCollapsed             = {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}");
+        sb.AppendLine($"  ReEnableFarmingOnLoad         = {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}");
+        sb.AppendLine($"  ExcavatorCompleteNtf          = {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}");
         sb.Append(AutoDepthDesignation.FormatPurityArrays());
         return sb.ToString();
+    }
+
+    /// <summary>Sets the global default designation workflow.</summary>
+    /// <param name="value">Numeric designation workflow value, clamped to the supported enum range.</param>
+    /// <returns>Console response describing the selected designation workflow.</returns>
+    [ConsoleCommand(false, false, "Sets the global default designation mode (0=resource mining, 1=flattening).", null)]
+    private string atdSetDesignationMode(int value)
+    {
+        AutoTerrainDesignationsMod.SetDesignationMode(value);
+        string mode = AutoTerrainDesignationsMod.DesignationMode == DesignationMode.Flattening ? "flattening" : "resource mining";
+        return $"[ATD] DesignationMode set to {(int)AutoTerrainDesignationsMod.DesignationMode} ({mode}).";
+    }
+
+    /// <summary>Sets the global default designation type used by flattening mode.</summary>
+    /// <param name="value">Numeric designation type value, clamped to the supported enum range.</param>
+    /// <returns>Console response describing the selected flattening-mode designation type.</returns>
+    [ConsoleCommand(false, false, "Sets the global default flattening-mode designation type (0=mining, 1=dumping, 2=leveling).", null)]
+    private string atdSetFlatteningDesignationType(int value)
+    {
+        AutoTerrainDesignationsMod.SetFlatteningDesignationType(value);
+        string type = AutoTerrainDesignationsMod.FlatteningDesignationType == FlatteningDesignationType.Mining
+            ? "mining"
+            : AutoTerrainDesignationsMod.FlatteningDesignationType == FlatteningDesignationType.Dumping
+                ? "dumping"
+                : "leveling";
+        return $"[ATD] FlatteningDesignationType set to {(int)AutoTerrainDesignationsMod.FlatteningDesignationType} ({type}).";
     }
 
     [ConsoleCommand(false, false, "Sets the global default max height diff (1-3).", null)]

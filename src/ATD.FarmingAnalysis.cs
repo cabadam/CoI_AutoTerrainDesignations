@@ -333,13 +333,6 @@ namespace AutoTerrainDesignations
                 detail);
         }
 
-        private static bool IsLevelingDesignation(TerrainDesignation designation)
-        {
-            if (s_levelingProto != null && designation.Prototype == s_levelingProto)
-                return true;
-            return designation.Prototype.Id.Value == "LevelDesignator";
-        }
-
         private static bool TryGetFlatTargetHeight(DesignationData data, out int targetHeight)
         {
             int originHeight = data.OriginTargetHeight.Value;

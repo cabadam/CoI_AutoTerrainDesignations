@@ -372,6 +372,14 @@ namespace AutoTerrainDesignations
                 if (batchSize.HasValue && ShouldPreserveInt(batchSize.Value, migrateGeneratedDefaults, BATCH_SIZE))
                     s_batchSize = ClampBatchSize(batchSize.Value);
 
+                DesignationMode? designationMode = ParseEnum<DesignationMode>(json, "designationMode");
+                if (designationMode.HasValue)
+                    AutoTerrainDesignationsMod.SetDesignationMode(designationMode.Value);
+
+                FlatteningDesignationType? flatteningDesignationType = ParseEnum<FlatteningDesignationType>(json, "flatteningDesignationType");
+                if (flatteningDesignationType.HasValue)
+                    AutoTerrainDesignationsMod.SetFlatteningDesignationType(flatteningDesignationType.Value);
+
                 int? slopeDefault = ParseInt(json, "maxSlopeHeightDiff");
                 if (slopeDefault.HasValue && ShouldPreserveInt(slopeDefault.Value, migrateGeneratedDefaults, 1))
                     AutoTerrainDesignationsMod.SetMaxHeightDiff(slopeDefault.Value);
@@ -612,6 +620,23 @@ namespace AutoTerrainDesignations
             catch { return null; }
         }
 
+        /// <summary>Parses a string-backed enum setting from the JSON settings text.</summary>
+        /// <typeparam name="TEnum">Enum type to parse.</typeparam>
+        /// <param name="json">JSON settings text containing the optional enum setting.</param>
+        /// <param name="key">JSON property name to read.</param>
+        /// <returns>The parsed enum value when present and valid; otherwise, null.</returns>
+        private static TEnum? ParseEnum<TEnum>(string json, string key) where TEnum : struct
+        {
+            string? value = ParseString(json, key);
+            if (string.IsNullOrWhiteSpace(value))
+                return null;
+
+            if (Enum.TryParse(value, ignoreCase: true, out TEnum parsed))
+                return parsed;
+
+            return null;
+        }
+
         // -----------------------------------------------------------------------
         // Settings serialisation helpers
         // -----------------------------------------------------------------------
@@ -665,6 +690,12 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_batchSize\": \"How many designations are placed per coroutine frame before yielding to the game while unpaused. Lower values keep the game more responsive during large scans; higher values complete scans faster. While paused, ATD does not batch-yield and finishes the placement pass in one coroutine step. Absolute max: 200. Default: 30.\",");
             sb.AppendLine($"  \"batchSize\": {s_batchSize},");
             sb.AppendLine();
+            sb.AppendLine("  \"_comment_designationMode\": \"Default terrain designation mode for each mine tower. ResourceMining = resource-aware mining scan; Flattening = fill the tower area at maxDepthToDigTo. Default: ResourceMining.\",");
+            sb.AppendLine($"  \"designationMode\": \"{AutoTerrainDesignationsMod.DesignationMode}\",");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_flatteningDesignationType\": \"Default designation type used when designationMode is Flattening. Valid values: Mining, Dumping, Leveling. Default: Mining.\",");
+            sb.AppendLine($"  \"flatteningDesignationType\": \"{AutoTerrainDesignationsMod.FlatteningDesignationType}\",");
+            sb.AppendLine();
             sb.AppendLine("  \"_comment_maxSlopeHeightDiff\": \"Default starting value for the Max Slope setting on each mine tower. Controls the maximum allowed height difference between adjacent designation corners during slope smoothing. Lower values produce flatter designations; higher values allow steeper steps. Can be adjusted per tower in-game. Min 1, max 3. Default: 1.\",");
             sb.AppendLine($"  \"maxSlopeHeightDiff\": {AutoTerrainDesignationsMod.MaxHeightDiff},");
             sb.AppendLine();
@@ -674,7 +705,7 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_maxLayersToExcavate\": \"Default starting value for the Max Layers setting on each mine tower. Maximum number of terrain layers to excavate from the surface downward. 0 = no limit. Can be adjusted per tower in-game. Default: 30.\",");
             sb.AppendLine($"  \"maxLayersToExcavate\": {AutoTerrainDesignationsMod.MaxLayersToExcavate},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_maxDepthToDigTo\": \"Default starting value for the Max Depth setting on each mine tower. Absolute minimum terrain elevation (in tiles) the designation will dig down to. null = no lower-bound limit. Can be adjusted per tower in-game. Default: null.\",");
+            sb.AppendLine("  \"_comment_maxDepthToDigTo\": \"Default starting value for the Elevation setting on each mine tower. In mining mode, this is the absolute minimum terrain elevation (in tiles) the designation will dig down to; null = no lower-bound limit. In flattening mode, this is the target elevation and must be set. Can be adjusted per tower in-game. Default: null.\",");
             sb.AppendLine($"  \"maxDepthToDigTo\": {depthStr},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_orePurityLevel\": \"Default starting value for the Ore Purity Level on each mine tower (0=Off, 1=Low, 2=Med, 3=High, 4=Max). Controls how aggressively poor-quality tiles and sparse ore are excluded. Can be adjusted per tower in-game. Default: 0.\",");
