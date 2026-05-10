@@ -16,6 +16,8 @@ using Mafi.Core.GameLoop;
 using Mafi.Core.Mods;
 using Mafi.Core.PathFinding;
 using Mafi.Core.Prototypes;
+using Mafi.Core.SaveGame;
+using Mafi.Core.Simulation;
 using Mafi.Core.Console;
 using Mafi.Core.Terrain.Designation;
 using Mafi.Core.Terrain.Props;
@@ -31,6 +33,9 @@ namespace AutoTerrainDesignations;
 public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 {
     private Harmony? m_harmony;
+    private IGameLoopEvents? m_gameLoopEvents;
+    private ISimLoopEvents? m_simLoopEvents;
+    private ISaveManager? m_saveManager;
 
     public string Name => "Auto Terrain Designations";
 
@@ -171,6 +176,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         {
             // Enable console logging for easier debugging
             ConsoleLogger.Enable();
+            AutoTerrainDesignationsTicker.DestroyActive();
 
 #if DEBUG
             // Auto-enable Mafi console mirroring in Debug builds so logs show up in-game
@@ -187,14 +193,20 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             });
 #endif
 
+            m_gameLoopEvents = resolver.Resolve<IGameLoopEvents>();
+            m_simLoopEvents = resolver.Resolve<ISimLoopEvents>();
+            m_saveManager = resolver.Resolve<ISaveManager>();
+            m_gameLoopEvents.Terminate.AddNonSaveable(this, onGameTerminated);
+            m_simLoopEvents.BeforeSave.AddNonSaveable(this, beforeSave);
+            m_saveManager.OnSaveDone += onSaveDone;
+
             ITerrainDesignationsManager desigManager = resolver.Resolve<ITerrainDesignationsManager>();
             ProtosDb protosDb = resolver.Resolve<ProtosDb>();
             IWorldMapManager worldMapManager = resolver.Resolve<IWorldMapManager>();
             IEntitiesManager entitiesManager = resolver.Resolve<IEntitiesManager>();
             TerrainPropsManager terrainPropsManager = resolver.Resolve<TerrainPropsManager>();
             IVehiclePathFindingManager vehiclePathFindingManager = resolver.Resolve<IVehiclePathFindingManager>();
-            AutoTerrainDesignationsTicker ticker = new GameObject("AutoTerrainDesignationsTicker").AddComponent<AutoTerrainDesignationsTicker>();
-            UnityEngine.Object.DontDestroyOnLoad(ticker.gameObject);
+            AutoTerrainDesignationsTicker ticker = AutoTerrainDesignationsTicker.CreateForWorld(AutoDepthDesignation.CurrentWorldGeneration + 1);
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
             AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager);
 
@@ -213,7 +225,51 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         }
         catch (Exception ex)
         {
+            unsubscribeWorldEvents();
+            AutoTerrainDesignationsTicker.DestroyActive();
+            AutoDepthDesignation.ResetWorldRuntimeState();
             Debug.LogWarning("[ATD] AutoTerrainDesignations init: " + ex.Message);
+        }
+    }
+
+    private void beforeSave()
+    {
+        AutoDepthDesignation.RestoreFarmingRuntimeForSave();
+    }
+
+    private void onSaveDone(SaveResult result)
+    {
+        AutoDepthDesignation.ResumeFarmingRuntimeAfterSave();
+    }
+
+    private void onGameTerminated()
+    {
+        unsubscribeWorldEvents();
+        AutoTerrainDesignationsTicker.DestroyActive();
+        AutoDepthDesignation.ResetWorldRuntimeState();
+    }
+
+    private void unsubscribeWorldEvents()
+    {
+        if (m_gameLoopEvents != null)
+        {
+            try { m_gameLoopEvents.Terminate.RemoveNonSaveable(this, onGameTerminated); }
+            catch { }
+            m_gameLoopEvents = null;
+        }
+
+        if (m_simLoopEvents != null)
+        {
+            try { m_simLoopEvents.BeforeSave.RemoveNonSaveable(this, beforeSave); }
+            catch { }
+            m_simLoopEvents = null;
+        }
+
+        if (m_saveManager != null)
+        {
+            try { m_saveManager.OnSaveDone -= onSaveDone; }
+            catch { }
+            m_saveManager = null;
         }
     }
 
@@ -224,6 +280,9 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 
     public void Dispose()
     {
+        unsubscribeWorldEvents();
+        AutoTerrainDesignationsTicker.DestroyActive();
+        AutoDepthDesignation.ResetWorldRuntimeState();
         m_harmony?.UnpatchAll("com.auto-terrain-designations.mod");
     }
 }

@@ -23,6 +23,7 @@ namespace AutoTerrainDesignations
     {
         private const int FARMING_ACCESS_SEARCH_MARGIN_TILES = 96;
         private const int MAX_FARMING_ACCESS_SEARCH_TILES = 250000;
+        private const int FARMING_ACCESS_RECHECK_TICKS = 10;
 
         private static bool EnsureFarmingAccessForCurrentPhase(
             IAreaManagingTower tower,
@@ -64,16 +65,27 @@ namespace AutoTerrainDesignations
                 return true;
             }
 
+            string workKey = BuildFarmingAccessWorkKey(currentWork, isFilling);
+            if (TryUseCachedFarmingAccessResult(session, workKey, out bool cachedReady))
+                return cachedReady;
+
             if (!TryFindInaccessibleFarmingDesignations(tower, currentWork, isFilling, out List<TerrainDesignation> inaccessible))
+            {
+                SetFarmingAccessCache(session, workKey, ready: true, string.Empty);
                 return true;
+            }
 
             if (inaccessible.Count == 0)
+            {
+                SetFarmingAccessCache(session, workKey, ready: true, string.Empty);
                 return true;
+            }
 
             var towerSettings = GetOrCreateTowerSettings(tower);
             if (towerSettings.RampWidth <= 0)
             {
                 session.LastAccessRampDetail = $"Access ramp needed for {inaccessible.Count} origin(s), but ramp generation is disabled.";
+                SetFarmingAccessCache(session, workKey, ready: false, session.LastAccessRampDetail);
                 return false;
             }
 
@@ -83,6 +95,7 @@ namespace AutoTerrainDesignations
                 string waitMode = isFilling ? "dumping" : "excavation";
                 session.LastAccessRampDetail =
                     $"Access ramp already requested for {inaccessible.Count} unreachable {waitMode} origin(s); waiting for terrain/designation state to change.";
+                SetFarmingAccessCache(session, workKey, ready: false, session.LastAccessRampDetail);
                 return false;
             }
 
@@ -106,6 +119,7 @@ namespace AutoTerrainDesignations
                 : towerSettings.RampWidth;
 
             var placedRampOrigins = new List<Tile2i>();
+            var reservedRampTiles = new HashSet<Tile2i>(session.Origins.Keys);
             RampPlacementOutcome outcome = CreateAccessRamp(
                 tower,
                 tileDepths,
@@ -114,6 +128,8 @@ namespace AutoTerrainDesignations
                 configuredRampWidth,
                 rampProto,
                 placedRampOrigins,
+                reservedRampTiles,
+                useLocalSurfaceReference: isFilling,
                 out Tile2i rampTopTile);
 
             string mode = isFilling ? "dumping" : "excavation";
@@ -125,7 +141,69 @@ namespace AutoTerrainDesignations
             session.LastAccessRampDetail = outcome == RampPlacementOutcome.Failed
                 ? $"Access ramp failed for {inaccessible.Count} unreachable {mode} origin(s)."
                 : $"Access ramp placed for {inaccessible.Count} unreachable {mode} origin(s): {outcome} at ({rampTopTile.X},{rampTopTile.Y}).";
+            SetFarmingAccessCache(session, workKey, ready: false, session.LastAccessRampDetail);
             return false;
+        }
+
+        private static string BuildFarmingAccessWorkKey(
+            List<TerrainDesignation> currentWork,
+            bool isFilling)
+        {
+            var sb = new StringBuilder();
+            sb.Append(isFilling ? "fill" : "prep");
+            foreach (TerrainDesignation designation in currentWork
+                .OrderBy(designation => designation.OriginTileCoord.Y)
+                .ThenBy(designation => designation.OriginTileCoord.X))
+            {
+                DesignationData data = designation.Data;
+                sb.Append('|')
+                    .Append(data.OriginTile.X).Append(',').Append(data.OriginTile.Y)
+                    .Append(':')
+                    .Append(data.OriginTargetHeight.Value).Append(',')
+                    .Append(data.PlusXTargetHeight.Value).Append(',')
+                    .Append(data.PlusXyTargetHeight.Value).Append(',')
+                    .Append(data.PlusYTargetHeight.Value);
+            }
+
+            return sb.ToString();
+        }
+
+        private static bool TryUseCachedFarmingAccessResult(
+            FarmingPreparationSession session,
+            string workKey,
+            out bool ready)
+        {
+            ready = true;
+            if (session.LastAccessCheckWorkKey != workKey)
+                return false;
+
+            int ticksSinceCheck = s_farmingAutomationTickIndex - session.LastAccessCheckTick;
+            if (ticksSinceCheck < 0 || ticksSinceCheck >= FARMING_ACCESS_RECHECK_TICKS)
+                return false;
+
+            ready = session.LastAccessCheckReady;
+            session.LastAccessRampDetail = session.LastAccessCheckDetail;
+            return true;
+        }
+
+        private static void SetFarmingAccessCache(
+            FarmingPreparationSession session,
+            string workKey,
+            bool ready,
+            string detail)
+        {
+            session.LastAccessCheckWorkKey = workKey;
+            session.LastAccessCheckReady = ready;
+            session.LastAccessCheckDetail = detail;
+            session.LastAccessCheckTick = s_farmingAutomationTickIndex;
+        }
+
+        private static void ClearFarmingAccessCache(FarmingPreparationSession session)
+        {
+            session.LastAccessCheckWorkKey = string.Empty;
+            session.LastAccessCheckReady = true;
+            session.LastAccessCheckDetail = string.Empty;
+            session.LastAccessCheckTick = int.MinValue;
         }
 
         private static string BuildFarmingAccessRampRequestKey(
@@ -193,6 +271,7 @@ namespace AutoTerrainDesignations
             if (removed > 0 || ownedRamps.Count == 0)
                 session.LastAccessRampRequestKey = string.Empty;
 
+            ClearFarmingAccessCache(session);
             return removed;
         }
 

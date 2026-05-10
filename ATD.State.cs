@@ -43,6 +43,7 @@ namespace AutoTerrainDesignations
         private static IVehiclePathFindingManager? s_vehiclePathFindingManager;
         private static VehiclePathFindingParams? s_excavatorPathFindingParams;
         private static string? s_modRootDirectoryPath;
+        private static int s_worldGeneration;
 
         private const int BATCH_SIZE = 30;
         private const int MAX_BATCH_SIZE = 200;
@@ -184,6 +185,40 @@ namespace AutoTerrainDesignations
         internal static void SetTowerLastRampOutcome(IAreaManagingTower tower, RampPlacementOutcome outcome) => GetOrCreateTowerSettings(tower).LastRampOutcome = outcome;
         internal static void ClearTowerLastRampOutcome(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).LastRampOutcome = null;
 
+        internal static int CurrentWorldGeneration => s_worldGeneration;
+
+        internal static bool IsWorldGenerationActive(int worldGeneration)
+        {
+            return worldGeneration == s_worldGeneration && s_desigManager != null;
+        }
+
+        internal static void ResetWorldRuntimeState()
+        {
+            s_worldGeneration++;
+
+            s_desigManager = null;
+            s_miningProto = null;
+            s_dumpingProto = null;
+            s_levelingProto = null;
+            s_bedrockTerrainMaterial = null;
+            s_coroutineHost = null;
+            s_protosDb = null;
+            s_worldMapManager = null;
+            s_entitiesManager = null;
+            s_terrainPropsManager = null;
+            s_vehiclePathFindingManager = null;
+            s_excavatorPathFindingParams = null;
+            s_batchSize = BATCH_SIZE;
+
+            s_selectedOrePerTower.Clear();
+            s_towerSettingsByEntityId.Clear();
+            s_excavatorPriorityByTowerEntityId.Clear();
+            s_startupTowerPrioritySyncCompleted = false;
+            s_startupTowerPrioritySyncAttempts = 0;
+
+            ClearFarmingRuntimeState();
+        }
+
         public static void Initialize(
             ITerrainDesignationsManager desigManager,
             ProtosDb protosDb,
@@ -193,6 +228,8 @@ namespace AutoTerrainDesignations
             TerrainPropsManager terrainPropsManager,
             IVehiclePathFindingManager? vehiclePathFindingManager = null)
         {
+            ResetWorldRuntimeState();
+
             // Load defaults after logging is initialized so diagnostics are visible.
             LoadSettingsFromJson();
 
@@ -204,11 +241,6 @@ namespace AutoTerrainDesignations
             s_terrainPropsManager = terrainPropsManager;
             s_vehiclePathFindingManager = vehiclePathFindingManager;
             s_excavatorPathFindingParams = FindExcavatorPathFindingParams(protosDb);
-            s_startupTowerPrioritySyncCompleted = false;
-            s_startupTowerPrioritySyncAttempts = 0;
-            s_farmingDebugStoredDesignations.Clear();
-            s_farmingPreparationSessions.Clear();
-            s_farmingAutomationDisabledTowerIds.Clear();
 
             if (protosDb.TryGetProto(new Proto.ID("MiningDesignator"), out TerrainDesignationProto proto))
                 s_miningProto = proto;

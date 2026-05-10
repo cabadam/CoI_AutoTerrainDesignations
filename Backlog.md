@@ -32,9 +32,45 @@ Filling [assert: all designations are farmable or at least 1 z below target leve
 Important events:
 * Save game (or pause) must be patched to remove all temporary designations and restore the original leveling designations before the game is saved. Also, restore original dumping restrictions.
 * Initialization/Game load (unpause): resume farming mode on all towers with at least one leveling designation.
+* Save-removable invariant: saves must remain readable by vanilla without ATD. Do not serialize ATD farming session state into the save. Before saving, restore the original player leveling rectangle/orders and remove temporary ATD scaffolding/rules. After load, ATD should infer the needed working state by re-analyzing the restored original orders and current terrain.
 
 During implementation: use a debug/status bar.
 
 ## todo:
 - tower avoidance
-- laggy on big designations, even on 2x speed
+- laggy on big designations, even on 2x speed -- looks like 1/s stutter
+
+## Alpha feedback: farming stutter - high priority
+- Testers report a visible stutter once per second while farming designations are active.
+- Likely cause: the farming automation tick runs once per second and calls the access pathability check for active preparation/filling work. That check calls `UpdateChangedTiles()` and can flood-fill up to 250,000 pathable tiles per active tower while also testing every tracked designation target.
+- Preferred fix direction: keep cheap farming state analysis on the regular tick, but throttle or event-gate access/pathability checks. Access ramp checks should run when a designation enters a work phase, after terrain/designation state changes, or on a much slower retry interval rather than every second.
+
+## Alpha feedback: adjacent designations can fight each other - high priority
+- Observed issue: two adjacent terrain designations at different target heights can create a perpetual loop. Typical case is mining/leveling on a lower z next to dumping/leveling on a higher z; material slides from the higher tile into the lower tile, then the lower tile is worked again, and the cycle repeats.
+- This is especially risky for farming automation because preparation, access ramps, and filling can temporarily create mixed-height work near each other.
+- Need mitigation before broad release. Possible directions:
+  - Avoid creating temporary access ramps directly adjacent to active farming origins when their target heights oppose the current phase.
+  - Treat adjacent higher dump/level designations as blockers for lower excavation work, and adjacent lower mine/level designations as blockers for higher filling work.
+  - When switching phases, aggressively remove automation-owned scaffolding that no longer services active work before restoring or creating the next phase's designation.
+  - Consider adding a one-tile buffer or coordinated batch transition so neighboring designations do not alternate between excavation and dumping at incompatible heights.
+
+## Alpha feedback: large farming jobs need work sequencing - high priority
+- Observed issue: on larger farming designations, excavators and trucks work tiles in an arbitrary order and can create their own access/pathability failures. Example: trucks may dump material in a way that locks other vehicles in or cuts off remaining work.
+- This is distinct from ramp generation: the initial access route may exist, but uncontrolled work order can destroy it during filling or preparation.
+- Need sequencing/activation strategy, especially for filling and possibly preparation. Possible directions:
+  - Activate only a frontier/slice of designations at a time, expanding from accessible terrain inward or from the far side back toward the tower/access route.
+  - During filling, keep access corridors and ramps reserved until all work behind them is complete, then remove/fill them last.
+  - During preparation, excavate in an order that preserves an exit path for excavators instead of opening the entire area at once.
+  - Reuse the pathability/access checker as a planning tool, but avoid running it every tick; compute a batch plan and advance it only when the current slice completes or becomes blocked.
+
+## Alpha feedback: accepted risks / no action
+- Terrain modification can undermine a tower and make it fall. Keep this behavior for now: vanilla does not guard against this either, so farming automation should not add special tower-stability rules unless later testing shows it causes surprising automation-only failures.
+
+## Alpha stabilization order
+1. Fix farming stutter by throttling or event-gating access/pathability checks.
+2. Tighten automation-owned scaffolding cleanup and phase boundaries.
+   - Alpha finding: during preparation, completed preparation designations should usually remain active at `target - 1` until the whole preparation phase is complete. This lets them re-level if material slides on/off while neighboring prep work continues. The original player leveling rectangle should be restored only when the tower transitions to controlled filling with farmable dump rules.
+   - Alpha finding: an origin reaching `Done` is provisional until the whole tower-level filling session is complete. Neighboring work can disturb it again, so filling must keep tracking and revalidating `Done` origins.
+3. Add sequenced filling batches so trucks preserve access while filling larger areas.
+4. Add sequenced preparation batches so excavators preserve exit/access paths.
+5. Revisit adjacent designation conflict detection only after sequencing is in place; good sequencing may suppress most of these loops without a separate broad blocker.

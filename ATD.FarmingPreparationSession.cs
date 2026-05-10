@@ -14,6 +14,7 @@ using System.Reflection;
 using System.Text;
 using Mafi;
 using Mafi.Core;
+using Mafi.Core.Buildings.Mine;
 using Mafi.Core.Buildings.Towers;
 using Mafi.Core.Entities;
 using Mafi.Core.Products;
@@ -41,6 +42,7 @@ namespace AutoTerrainDesignations
             public int TargetHeight { get; }
             public FarmingOriginPhase Phase { get; set; }
             public string Detail { get; set; }
+            public bool IsHiddenUntilFilling { get; set; }
 
             public FarmingOriginSession(Tile2i origin, DesignationData originalData, int targetHeight)
             {
@@ -66,6 +68,10 @@ namespace AutoTerrainDesignations
             public IAreaManagingTower? Tower { get; set; }
             public string LastAccessRampDetail { get; set; } = string.Empty;
             public string LastAccessRampRequestKey { get; set; } = string.Empty;
+            public string LastAccessCheckWorkKey { get; set; } = string.Empty;
+            public string LastAccessCheckDetail { get; set; } = string.Empty;
+            public bool LastAccessCheckReady { get; set; } = true;
+            public int LastAccessCheckTick { get; set; } = int.MinValue;
             public HashSet<Tile2i> PreparationAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> FillingAccessRampOrigins { get; } = new HashSet<Tile2i>();
         }
@@ -74,6 +80,19 @@ namespace AutoTerrainDesignations
             new Dictionary<EntityId, FarmingPreparationSession>();
         private static readonly HashSet<EntityId> s_farmingAutomationDisabledTowerIds =
             new HashSet<EntityId>();
+        private static int s_farmingAutomationTickIndex;
+        private static bool s_farmingTowerBootstrapCompleted;
+        private static bool s_farmingSaveRestorePending;
+
+        private static void ClearFarmingRuntimeState()
+        {
+            s_farmingDebugStoredDesignations.Clear();
+            s_farmingPreparationSessions.Clear();
+            s_farmingAutomationDisabledTowerIds.Clear();
+            s_farmingAutomationTickIndex = 0;
+            s_farmingTowerBootstrapCompleted = false;
+            s_farmingSaveRestorePending = false;
+        }
 
         internal static string StartFarmingPreparationForTower(IAreaManagingTower? tower)
         {
@@ -217,6 +236,7 @@ namespace AutoTerrainDesignations
                 if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
                 {
                     restored++;
+                    originState.IsHiddenUntilFilling = false;
                     s_farmingDebugStoredDesignations.Remove(originState.Origin);
                 }
                 else
@@ -284,14 +304,15 @@ namespace AutoTerrainDesignations
                 return "[ATD Farming] Filling is waiting: all tracked tower designations must be ReadyForFilling or Done before tower dump rules can change.";
             }
 
-            List<FarmingOriginSession> readyOrigins = session.Origins.Values
-                .Where(origin => origin.Phase == FarmingOriginPhase.ReadyForFilling)
+            List<FarmingOriginSession> fillingOrigins = session.Origins.Values
+                .Where(origin => origin.Phase == FarmingOriginPhase.ReadyForFilling
+                    || origin.Phase == FarmingOriginPhase.Done)
                 .ToList();
 
-            if (readyOrigins.Count == 0)
+            if (fillingOrigins.Count == 0)
             {
                 session.LastReport = FormatFarmingPreparationReport(session);
-                return "[ATD Farming] No origins are ReadyForFilling. Run preparation first or wait for leveling/preparation to finish.";
+                return "[ATD Farming] No origins are ready for filling/restoration. Run preparation first or wait for leveling/preparation to finish.";
             }
 
             List<LooseProductProto> farmableDumpProducts = GetFarmableDumpProducts();
@@ -309,11 +330,12 @@ namespace AutoTerrainDesignations
 
             int restored = 0;
             int failed = 0;
-            foreach (FarmingOriginSession originState in readyOrigins)
+            foreach (FarmingOriginSession originState in fillingOrigins)
             {
                 if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
                 {
                     restored++;
+                    originState.IsHiddenUntilFilling = false;
                     originState.Phase = FarmingOriginPhase.Filling;
                     originState.Detail = "original level designation restored; tower dump rules restricted to farmable products";
                     s_farmingDebugStoredDesignations.Remove(originState.Origin);
@@ -365,6 +387,12 @@ namespace AutoTerrainDesignations
 
         internal static void TickFarmingPreparationSessions()
         {
+            if (s_desigManager == null)
+                return;
+
+            s_farmingAutomationTickIndex++;
+            BootstrapFarmingAutomationForExistingTowers();
+
             foreach (var entry in s_farmingPreparationSessions.ToList())
             {
                 EntityId towerId = entry.Key;
@@ -412,6 +440,24 @@ namespace AutoTerrainDesignations
             }
         }
 
+        private static void BootstrapFarmingAutomationForExistingTowers()
+        {
+            if (s_farmingTowerBootstrapCompleted || s_entitiesManager == null)
+                return;
+
+            try
+            {
+                foreach (MineTower tower in s_entitiesManager.GetAllEntitiesOfType<MineTower>())
+                    EnsureFarmingAutomationDefaultEnabledForTower(tower);
+
+                s_farmingTowerBootstrapCompleted = true;
+            }
+            catch (System.Exception ex)
+            {
+                Log.Warning("[ATD Farming] Failed to bootstrap farming automation for existing towers: " + ex.Message);
+            }
+        }
+
         private static bool CanStartTowerLevelFilling(FarmingPreparationSession session)
         {
             bool hasReadyOrigin = false;
@@ -449,6 +495,80 @@ namespace AutoTerrainDesignations
                 origin.Phase == FarmingOriginPhase.Preparing);
         }
 
+        internal static void RestoreFarmingRuntimeForSave()
+        {
+            if (s_desigManager == null || s_levelingProto == null)
+                return;
+
+            int restored = 0;
+            int failed = 0;
+            foreach (var storedEntry in s_farmingDebugStoredDesignations.ToList())
+            {
+                if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, storedEntry.Value.OriginalData))
+                {
+                    restored++;
+                    s_farmingDebugStoredDesignations.Remove(storedEntry.Key);
+                }
+                else
+                {
+                    failed++;
+                }
+            }
+
+            foreach (FarmingPreparationSession session in s_farmingPreparationSessions.Values.ToList())
+            {
+                IAreaManagingTower? tower = session.Tower;
+                if (tower != null)
+                {
+                    RemoveOwnedFarmingAccessRamps(session, isFilling: false);
+                    RemoveOwnedFarmingAccessRamps(session, isFilling: true);
+                    RestoreTowerDumpRulesIfOwned(tower, session);
+                }
+
+                session.LastAccessRampRequestKey = string.Empty;
+                session.LastAccessCheckWorkKey = string.Empty;
+                session.LastAccessCheckDetail = string.Empty;
+                session.LastAccessCheckReady = true;
+                session.LastAccessCheckTick = int.MinValue;
+
+                foreach (FarmingOriginSession originState in session.Origins.Values)
+                {
+                    if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
+                    {
+                        restored++;
+                        originState.Phase = FarmingOriginPhase.AnalysisLeveling;
+                        originState.IsHiddenUntilFilling = false;
+                        originState.Detail = "restored original designation for save; pending re-analysis";
+                        s_farmingDebugStoredDesignations.Remove(originState.Origin);
+                    }
+                    else
+                    {
+                        failed++;
+                        originState.Phase = FarmingOriginPhase.Blocked;
+                        originState.Detail = "failed to restore original designation before save";
+                    }
+                }
+
+                session.Active = session.Enabled;
+                session.LastReport = failed == 0
+                    ? $"[ATD Farming] Save hook restored {restored} original designation(s)."
+                    : $"[ATD Farming] Save hook restored {restored} original designation(s), failed={failed}.";
+            }
+
+            s_farmingTowerBootstrapCompleted = false;
+            s_farmingSaveRestorePending = true;
+        }
+
+        internal static void ResumeFarmingRuntimeAfterSave()
+        {
+            if (!s_farmingSaveRestorePending)
+                return;
+
+            s_farmingSaveRestorePending = false;
+            s_farmingTowerBootstrapCompleted = false;
+            TickFarmingPreparationSessions();
+        }
+
         private static bool RunFarmingFillingPass(IAreaManagingTower tower, FarmingPreparationSession session)
         {
             if (s_desigManager == null)
@@ -464,7 +584,8 @@ namespace AutoTerrainDesignations
 
             foreach (FarmingOriginSession originState in session.Origins.Values)
             {
-                if (originState.Phase != FarmingOriginPhase.Filling)
+                if (originState.Phase != FarmingOriginPhase.Filling
+                    && originState.Phase != FarmingOriginPhase.Done)
                     continue;
 
                 var currentDesignation = s_desigManager.GetDesignationAt(originState.Origin);
@@ -495,6 +616,7 @@ namespace AutoTerrainDesignations
                 }
                 else
                 {
+                    originState.Phase = FarmingOriginPhase.Filling;
                     originState.Detail = row.Detail;
                 }
             }
@@ -549,6 +671,9 @@ namespace AutoTerrainDesignations
                 var currentDesignation = s_desigManager!.GetDesignationAt(originState.Origin);
                 if (!currentDesignation.HasValue)
                 {
+                    if (originState.IsHiddenUntilFilling)
+                        continue;
+
                     droppedOrigins.Add(originState.Origin);
                     session.LastDroppedOriginDetail = $"Dropped ({originState.Origin.X},{originState.Origin.Y}): designation was removed.";
                     continue;
@@ -591,11 +716,11 @@ namespace AutoTerrainDesignations
             {
                 case FarmingAnalysisState.Done:
                     originState.Phase = FarmingOriginPhase.Done;
-                    originState.Detail = row.Detail;
+                    HideFarmingDesignationUntilFilling(originState, "already done; original designation hidden until tower-level filling");
                     break;
                 case FarmingAnalysisState.ReadyForFilling:
                     originState.Phase = FarmingOriginPhase.ReadyForFilling;
-                    originState.Detail = "waiting for Stage 4 tower-level filling";
+                    HideFarmingDesignationUntilFilling(originState, "ready for filling; original designation hidden until tower-level filling");
                     break;
                 case FarmingAnalysisState.NeedsLeveling:
                     originState.Phase = FarmingOriginPhase.AnalysisLeveling;
@@ -620,6 +745,24 @@ namespace AutoTerrainDesignations
             }
         }
 
+        private static void HideFarmingDesignationUntilFilling(
+            FarmingOriginSession originState,
+            string detail)
+        {
+            if (s_desigManager == null)
+            {
+                originState.Detail = detail;
+                return;
+            }
+
+            var currentDesignation = s_desigManager.GetDesignationAt(originState.Origin);
+            if (currentDesignation.HasValue && IsLevelingDesignation(currentDesignation.Value))
+                s_desigManager.RemoveDesignation(originState.Origin);
+
+            originState.IsHiddenUntilFilling = true;
+            originState.Detail = detail;
+        }
+
         private static void AdvancePreparingOrigin(FarmingOriginSession originState, FarmingAnalysisRow row)
         {
             if (row.State == FarmingAnalysisState.NeedsPreparation)
@@ -631,14 +774,13 @@ namespace AutoTerrainDesignations
             if (row.State == FarmingAnalysisState.ReadyForFilling)
             {
                 originState.Phase = FarmingOriginPhase.ReadyForFilling;
-                originState.Detail = "preparation complete; waiting for Stage 4 tower-level filling";
+                originState.Detail = "preparation complete; keeping target-1 designation active until tower-level filling";
                 return;
             }
 
             if (row.State == FarmingAnalysisState.Done)
             {
-                originState.Phase = FarmingOriginPhase.Done;
-                originState.Detail = row.Detail;
+                originState.Detail = "preparation hold remains active until all preparation is complete";
                 return;
             }
 

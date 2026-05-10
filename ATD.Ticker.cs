@@ -12,10 +12,43 @@ namespace AutoTerrainDesignations;
 
 public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
 {
+    private static AutoTerrainDesignationsTicker? s_activeTicker;
+
     private float _syncTimer;
+    private int _worldGeneration;
+    private bool _active;
+    private const float ACTIVE_SYNC_INTERVAL_SECONDS = 1f;
+    private const float PAUSED_SYNC_INTERVAL_SECONDS = 0.1f;
+
+    internal static AutoTerrainDesignationsTicker CreateForWorld(int worldGeneration)
+    {
+        DestroyActive();
+
+        AutoTerrainDesignationsTicker ticker = new GameObject("AutoTerrainDesignationsTicker").AddComponent<AutoTerrainDesignationsTicker>();
+        ticker._worldGeneration = worldGeneration;
+        ticker._active = true;
+        s_activeTicker = ticker;
+        Object.DontDestroyOnLoad(ticker.gameObject);
+        return ticker;
+    }
+
+    internal static void DestroyActive()
+    {
+        if (s_activeTicker == null)
+            return;
+
+        AutoTerrainDesignationsTicker ticker = s_activeTicker;
+        s_activeTicker = null;
+        ticker._active = false;
+        if (ticker != null)
+            Object.Destroy(ticker.gameObject);
+    }
 
     private void Update()
     {
+        if (!_active || !AutoDepthDesignation.IsWorldGenerationActive(_worldGeneration))
+            return;
+
         // Corner designation input — runs every frame, before the 1-second throttle.
         try
         {
@@ -24,8 +57,10 @@ public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
         }
         catch { }
 
-        _syncTimer += Time.deltaTime;
-        if (_syncTimer < 1f)
+        bool gamePaused = Time.timeScale <= 0.001f;
+        float syncInterval = gamePaused ? PAUSED_SYNC_INTERVAL_SECONDS : ACTIVE_SYNC_INTERVAL_SECONDS;
+        _syncTimer += Time.unscaledDeltaTime;
+        if (_syncTimer < syncInterval)
             return;
         _syncTimer = 0f;
         try
@@ -43,5 +78,12 @@ public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
 
     private void OnGUI()
     {
+    }
+
+    private void OnDestroy()
+    {
+        if (s_activeTicker == this)
+            s_activeTicker = null;
+        _active = false;
     }
 }

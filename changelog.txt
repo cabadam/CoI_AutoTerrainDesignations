@@ -1,3 +1,11 @@
+v0.3.1b | 2026-05-10
+* Continued alpha testing for experimental farming designations.
+* Reduced farming stutter by throttling expensive access/pathability checks.
+* Added automatic farming automation startup for existing towers after load/initialization.
+* Improved farming phase handling: suppresses ready-for-filling origins during preparation, keeps preparation holds active until tower-level filling, and keeps filling origins tracked until the whole tower is complete.
+* Added automation-owned access ramp cleanup and ramp tile reservation so generated access ramps do not overwrite tracked farming origins.
+* Added world lifecycle cleanup and save hooks: runtime farming scaffolding is restored to vanilla leveling orders before saves, re-analyzed after save completion, and cleared when a game terminates.
+
 v0.3.1a | 2026-05-09
 * Improved **ATDsettings.json** migration so generated defaults from older releases are upgraded to the current defaults while user-changed values are preserved.
 * Recognizes both pre-0.3.1 ore purity defaults and 0.3.1-generated purity defaults as generated values during future migrations, so users who only changed unrelated settings still receive updated purity tuning.
