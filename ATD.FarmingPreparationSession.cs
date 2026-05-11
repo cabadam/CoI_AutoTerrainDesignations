@@ -44,6 +44,8 @@ namespace AutoTerrainDesignations
             public FarmingOriginPhase Phase { get; set; }
             public string Detail { get; set; }
             public bool IsHiddenUntilFilling { get; set; }
+            public bool IsFillingActivated { get; set; }
+            public bool IsFillingRampActive { get; set; }
 
             public FarmingOriginSession(Tile2i origin, DesignationData originalData, int targetHeight)
             {
@@ -74,6 +76,9 @@ namespace AutoTerrainDesignations
             public bool LastAccessCheckReady { get; set; } = true;
             public int LastAccessCheckTick { get; set; } = int.MinValue;
             public float? FillingAllDoneSinceRealtime { get; set; }
+            public string LastFillingSequenceDetail { get; set; } = string.Empty;
+            public int LastFillingSequenceActivationTick { get; set; } = int.MinValue;
+            public HashSet<Tile2i> LastFillingCorridorOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> PreparationAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> FillingAccessRampOrigins { get; } = new HashSet<Tile2i>();
         }
@@ -230,6 +235,7 @@ namespace AutoTerrainDesignations
             session.Tower = tower;
             session.LastAccessRampRequestKey = string.Empty;
             session.FillingAllDoneSinceRealtime = null;
+            ClearFarmingFillingSequence(session);
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             RemoveOwnedFarmingAccessRamps(session, isFilling: true);
             RestoreTowerDumpRulesIfOwned(tower, session);
@@ -241,6 +247,8 @@ namespace AutoTerrainDesignations
                 {
                     restored++;
                     originState.IsHiddenUntilFilling = false;
+                    originState.IsFillingActivated = false;
+                    originState.IsFillingRampActive = false;
                     s_farmingDebugStoredDesignations.Remove(originState.Origin);
                 }
                 else
@@ -308,12 +316,7 @@ namespace AutoTerrainDesignations
                 return "[ATD Farming] Filling is waiting: all tracked tower designations must be ReadyForFilling or Done before tower dump rules can change.";
             }
 
-            List<FarmingOriginSession> fillingOrigins = session.Origins.Values
-                .Where(origin => origin.Phase == FarmingOriginPhase.ReadyForFilling
-                    || origin.Phase == FarmingOriginPhase.Done)
-                .ToList();
-
-            if (fillingOrigins.Count == 0)
+            if (!HasQueuedFarmingFillingOrigins(session))
             {
                 session.LastReport = FormatFarmingPreparationReport(session);
                 return "[ATD Farming] No origins are ready for filling/restoration. Run preparation first or wait for leveling/preparation to finish.";
@@ -332,35 +335,20 @@ namespace AutoTerrainDesignations
                 return session.LastReport;
             }
 
-            int restored = 0;
-            int failed = 0;
-            foreach (FarmingOriginSession originState in fillingOrigins)
-            {
-                if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
-                {
-                    restored++;
-                    originState.IsHiddenUntilFilling = false;
-                    originState.Phase = FarmingOriginPhase.Filling;
-                    originState.Detail = "original level designation restored; tower dump rules restricted to farmable products";
-                    s_farmingDebugStoredDesignations.Remove(originState.Origin);
-                }
-                else
-                {
-                    failed++;
-                    originState.Phase = FarmingOriginPhase.Blocked;
-                    originState.Detail = "failed to restore original level designation for filling";
-                }
-            }
+            ClearFarmingFillingSequence(session);
+            int restored = ActivateNextFarmingFillingRim(tower, session, out int failed);
 
             if (restored == 0)
             {
                 RestoreTowerDumpRulesIfOwned(tower, session);
-                session.LastReport = $"[ATD Farming] Stage 4 blocked: failed to restore {failed} ready origin(s).";
+                session.LastReport = failed > 0
+                    ? $"[ATD Farming] Stage 4 blocked: failed to restore {failed} ready origin(s)."
+                    : "[ATD Farming] Stage 4 blocked: no fill rim origins could be activated.";
                 return session.LastReport;
             }
 
             session.Active = true;
-            session.LastReport = $"[ATD Farming] Stage 4 filling started: restored={restored}, failed={failed}, farmableProducts={farmableDumpProducts.Count}.";
+            session.LastReport = $"[ATD Farming] Stage 4 filling started: activated={restored}, failed={failed}, farmableProducts={farmableDumpProducts.Count}.";
             return session.LastReport;
         }
 
@@ -405,7 +393,8 @@ namespace AutoTerrainDesignations
                 if (!session.Enabled || tower == null)
                     continue;
 
-                bool fillingPass = session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
+                bool fillingPass = session.TowerDumpRulesOwned
+                    || session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
                 if (fillingPass)
                 {
                     bool keepFilling = RunFarmingFillingPass(tower, session);
@@ -535,6 +524,7 @@ namespace AutoTerrainDesignations
                 session.LastAccessCheckReady = true;
                 session.LastAccessCheckTick = int.MinValue;
                 session.FillingAllDoneSinceRealtime = null;
+                ClearFarmingFillingSequence(session);
 
                 foreach (FarmingOriginSession originState in session.Origins.Values)
                 {
@@ -543,6 +533,8 @@ namespace AutoTerrainDesignations
                         restored++;
                         originState.Phase = FarmingOriginPhase.AnalysisLeveling;
                         originState.IsHiddenUntilFilling = false;
+                        originState.IsFillingActivated = false;
+                        originState.IsFillingRampActive = false;
                         originState.Detail = "restored original designation for save; pending re-analysis";
                         s_farmingDebugStoredDesignations.Remove(originState.Origin);
                     }
@@ -601,6 +593,36 @@ namespace AutoTerrainDesignations
                     continue;
                 }
 
+                if (originState.IsFillingRampActive)
+                {
+                    if (s_dumpingProto == null || currentDesignation.Value.Prototype != s_dumpingProto)
+                    {
+                        droppedOrigins.Add(originState.Origin);
+                        session.LastDroppedOriginDetail = $"Dropped ({originState.Origin.X},{originState.Origin.Y}): temporary filling ramp was replaced.";
+                        continue;
+                    }
+
+                    if (currentDesignation.Value.IsFulfilled && s_levelingProto != null)
+                    {
+                        if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
+                        {
+                            originState.IsFillingRampActive = false;
+                            originState.Detail = "inward dumping ramp fulfilled; converted to final flat level designation";
+                        }
+                        else
+                        {
+                            originState.Phase = FarmingOriginPhase.Blocked;
+                            originState.Detail = "failed to convert fulfilled inward dumping ramp to final level designation";
+                        }
+                    }
+                    else
+                    {
+                        originState.Detail = "temporary inward dumping ramp active";
+                    }
+
+                    continue;
+                }
+
                 if (!IsLevelingDesignation(currentDesignation.Value))
                 {
                     droppedOrigins.Add(originState.Origin);
@@ -633,10 +655,25 @@ namespace AutoTerrainDesignations
             {
                 session.Origins.Remove(origin);
                 s_farmingDebugStoredDesignations.Remove(origin);
+                session.LastFillingCorridorOrigins.Remove(origin);
+            }
+
+            bool hasFilling = session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
+            if (HasQueuedFarmingFillingOrigins(session)
+                && (!hasFilling || ShouldRefreshFarmingFillingRim(session)))
+            {
+                int activated = ActivateNextFarmingFillingRim(tower, session, out int failed);
+                session.LastReport = FormatFarmingPreparationReport(session);
+                session.FillingAllDoneSinceRealtime = null;
+                if (activated > 0)
+                    return true;
+
+                if (failed > 0)
+                    return session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
             }
 
             session.LastReport = FormatFarmingPreparationReport(session);
-            bool hasFilling = session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
+            hasFilling = session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
             bool allDone = session.Origins.Count > 0
                 && session.Origins.Values.All(origin => origin.Phase == FarmingOriginPhase.Done);
 
@@ -834,6 +871,8 @@ namespace AutoTerrainDesignations
             sb.AppendLine($"  Active origins={session.Origins.Count}, Analysis/Leveling={analysis}, Preparing={preparing}, ReadyForFilling={ready}, Filling={filling}, Done={done}, Blocked={blocked}");
             if (session.TowerDumpRulesOwned)
                 sb.AppendLine("  Tower dump rules are temporarily restricted to farmable products.");
+            if (!string.IsNullOrEmpty(session.LastFillingSequenceDetail))
+                sb.AppendLine("  " + session.LastFillingSequenceDetail);
             if (!string.IsNullOrEmpty(session.LastDroppedOriginDetail))
                 sb.AppendLine("  " + session.LastDroppedOriginDetail);
             if (!string.IsNullOrEmpty(session.LastAccessRampDetail))

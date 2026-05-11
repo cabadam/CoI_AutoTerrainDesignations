@@ -67,9 +67,6 @@ During implementation: use a debug/status bar.
 4. Add sequenced preparation batches so excavators preserve exit/access paths.
 5. Revisit adjacent designation conflict detection only after sequencing is in place; good sequencing may suppress most of these loops without a separate broad blocker.
 
-## Check again if we can use the game's built in player notifications/warnings
-  Either by using an already existing proto or by purging our own in simLoopEvents.BeforeSave.AddNonSaveable(...).
-
 ## Refactor out of the temporary .cs files created during development of farming designations
 
 ### Consider improving land reclaim algo; consumes more dirt than necessary as it slides less steep

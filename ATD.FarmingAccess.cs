@@ -49,12 +49,15 @@ namespace AutoTerrainDesignations
                     continue;
 
                 var currentDesignation = s_desigManager.GetDesignationAt(originState.Origin);
-                if (currentDesignation.HasValue && IsLevelingDesignation(currentDesignation.Value))
+                if (currentDesignation.HasValue && IsFarmingAccessDesignationForCurrentPhase(currentDesignation.Value, originState, isFilling))
                     currentWork.Add(currentDesignation.Value);
             }
 
             if (currentWork.Count == 0)
             {
+                if (isFilling && HasQueuedFarmingFillingOrigins(session))
+                    return true;
+
                 int removed = RemoveOwnedFarmingAccessRamps(session, isFilling);
                 if (removed > 0)
                 {
@@ -236,6 +239,20 @@ namespace AutoTerrainDesignations
 
             return phase == FarmingOriginPhase.AnalysisLeveling
                 || phase == FarmingOriginPhase.Preparing;
+        }
+
+        private static bool IsFarmingAccessDesignationForCurrentPhase(
+            TerrainDesignation designation,
+            FarmingOriginSession originState,
+            bool isFilling)
+        {
+            if (!isFilling)
+                return IsLevelingDesignation(designation);
+
+            if (originState.IsFillingRampActive)
+                return s_dumpingProto != null && designation.Prototype == s_dumpingProto;
+
+            return IsLevelingDesignation(designation);
         }
 
         private static HashSet<Tile2i> GetOwnedFarmingAccessRamps(FarmingPreparationSession session, bool isFilling)

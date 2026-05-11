@@ -14,11 +14,13 @@ public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
 {
     private static AutoTerrainDesignationsTicker? s_activeTicker;
 
-    private float _syncTimer;
+    private float _prioritySyncTimer;
+    private float _farmingSyncTimer;
     private int _worldGeneration;
     private bool _active;
     private const float ACTIVE_SYNC_INTERVAL_SECONDS = 1f;
     private const float PAUSED_SYNC_INTERVAL_SECONDS = 0.1f;
+    private const float FARMING_SYNC_INTERVAL_GAME_SECONDS = 1f;
 
     internal static AutoTerrainDesignationsTicker CreateForWorld(int worldGeneration)
     {
@@ -59,16 +61,24 @@ public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
 
         bool gamePaused = Time.timeScale <= 0.001f;
         float syncInterval = gamePaused ? PAUSED_SYNC_INTERVAL_SECONDS : ACTIVE_SYNC_INTERVAL_SECONDS;
-        _syncTimer += Time.unscaledDeltaTime;
-        if (_syncTimer < syncInterval)
-            return;
-        _syncTimer = 0f;
-        try
+        _prioritySyncTimer += Time.unscaledDeltaTime;
+        if (_prioritySyncTimer >= syncInterval)
         {
-            AutoDepthDesignation.ApplyPriorityToNewExcavators();
+            _prioritySyncTimer = 0f;
+            try
+            {
+                AutoDepthDesignation.ApplyPriorityToNewExcavators();
+            }
+            catch { }
         }
-        catch { }
 
+        if (gamePaused)
+            return;
+
+        _farmingSyncTimer += Time.deltaTime;
+        if (_farmingSyncTimer < FARMING_SYNC_INTERVAL_GAME_SECONDS)
+            return;
+        _farmingSyncTimer = 0f;
         try
         {
             AutoDepthDesignation.TickFarmingPreparationSessions();
