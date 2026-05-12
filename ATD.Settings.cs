@@ -407,6 +407,14 @@ namespace AutoTerrainDesignations
                 bool? oreCompositionPanelCollapsed = ParseBool(json, "oreCompositionPanelCollapsed");
                 if (oreCompositionPanelCollapsed.HasValue && ShouldPreserveBool(oreCompositionPanelCollapsed.Value, migrateGeneratedDefaults, false))
                     AutoTerrainDesignationsMod.SetOreCompositionPanelCollapsed(oreCompositionPanelCollapsed.Value);
+
+                bool? farmingAnalysisDebugEnabled = ParseBool(json, "farmingAnalysisDebugEnabled");
+                if (farmingAnalysisDebugEnabled.HasValue && ShouldPreserveBool(farmingAnalysisDebugEnabled.Value, migrateGeneratedDefaults, false))
+                    AutoTerrainDesignationsMod.SetFarmingAnalysisDebugEnabled(farmingAnalysisDebugEnabled.Value);
+
+                bool? reEnableFarmingOnLoad = ParseBool(json, "reEnableFarmingOnLoad");
+                if (reEnableFarmingOnLoad.HasValue && ShouldPreserveBool(reEnableFarmingOnLoad.Value, migrateGeneratedDefaults, true))
+                    AutoTerrainDesignationsMod.SetReEnableFarmingOnLoad(reEnableFarmingOnLoad.Value);
             }
             catch (Exception ex)
             {
@@ -683,6 +691,12 @@ namespace AutoTerrainDesignations
             sb.AppendLine();
             sb.AppendLine("  \"_comment_oreCompositionPanelCollapsed\": \"Default collapsed state for the Ore Composition panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: false.\",");
             sb.AppendLine($"  \"oreCompositionPanelCollapsed\": {BoolToJsonStr(AutoTerrainDesignationsMod.OreCompositionPanelCollapsed)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_farmingAnalysisDebugEnabled\": \"Whether the Farmland Preparation inspector panel shows detailed read-only farming analysis. This can also be changed at runtime with atd_set_farming_analysis_debug. Default: false.\",");
+            sb.AppendLine($"  \"farmingAnalysisDebugEnabled\": {BoolToJsonStr(AutoTerrainDesignationsMod.FarmingAnalysisDebugEnabled)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_reEnableFarmingOnLoad\": \"Whether ATD re-enables farming automation after loading a save for mine towers whose managed designations appear to be farmland work: non-empty, all flat level designations. This can also be changed at runtime with atd_set_re_enable_farming_on_load. Default: true.\",");
+            sb.AppendLine($"  \"reEnableFarmingOnLoad\": {BoolToJsonStr(AutoTerrainDesignationsMod.ReEnableFarmingOnLoad)},");
             sb.AppendLine();
             sb.AppendLine("  \"purityLevels\": {");
             sb.AppendLine("    \"_comment\": \"Thresholds applied at each Ore Purity Level. Arrays have 5 entries: [Off, Low, Med, High, Max]. Off (index 0) should always be 0 / no filtering. These define what each level means \u2014 edit if you want to retune the purity steps.\",");

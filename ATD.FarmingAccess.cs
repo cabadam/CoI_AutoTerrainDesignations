@@ -249,9 +249,6 @@ namespace AutoTerrainDesignations
             if (!isFilling)
                 return IsLevelingDesignation(designation);
 
-            if (originState.IsFillingRampActive)
-                return s_dumpingProto != null && designation.Prototype == s_dumpingProto;
-
             return IsLevelingDesignation(designation);
         }
 

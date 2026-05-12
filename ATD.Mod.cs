@@ -95,6 +95,8 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetMinCorridorClearance(2);
         SetTerrainDesignationsPanelCollapsed(false);
         SetOreCompositionPanelCollapsed(false);
+        SetFarmingAnalysisDebugEnabled(false);
+        SetReEnableFarmingOnLoad(true);
     }
 
     public static void SetMaxHeightDiff(int value)
@@ -174,6 +176,22 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         OreCompositionPanelCollapsed = value;
     }
 
+    /// <summary>Whether the Farmland Preparation panel shows read-only analysis detail.</summary>
+    public static bool FarmingAnalysisDebugEnabled { get; private set; } = false;
+
+    public static void SetFarmingAnalysisDebugEnabled(bool value)
+    {
+        FarmingAnalysisDebugEnabled = value;
+    }
+
+    /// <summary>Whether ATD re-enables farming automation on loaded towers that look like farmland work.</summary>
+    public static bool ReEnableFarmingOnLoad { get; private set; } = true;
+
+    public static void SetReEnableFarmingOnLoad(bool value)
+    {
+        ReEnableFarmingOnLoad = value;
+    }
+
     public void Initialize(DependencyResolver resolver, bool gameWasLoaded)
     {
         try
@@ -215,6 +233,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             AutoTerrainDesignationsTicker ticker = AutoTerrainDesignationsTicker.CreateForWorld(AutoDepthDesignation.CurrentWorldGeneration + 1);
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
             AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, parkAndWaitJobFactory, notificationsManager);
+            AutoDepthDesignation.RequestFarmingReEnableOnLoad(gameWasLoaded);
 
             // Corner designation mode — TerrainCursor, TerrainDesignationsRenderer and
             // CursorManager may only be available on the Unity side; fail gracefully if not resolvable.

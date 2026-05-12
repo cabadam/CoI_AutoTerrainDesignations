@@ -34,6 +34,8 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  MinCorridorClearance  = {AutoTerrainDesignationsMod.MinCorridorClearance}");
         sb.AppendLine($"  TerrainPanelCollapsed = {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}");
         sb.AppendLine($"  OrePanelCollapsed     = {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}");
+        sb.AppendLine($"  FarmingAnalysisDebug  = {AutoTerrainDesignationsMod.FarmingAnalysisDebugEnabled}");
+        sb.AppendLine($"  ReEnableFarmingOnLoad = {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}");
         sb.Append(AutoDepthDesignation.FormatPurityArrays());
         return sb.ToString();
     }
@@ -125,6 +127,32 @@ public sealed class AtdConsoleCommands
 
         AutoTerrainDesignationsMod.SetOreCompositionPanelCollapsed(parsed);
         return $"[ATD] OreCompositionPanelCollapsed set to {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets whether the Farmland Preparation panel shows detailed debug analysis (true/false, on/off, 1/0).", null)]
+    private string atdSetFarmingAnalysisDebug(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetFarmingAnalysisDebugEnabled(parsed);
+        return $"[ATD] FarmingAnalysisDebug set to {AutoTerrainDesignationsMod.FarmingAnalysisDebugEnabled}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets whether ATD re-enables farming automation for apparent farmland towers on load (true/false, on/off, 1/0).", null)]
+    private string atdSetReEnableFarmingOnLoad(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetReEnableFarmingOnLoad(parsed);
+        return $"[ATD] ReEnableFarmingOnLoad set to {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}.";
+    }
+
+    [ConsoleCommand(false, false, "Alias for atd_set_re_enable_farming_on_load.", null)]
+    private string atdReEnableFarmingOnLoad(string value)
+    {
+        return atdSetReEnableFarmingOnLoad(value);
     }
 
     [ConsoleCommand(false, false, "Sets minBottomOreDensity for a purity level (0-4), clamped 0-1. Minimum ore/(ore+waste) ratio a zone must have to be included. E.g. atd_set_min_bottom_ore_density 2 0.25", null)]

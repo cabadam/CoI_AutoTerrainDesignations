@@ -26,6 +26,8 @@ namespace AutoTerrainDesignations
             new EntityNotificationProto.ID("ATD_RampAccessTruncated");
         internal static readonly EntityNotificationProto.ID RampAccessNotAccessibleId =
             new EntityNotificationProto.ID("ATD_RampAccessNotAccessible");
+        internal static readonly EntityNotificationProto.ID FarmingCompleteId =
+            new EntityNotificationProto.ID("ATD_FarmingComplete");
 
         private static readonly HashSet<string> s_protoIds = new HashSet<string>
         {
@@ -33,6 +35,7 @@ namespace AutoTerrainDesignations
             RampAccessFailedId.Value,
             RampAccessTruncatedId.Value,
             RampAccessNotAccessibleId.Value,
+            FarmingCompleteId.Value,
         };
 
         internal static void RegisterPrototypes(ProtoRegistrator registrator)
@@ -40,6 +43,7 @@ namespace AutoTerrainDesignations
             RegisterWarning(registrator, "[ATD] {entity} could not start an access ramp", RampAccessFailedId);
             RegisterWarning(registrator, "[ATD] {entity} could not fit a full access ramp", RampAccessTruncatedId);
             RegisterWarning(registrator, "[ATD] {entity} could not path to the ramp", RampAccessNotAccessibleId);
+            RegisterSuccess(registrator, "[ATD] {entity} farming preparation and filling complete", FarmingCompleteId);
         }
 
         private static void RegisterWarning(ProtoRegistrator registrator, string message, EntityNotificationProto.ID id)
@@ -52,6 +56,18 @@ namespace AutoTerrainDesignations
                 .AddIcon("Assets/Unity/UserInterface/General/Warning128.png")
                 .AddEntityIcon("Assets/Unity/UserInterface/EntityIcons/Warning.png")
                 .BuildAndAdd();
+        }
+
+        private static void RegisterSuccess(ProtoRegistrator registrator, string message, EntityNotificationProto.ID id)
+        {
+            registrator.NotificationProtoBuilder
+                .Start(message, id)
+                .SetType(NotificationType.OneTimeOnly)
+                .SetStyle(NotificationStyle.Success)
+                .SetTimeToLive(Duration.FromSec(20))
+                .MuteAudio()
+                .AddIcon("Assets/Unity/UserInterface/EntityIcons/Designation.png")
+                .BuildAndAdd(doNotRequireEntityIcon: true);
         }
 
         internal static bool IsAtdProto(NotificationProto proto)
@@ -100,6 +116,7 @@ namespace AutoTerrainDesignations
         private static EntityNotificationProto? s_rampAccessFailedNotificationProto;
         private static EntityNotificationProto? s_rampAccessTruncatedNotificationProto;
         private static EntityNotificationProto? s_rampAccessNotAccessibleNotificationProto;
+        private static EntityNotificationProto? s_farmingCompleteNotificationProto;
         private static readonly Dictionary<TransientNotificationKey, NotificationId> s_transientNotificationsByKey =
             new Dictionary<TransientNotificationKey, NotificationId>();
 
@@ -110,6 +127,7 @@ namespace AutoTerrainDesignations
             TryInitializeTransientNotificationProto(protosDb, AtdNotifications.RampAccessFailedId, ref s_rampAccessFailedNotificationProto);
             TryInitializeTransientNotificationProto(protosDb, AtdNotifications.RampAccessTruncatedId, ref s_rampAccessTruncatedNotificationProto);
             TryInitializeTransientNotificationProto(protosDb, AtdNotifications.RampAccessNotAccessibleId, ref s_rampAccessNotAccessibleNotificationProto);
+            TryInitializeTransientNotificationProto(protosDb, AtdNotifications.FarmingCompleteId, ref s_farmingCompleteNotificationProto);
         }
 
         private static void TryInitializeTransientNotificationProto(
@@ -129,6 +147,7 @@ namespace AutoTerrainDesignations
             s_rampAccessFailedNotificationProto = null;
             s_rampAccessTruncatedNotificationProto = null;
             s_rampAccessNotAccessibleNotificationProto = null;
+            s_farmingCompleteNotificationProto = null;
             s_transientNotificationsByKey.Clear();
         }
 
@@ -214,6 +233,20 @@ namespace AutoTerrainDesignations
             ClearTransientTowerNotification(tower, TransientNotificationKind.RampAccessFailed);
             ClearTransientTowerNotification(tower, TransientNotificationKind.RampAccessTruncated);
             ClearTransientTowerNotification(tower, TransientNotificationKind.RampAccessNotAccessible);
+        }
+
+        private static void AddFarmingCompleteNotification(IAreaManagingTower tower)
+        {
+            if (s_notificationsManager == null || s_farmingCompleteNotificationProto == null)
+                return;
+
+            if (!(tower is IObjectWithTitle objectWithTitle))
+                return;
+
+            s_notificationsManager.AddNotification(
+                s_farmingCompleteNotificationProto,
+                Option<IObjectWithTitle>.Create(objectWithTitle),
+                Option.None);
         }
 
         private static bool HasTransientTowerNotification(IAreaManagingTower tower, TransientNotificationKind kind)

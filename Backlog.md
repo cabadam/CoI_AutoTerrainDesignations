@@ -71,4 +71,6 @@ During implementation: use a debug/status bar.
 
 ### Consider improving land reclaim algo; consumes more dirt than necessary as it slides less steep
 
-##Instead of sequencing the filling, remove all vehicles from the area before filling, and fill as normal.
+## Add a bonus: notification when Excavator is complete in the vehicle depot; maybe even the order-from-tower including pre-assign to tower?
+
+Tuning: dump rules can transition to filling once all trucks has vacated the area (even if they have cargo), no need to wait for it to empty. Just need to wait for it to empty before releasing it from tower.

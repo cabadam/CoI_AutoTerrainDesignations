@@ -1,11 +1,11 @@
 v0.3.1c | 2026-05-11
+* Renamed the farming inspector panel to **Farmland Preparation**.
+* Hid detailed farming prep analysis/status rows in the inspector by default; enable them with **atd_set_farming_analysis_debug true** when debugging is needed.
+* Added **atd_set_re_enable_farming_on_load** / **atd_re_enable_farming_on_load** and the matching **ATDsettings.json** key **reEnableFarmingOnLoad** (default: true). On load, ATD re-enables farming automation for towers whose managed designations appear to be farmland work: non-empty, all flat level designations.
 * Reduced farming access/pathability check cost on large jobs by indexing reachable target tiles instead of checking every active designation for every visited path tile.
-* Changed experimental farming automation to opt-in per tower, preventing background farming/pathability work from running on towers where the player has not enabled it.
-* Fixed paused scans still adding designations incrementally; ATD now completes scan placement without batch-yielding while the game is paused.
-* Limited farming preparation analysis/status text in the inspector to 20 rows total; added **atd_farming_dump_all_towers** for a complete uncapped console dump.
-* Hidden completed temporary preparation designations before controlled filling starts so spilled fill material does not restart target-1 leveling fights.
-* Added a one-off excavator recall at the preparation-to-filling transition, cancelling current excavator jobs and sending assigned excavators back toward their mine tower before controlled filling activates.
-* Implemented sequencing of the filling job to reduce fights and mitigate vehicle lock-ins.
+* Keeps completed temporary preparation designations active until final filling commits, so fresh spills on prepared ground can still be scooped up.
+* Implemented vehicle clear-out guard: before filling starts, ATD orders vehicles in the fill area to park at the tower, waits for moving vehicles to leave, rechecks before committing, proceeds if a vehicle appears stuck or paused, temporarily releases empty tower-assigned trucks to help with filling, keeps loaded tower trucks assigned until they dump their final prep cargo, and reassigns the released trucks to the tower when filling is done.
+* Added a green one-time completion notification when farmland preparation and filling are all done.
 
 v0.3.1b | 2026-05-10
 * Continued alpha testing for experimental farming designations.

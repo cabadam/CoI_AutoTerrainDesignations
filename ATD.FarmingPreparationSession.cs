@@ -17,9 +17,11 @@ using Mafi.Core;
 using Mafi.Core.Buildings.Mine;
 using Mafi.Core.Buildings.Towers;
 using Mafi.Core.Entities;
+using Mafi.Core.Entities.Dynamic;
 using Mafi.Core.Products;
 using Mafi.Core.Terrain;
 using Mafi.Core.Terrain.Designation;
+using Mafi.Core.Vehicles.Trucks;
 using UnityEngine;
 
 namespace AutoTerrainDesignations
@@ -45,7 +47,6 @@ namespace AutoTerrainDesignations
             public string Detail { get; set; }
             public bool IsHiddenUntilFilling { get; set; }
             public bool IsFillingActivated { get; set; }
-            public bool IsFillingRampActive { get; set; }
 
             public FarmingOriginSession(Tile2i origin, DesignationData originalData, int targetHeight)
             {
@@ -76,10 +77,21 @@ namespace AutoTerrainDesignations
             public bool LastAccessCheckReady { get; set; } = true;
             public int LastAccessCheckTick { get; set; } = int.MinValue;
             public float? FillingAllDoneSinceRealtime { get; set; }
-            public string LastFillingSequenceDetail { get; set; } = string.Empty;
-            public string LastExcavatorRecallDetail { get; set; } = string.Empty;
-            public int LastFillingSequenceActivationTick { get; set; } = int.MinValue;
-            public HashSet<Tile2i> LastFillingCorridorOrigins { get; } = new HashSet<Tile2i>();
+            public bool FillingVehicleClearOutPending { get; set; }
+            public bool FillingVehicleClearOutHasMovementCheck { get; set; }
+            public int FillingVehicleClearOutStartTick { get; set; } = int.MinValue;
+            public List<Vehicle> FillingVehicleClearOutVehicles { get; } = new List<Vehicle>();
+            public Dictionary<Vehicle, Tile2i> FillingVehicleClearOutLastPositions { get; } =
+                new Dictionary<Vehicle, Tile2i>();
+            public HashSet<Vehicle> FillingVehicleClearOutStuckVehicles { get; } = new HashSet<Vehicle>();
+            public HashSet<Tile2i> FillingVehicleClearOutArea { get; } = new HashSet<Tile2i>();
+            // Runtime-only by design: if the player saves/exits during filling, released trucks may not be reassigned on load.
+            // This is acceptable for now, but save persistence must include this list if we persist farming sessions later.
+            public List<Truck> ReleasedFillingTrucks { get; } = new List<Truck>();
+            public bool FillingTruckAssignmentsReleased { get; set; }
+            public string LastFillingActivationDetail { get; set; } = string.Empty;
+            public string LastVehicleClearOutDetail { get; set; } = string.Empty;
+            public string LastTruckAssignmentDetail { get; set; } = string.Empty;
             public HashSet<Tile2i> PreparationAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> FillingAccessRampOrigins { get; } = new HashSet<Tile2i>();
         }
@@ -90,6 +102,7 @@ namespace AutoTerrainDesignations
             new HashSet<EntityId>();
         private static int s_farmingAutomationTickIndex;
         private static bool s_farmingTowerBootstrapCompleted;
+        private static bool s_farmingReEnableOnLoadPending;
         private static bool s_farmingSaveRestorePending;
         private const float FARMING_FILLING_STABILIZATION_SECONDS = 3f;
 
@@ -100,7 +113,13 @@ namespace AutoTerrainDesignations
             s_farmingAutomationDisabledTowerIds.Clear();
             s_farmingAutomationTickIndex = 0;
             s_farmingTowerBootstrapCompleted = false;
+            s_farmingReEnableOnLoadPending = false;
             s_farmingSaveRestorePending = false;
+        }
+
+        internal static void RequestFarmingReEnableOnLoad(bool gameWasLoaded)
+        {
+            s_farmingReEnableOnLoadPending = gameWasLoaded && AutoTerrainDesignationsMod.ReEnableFarmingOnLoad;
         }
 
         internal static string StartFarmingPreparationForTower(IAreaManagingTower? tower)
@@ -233,10 +252,12 @@ namespace AutoTerrainDesignations
             session.Tower = tower;
             session.LastAccessRampRequestKey = string.Empty;
             session.FillingAllDoneSinceRealtime = null;
-            ClearFarmingFillingSequence(session);
+            ClearFarmingFillingVehicleClearOut(session);
+            ClearFarmingFillingActivation(session);
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             RemoveOwnedFarmingAccessRamps(session, isFilling: true);
             RestoreTowerDumpRulesIfOwned(tower, session);
+            RestoreTowerTrucksReleasedForFilling(tower, session);
             int restored = 0;
             int failed = 0;
             foreach (FarmingOriginSession originState in session.Origins.Values.ToList())
@@ -246,7 +267,6 @@ namespace AutoTerrainDesignations
                     restored++;
                     originState.IsHiddenUntilFilling = false;
                     originState.IsFillingActivated = false;
-                    originState.IsFillingRampActive = false;
                     s_farmingDebugStoredDesignations.Remove(originState.Origin);
                 }
                 else
@@ -333,22 +353,29 @@ namespace AutoTerrainDesignations
                 return session.LastReport;
             }
 
-            int hiddenReadyPreparationDesignations = HideReadyForFillingPreparationDesignations(session);
-            RecallTowerExcavatorsForFillingTransition(tower, session);
-            ClearFarmingFillingSequence(session);
-            int restored = ActivateNextFarmingFillingRim(tower, session, out int failed);
+            ReleaseEmptyTowerTrucksForFilling(tower, session);
+            if (TryStartFarmingFillingVehicleClearOut(tower, session, out int vehiclesInside))
+            {
+                session.Active = true;
+                session.LastReport = $"[ATD Farming] Stage 4 filling started: waiting briefly for {vehiclesInside} vehicle(s) to leave the fill area before committing fill designations.";
+                return session.LastReport;
+            }
+
+            ClearFarmingFillingActivation(session);
+            int restored = ActivateFarmingFillingOrigins(session, out int failed);
 
             if (restored == 0)
             {
                 RestoreTowerDumpRulesIfOwned(tower, session);
+                RestoreTowerTrucksReleasedForFilling(tower, session);
                 session.LastReport = failed > 0
                     ? $"[ATD Farming] Stage 4 blocked: failed to restore {failed} ready origin(s)."
-                    : "[ATD Farming] Stage 4 blocked: no fill rim origins could be activated.";
+                    : "[ATD Farming] Stage 4 blocked: no fill origins could be activated.";
                 return session.LastReport;
             }
 
             session.Active = true;
-            session.LastReport = $"[ATD Farming] Stage 4 filling started: activated={restored}, hiddenPrep={hiddenReadyPreparationDesignations}, failed={failed}, farmableProducts={farmableDumpProducts.Count}.";
+            session.LastReport = $"[ATD Farming] Stage 4 filling started: activated={restored}, failed={failed}, farmableProducts={farmableDumpProducts.Count}.";
             return session.LastReport;
         }
 
@@ -359,7 +386,9 @@ namespace AutoTerrainDesignations
 
         internal static string FormatFarmingPreparationPanelStatusForTower(IAreaManagingTower? tower)
         {
-            return FormatFarmingPreparationStatusForTower(tower, 10);
+            return FormatFarmingPreparationStatusForTower(
+                tower,
+                AutoTerrainDesignationsMod.FarmingAnalysisDebugEnabled ? 10 : 0);
         }
 
         private static string FormatFarmingPreparationStatusForTower(IAreaManagingTower? tower, int maxRows)
@@ -394,6 +423,7 @@ namespace AutoTerrainDesignations
 
             s_farmingAutomationTickIndex++;
             BootstrapFarmingAutomationForExistingTowers();
+            ReEnableFarmingAutomationForLoadedFarmingTowers();
 
             foreach (var entry in s_farmingPreparationSessions.ToList())
             {
@@ -417,6 +447,9 @@ namespace AutoTerrainDesignations
                     session.Active = false;
                     RemoveOwnedFarmingAccessRamps(session, isFilling: true);
                     RestoreTowerDumpRulesIfOwned(tower, session);
+                    RestoreTowerTrucksReleasedForFilling(tower, session);
+                    if (IsFarmingPreparationComplete(session))
+                        AddFarmingCompleteNotification(tower);
                     continue;
                 }
 
@@ -460,6 +493,70 @@ namespace AutoTerrainDesignations
             }
         }
 
+        private static void ReEnableFarmingAutomationForLoadedFarmingTowers()
+        {
+            if (!s_farmingReEnableOnLoadPending)
+                return;
+
+            s_farmingReEnableOnLoadPending = false;
+            if (s_entitiesManager == null || s_desigManager == null || s_levelingProto == null)
+                return;
+
+            int enabled = 0;
+            try
+            {
+                foreach (MineTower tower in s_entitiesManager.GetAllEntitiesOfType<MineTower>())
+                {
+                    if (!TryGetTowerEntityId(tower, out EntityId towerId) || !towerId.IsValid)
+                        continue;
+
+                    if (s_farmingAutomationDisabledTowerIds.Contains(towerId))
+                        continue;
+
+                    if (s_farmingPreparationSessions.TryGetValue(towerId, out FarmingPreparationSession existingSession)
+                        && existingSession.Enabled)
+                    {
+                        existingSession.Tower = tower;
+                        continue;
+                    }
+
+                    if (!LooksLikeLoadedFarmingTower(tower))
+                        continue;
+
+                    FarmingPreparationSession session = GetOrCreateFarmingPreparationSession(towerId);
+                    session.Tower = tower;
+                    session.Enabled = true;
+                    session.Active = true;
+                    session.AutoStartFilling = true;
+                    session.LastReport = "[ATD Farming] Farming automation re-enabled on load for apparent farmland designations.";
+                    enabled++;
+                }
+
+                if (enabled > 0)
+                    Log.Info($"[ATD Farming] Re-enabled farming automation on load for {enabled} tower(s).");
+            }
+            catch (System.Exception ex)
+            {
+                Log.Warning("[ATD Farming] Failed to re-enable farming automation on load: " + ex.Message);
+            }
+        }
+
+        private static bool LooksLikeLoadedFarmingTower(IAreaManagingTower tower)
+        {
+            bool hasDesignation = false;
+            foreach (TerrainDesignation designation in tower.ManagedDesignations)
+            {
+                hasDesignation = true;
+                if (!IsLevelingDesignation(designation))
+                    return false;
+
+                if (!TryGetFlatTargetHeight(designation.Data, out _))
+                    return false;
+            }
+
+            return hasDesignation;
+        }
+
         private static bool CanStartTowerLevelFilling(FarmingPreparationSession session)
         {
             bool hasReadyOrigin = false;
@@ -476,6 +573,12 @@ namespace AutoTerrainDesignations
             }
 
             return hasReadyOrigin;
+        }
+
+        private static bool IsFarmingPreparationComplete(FarmingPreparationSession session)
+        {
+            return session.Origins.Count > 0
+                && session.Origins.Values.All(origin => origin.Phase == FarmingOriginPhase.Done);
         }
 
         private static bool RunFarmingPreparationPass(IAreaManagingTower tower, FarmingPreparationSession session)
@@ -525,6 +628,7 @@ namespace AutoTerrainDesignations
                     RemoveOwnedFarmingAccessRamps(session, isFilling: false);
                     RemoveOwnedFarmingAccessRamps(session, isFilling: true);
                     RestoreTowerDumpRulesIfOwned(tower, session);
+                    RestoreTowerTrucksReleasedForFilling(tower, session);
                 }
 
                 session.LastAccessRampRequestKey = string.Empty;
@@ -533,7 +637,8 @@ namespace AutoTerrainDesignations
                 session.LastAccessCheckReady = true;
                 session.LastAccessCheckTick = int.MinValue;
                 session.FillingAllDoneSinceRealtime = null;
-                ClearFarmingFillingSequence(session);
+                ClearFarmingFillingVehicleClearOut(session);
+                ClearFarmingFillingActivation(session);
 
                 foreach (FarmingOriginSession originState in session.Origins.Values)
                 {
@@ -543,7 +648,6 @@ namespace AutoTerrainDesignations
                         originState.Phase = FarmingOriginPhase.AnalysisLeveling;
                         originState.IsHiddenUntilFilling = false;
                         originState.IsFillingActivated = false;
-                        originState.IsFillingRampActive = false;
                         originState.Detail = "restored original designation for save; pending re-analysis";
                         s_farmingDebugStoredDesignations.Remove(originState.Origin);
                     }
@@ -584,6 +688,30 @@ namespace AutoTerrainDesignations
             }
 
             TerrainManager terrMgr = s_desigManager.TerrainManager;
+            if (session.FillingVehicleClearOutPending)
+            {
+                int remainingVehicles = PruneAndCountVehiclesInPendingFillingArea(session, out int stuckVehicles);
+                if (stuckVehicles > 0)
+                {
+                    session.LastVehicleClearOutDetail =
+                        $"Filling vehicle clear-out detected {stuckVehicles} stuck/paused vehicle(s); committing fill designations.";
+                    ClearFarmingFillingVehicleClearOut(session, keepStuckCommitAllowance: true);
+                }
+                else if (remainingVehicles > 0)
+                {
+                    session.LastReport = FormatFarmingPreparationReport(session)
+                        + $"\n  Filling vehicle clear-out: waiting for {remainingVehicles} cached vehicle(s) to leave the fill area.";
+                    return true;
+                }
+
+                if (session.FillingVehicleClearOutStuckVehicles.Count == 0)
+                {
+                    session.LastVehicleClearOutDetail = "Filling vehicle clear-out complete; rechecking before committing fill designations.";
+                    ClearFarmingFillingVehicleClearOut(session);
+                }
+            }
+
+            ReleaseEmptyTowerTrucksForFilling(tower, session);
             EnsureFarmingAccessForCurrentPhase(tower, session, isFilling: true);
             var droppedOrigins = new List<Tile2i>();
             session.LastDroppedOriginDetail = string.Empty;
@@ -599,36 +727,6 @@ namespace AutoTerrainDesignations
                 {
                     droppedOrigins.Add(originState.Origin);
                     session.LastDroppedOriginDetail = $"Dropped ({originState.Origin.X},{originState.Origin.Y}): filling designation was removed.";
-                    continue;
-                }
-
-                if (originState.IsFillingRampActive)
-                {
-                    if (s_dumpingProto == null || currentDesignation.Value.Prototype != s_dumpingProto)
-                    {
-                        droppedOrigins.Add(originState.Origin);
-                        session.LastDroppedOriginDetail = $"Dropped ({originState.Origin.X},{originState.Origin.Y}): temporary filling ramp was replaced.";
-                        continue;
-                    }
-
-                    if (currentDesignation.Value.IsFulfilled && s_levelingProto != null)
-                    {
-                        if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
-                        {
-                            originState.IsFillingRampActive = false;
-                            originState.Detail = "inward dumping ramp fulfilled; converted to final flat level designation";
-                        }
-                        else
-                        {
-                            originState.Phase = FarmingOriginPhase.Blocked;
-                            originState.Detail = "failed to convert fulfilled inward dumping ramp to final level designation";
-                        }
-                    }
-                    else
-                    {
-                        originState.Detail = "temporary inward dumping ramp active";
-                    }
-
                     continue;
                 }
 
@@ -664,14 +762,20 @@ namespace AutoTerrainDesignations
             {
                 session.Origins.Remove(origin);
                 s_farmingDebugStoredDesignations.Remove(origin);
-                session.LastFillingCorridorOrigins.Remove(origin);
             }
 
             bool hasFilling = session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
-            if (HasQueuedFarmingFillingOrigins(session)
-                && (!hasFilling || ShouldRefreshFarmingFillingRim(session)))
+            if (HasQueuedFarmingFillingOrigins(session) && !hasFilling)
             {
-                int activated = ActivateNextFarmingFillingRim(tower, session, out int failed);
+                if (TryStartFarmingFillingVehicleClearOut(tower, session, out int vehiclesInside))
+                {
+                    session.LastReport = FormatFarmingPreparationReport(session)
+                        + $"\n  Filling vehicle clear-out safeguard: reissued evacuation for {vehiclesInside} vehicle(s) before committing fill designations.";
+                    session.FillingAllDoneSinceRealtime = null;
+                    return true;
+                }
+
+                int activated = ActivateFarmingFillingOrigins(session, out int failed);
                 session.LastReport = FormatFarmingPreparationReport(session);
                 session.FillingAllDoneSinceRealtime = null;
                 if (activated > 0)
@@ -840,68 +944,78 @@ namespace AutoTerrainDesignations
             originState.Detail = detail;
         }
 
-        private static int HideReadyForFillingPreparationDesignations(FarmingPreparationSession session)
+        private static bool TryStartFarmingFillingVehicleClearOut(
+            IAreaManagingTower tower,
+            FarmingPreparationSession session,
+            out int vehiclesInside)
         {
-            if (s_desigManager == null)
-                return 0;
+            vehiclesInside = OrderVehiclesOutOfFillingAreaForTransition(tower, session);
+            session.FillingVehicleClearOutStuckVehicles.Clear();
+            if (vehiclesInside <= 0)
+                return false;
 
-            int hidden = 0;
-            foreach (FarmingOriginSession originState in session.Origins.Values)
-            {
-                if (originState.Phase != FarmingOriginPhase.ReadyForFilling)
-                    continue;
-
-                var currentDesignation = s_desigManager.GetDesignationAt(originState.Origin);
-                if (currentDesignation.HasValue && IsLevelingDesignation(currentDesignation.Value))
-                {
-                    s_desigManager.RemoveDesignation(originState.Origin);
-                    hidden++;
-                }
-
-                originState.IsHiddenUntilFilling = true;
-                originState.Detail = "preparation complete; temporary target-1 designation hidden before controlled filling";
-            }
-
-            return hidden;
+            session.FillingVehicleClearOutPending = true;
+            session.FillingVehicleClearOutStartTick = s_farmingAutomationTickIndex;
+            return true;
         }
 
-        private static void RecallTowerExcavatorsForFillingTransition(
+        private static int OrderVehiclesOutOfFillingAreaForTransition(
             IAreaManagingTower tower,
             FarmingPreparationSession session)
         {
-            session.LastExcavatorRecallDetail = string.Empty;
+            ClearFarmingFillingVehicleClearOut(session, keepStuckCommitAllowance: true);
+            session.LastVehicleClearOutDetail = string.Empty;
 
             if (!(tower is MineTower mineTower))
-                return;
+                return 0;
 
             if (s_parkAndWaitJobFactory == null)
             {
-                session.LastExcavatorRecallDetail = "Excavator recall skipped: parking job factory unavailable.";
-                return;
+                session.LastVehicleClearOutDetail = "Filling transition vehicle clear-out skipped: parking job factory unavailable.";
+                return 0;
             }
 
-            var excavators = mineTower.AllAssignedExcavators;
-            if (excavators == null || excavators.Count == 0)
-                return;
+            if (s_entitiesManager == null)
+            {
+                session.LastVehicleClearOutDetail = "Filling transition vehicle clear-out skipped: entity manager unavailable.";
+                return 0;
+            }
+
+            HashSet<Tile2i> fillingArea = BuildPendingFarmingFillingArea(session);
+            if (fillingArea.Count == 0)
+                return 0;
+
+            foreach (Tile2i tile in fillingArea)
+                session.FillingVehicleClearOutArea.Add(tile);
 
             int total = 0;
+            int inside = 0;
             int enqueued = 0;
             int notEnqueued = 0;
             int failed = 0;
 
-            foreach (var excavator in excavators)
+            foreach (Vehicle vehicle in s_entitiesManager.GetAllEntitiesOfType<Vehicle>())
             {
                 total++;
                 try
                 {
-                    if (excavator == null || excavator.IsDestroyed || !excavator.IsSpawned)
+                    if (vehicle == null || vehicle.IsDestroyed || !vehicle.IsSpawned)
                     {
                         notEnqueued++;
                         continue;
                     }
 
-                    excavator.CancelAllJobsAndResetState();
-                    if (s_parkAndWaitJobFactory.TryEnqueueParkingJobIfNeeded(excavator, mineTower))
+                    if (!fillingArea.Contains(vehicle.GroundPositionTile2i))
+                        continue;
+
+                    if (session.FillingVehicleClearOutStuckVehicles.Contains(vehicle))
+                        continue;
+
+                    inside++;
+                    session.FillingVehicleClearOutVehicles.Add(vehicle);
+                    session.FillingVehicleClearOutLastPositions[vehicle] = vehicle.GroundPositionTile2i;
+                    vehicle.CancelAllJobsAndResetState();
+                    if (s_parkAndWaitJobFactory.TryEnqueueParkingJobIfNeeded(vehicle, mineTower))
                         enqueued++;
                     else
                         notEnqueued++;
@@ -912,9 +1026,194 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            session.LastExcavatorRecallDetail =
-                $"Filling transition recalled excavators to tower: total={total}, enqueued={enqueued}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.";
-            LogDebug(session.LastExcavatorRecallDetail);
+            session.LastVehicleClearOutDetail =
+                $"Filling transition ordered vehicles out of fill area: scanned={total}, inside={inside}, enqueued={enqueued}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.";
+            LogDebug(session.LastVehicleClearOutDetail);
+            return inside;
+        }
+
+        private static int PruneAndCountVehiclesInPendingFillingArea(
+            FarmingPreparationSession session,
+            out int stuckVehicles)
+        {
+            stuckVehicles = 0;
+            if (session.FillingVehicleClearOutVehicles.Count == 0
+                || session.FillingVehicleClearOutArea.Count == 0)
+                return 0;
+
+            int count = 0;
+            for (int i = session.FillingVehicleClearOutVehicles.Count - 1; i >= 0; i--)
+            {
+                Vehicle vehicle = session.FillingVehicleClearOutVehicles[i];
+                Tile2i currentPosition = vehicle?.GroundPositionTile2i ?? default;
+                if (vehicle == null
+                    || vehicle.IsDestroyed
+                    || !vehicle.IsSpawned
+                    || !session.FillingVehicleClearOutArea.Contains(currentPosition))
+                {
+                    session.FillingVehicleClearOutVehicles.RemoveAt(i);
+                    if (vehicle != null)
+                        session.FillingVehicleClearOutLastPositions.Remove(vehicle);
+                    continue;
+                }
+
+                if (session.FillingVehicleClearOutHasMovementCheck
+                    && session.FillingVehicleClearOutLastPositions.TryGetValue(vehicle, out Tile2i lastPosition)
+                    && currentPosition == lastPosition)
+                {
+                    stuckVehicles++;
+                    session.FillingVehicleClearOutStuckVehicles.Add(vehicle);
+                }
+
+                session.FillingVehicleClearOutLastPositions[vehicle] = currentPosition;
+                count++;
+            }
+
+            session.FillingVehicleClearOutHasMovementCheck = true;
+            return count;
+        }
+
+        private static void ClearFarmingFillingVehicleClearOut(
+            FarmingPreparationSession session,
+            bool keepStuckCommitAllowance = false)
+        {
+            session.FillingVehicleClearOutPending = false;
+            session.FillingVehicleClearOutHasMovementCheck = false;
+            if (!keepStuckCommitAllowance)
+                session.FillingVehicleClearOutStuckVehicles.Clear();
+            session.FillingVehicleClearOutStartTick = int.MinValue;
+            session.FillingVehicleClearOutVehicles.Clear();
+            session.FillingVehicleClearOutLastPositions.Clear();
+            session.FillingVehicleClearOutArea.Clear();
+        }
+
+        private static void ReleaseEmptyTowerTrucksForFilling(
+            IAreaManagingTower tower,
+            FarmingPreparationSession session)
+        {
+            session.LastTruckAssignmentDetail = string.Empty;
+            if (!(tower is MineTower mineTower))
+                return;
+
+            int released = 0;
+            int loaded = 0;
+            int failed = 0;
+            var assignedVehicles = new List<Vehicle>();
+            foreach (Vehicle vehicle in mineTower.AllVehicles)
+                assignedVehicles.Add(vehicle);
+
+            foreach (Vehicle vehicle in assignedVehicles)
+            {
+                if (!(vehicle is Truck truck))
+                    continue;
+
+                if (truck.IsDestroyed)
+                    continue;
+
+                if (truck.IsNotEmpty)
+                {
+                    loaded++;
+                    continue;
+                }
+
+                if (session.ReleasedFillingTrucks.Contains(truck))
+                    continue;
+
+                session.ReleasedFillingTrucks.Add(truck);
+                try
+                {
+                    mineTower.UnassignVehicle(truck, true);
+                    released++;
+                }
+                catch
+                {
+                    failed++;
+                }
+            }
+
+            session.FillingTruckAssignmentsReleased = session.ReleasedFillingTrucks.Count > 0;
+            if (released > 0 || loaded > 0 || failed > 0)
+            {
+                session.LastTruckAssignmentDetail =
+                    $"Filling truck assignments: releasedNow={released}, releasedTotal={session.ReleasedFillingTrucks.Count}, waitingLoaded={loaded}, failed={failed}.";
+                LogDebug(session.LastTruckAssignmentDetail);
+            }
+        }
+
+        private static void RestoreTowerTrucksReleasedForFilling(
+            IAreaManagingTower tower,
+            FarmingPreparationSession session)
+        {
+            if (!session.FillingTruckAssignmentsReleased && session.ReleasedFillingTrucks.Count == 0)
+                return;
+
+            if (!(tower is MineTower mineTower))
+            {
+                session.ReleasedFillingTrucks.Clear();
+                session.FillingTruckAssignmentsReleased = false;
+                return;
+            }
+
+            int restored = 0;
+            int skipped = 0;
+            int failed = 0;
+            foreach (Truck truck in session.ReleasedFillingTrucks.ToList())
+            {
+                if (truck == null || truck.IsDestroyed)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                if (mineTower.AllVehicles.Contains(truck))
+                {
+                    skipped++;
+                    continue;
+                }
+
+                var assignedTo = truck.AssignedTo;
+                if (assignedTo.HasValue)
+                {
+                    skipped++;
+                    continue;
+                }
+
+                try
+                {
+                    mineTower.AssignVehicle(truck, true);
+                    restored++;
+                }
+                catch
+                {
+                    failed++;
+                }
+            }
+
+            session.ReleasedFillingTrucks.Clear();
+            session.FillingTruckAssignmentsReleased = false;
+            session.LastTruckAssignmentDetail =
+                $"Filling truck assignments restored: restored={restored}, skipped={skipped}, failed={failed}.";
+            LogDebug(session.LastTruckAssignmentDetail);
+        }
+
+        private static HashSet<Tile2i> BuildPendingFarmingFillingArea(FarmingPreparationSession session)
+        {
+            const int designationSize = 4;
+            const int margin = 2;
+            var area = new HashSet<Tile2i>();
+            foreach (FarmingOriginSession originState in session.Origins.Values)
+            {
+                if (!IsQueuedForFarmingFilling(originState))
+                    continue;
+
+                for (int x = originState.Origin.X - margin; x < originState.Origin.X + designationSize + margin; x++)
+                {
+                    for (int y = originState.Origin.Y - margin; y < originState.Origin.Y + designationSize + margin; y++)
+                        area.Add(new Tile2i(x, y));
+                }
+            }
+
+            return area;
         }
 
         private static void AdvancePreparingOrigin(FarmingOriginSession originState, FarmingAnalysisRow row)
@@ -962,10 +1261,12 @@ namespace AutoTerrainDesignations
             sb.AppendLine($"  Active origins={session.Origins.Count}, Analysis/Leveling={analysis}, Preparing={preparing}, ReadyForFilling={ready}, Filling={filling}, Done={done}, Blocked={blocked}");
             if (session.TowerDumpRulesOwned)
                 sb.AppendLine("  Tower dump rules are temporarily restricted to farmable products.");
-            if (!string.IsNullOrEmpty(session.LastFillingSequenceDetail))
-                sb.AppendLine("  " + session.LastFillingSequenceDetail);
-            if (!string.IsNullOrEmpty(session.LastExcavatorRecallDetail))
-                sb.AppendLine("  " + session.LastExcavatorRecallDetail);
+            if (!string.IsNullOrEmpty(session.LastFillingActivationDetail))
+                sb.AppendLine("  " + session.LastFillingActivationDetail);
+            if (!string.IsNullOrEmpty(session.LastVehicleClearOutDetail))
+                sb.AppendLine("  " + session.LastVehicleClearOutDetail);
+            if (!string.IsNullOrEmpty(session.LastTruckAssignmentDetail))
+                sb.AppendLine("  " + session.LastTruckAssignmentDetail);
             if (!string.IsNullOrEmpty(session.LastDroppedOriginDetail))
                 sb.AppendLine("  " + session.LastDroppedOriginDetail);
             if (!string.IsNullOrEmpty(session.LastAccessRampDetail))
@@ -977,13 +1278,16 @@ namespace AutoTerrainDesignations
             if (maxRows.HasValue)
                 orderedOrigins = orderedOrigins.Take(maxRows.Value);
 
-            foreach (FarmingOriginSession originState in orderedOrigins)
+            if (!maxRows.HasValue || maxRows.Value > 0)
             {
-                sb.AppendLine($"  {originState.Phase}: ({originState.Origin.X},{originState.Origin.Y}) target={originState.TargetHeight} {originState.Detail}".TrimEnd());
-            }
+                foreach (FarmingOriginSession originState in orderedOrigins)
+                {
+                    sb.AppendLine($"  {originState.Phase}: ({originState.Origin.X},{originState.Origin.Y}) target={originState.TargetHeight} {originState.Detail}".TrimEnd());
+                }
 
-            if (maxRows.HasValue && session.Origins.Count > maxRows.Value)
-                sb.AppendLine($"  ... {session.Origins.Count - maxRows.Value} more origin(s) omitted.");
+                if (maxRows.HasValue && session.Origins.Count > maxRows.Value)
+                    sb.AppendLine($"  ... {session.Origins.Count - maxRows.Value} more origin(s) omitted.");
+            }
 
             return sb.ToString().TrimEnd();
         }
