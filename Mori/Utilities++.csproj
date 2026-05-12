@@ -1,0 +1,62 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <AssemblyName>Utilities++</AssemblyName>
+    <RootNamespace>UtilitiesPP</RootNamespace>
+    <Nullable>disable</Nullable>
+    <LangVersion>9</LangVersion>
+    <Optimize>true</Optimize>
+    <GameDir>E:\Steam\steamapps\common\Captain of Industry</GameDir>
+    <HarmonyDir>$(NuGetPackageRoot)lib.harmony\2.4.2\lib\net48</HarmonyDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Mafi">
+      <HintPath>$(GameDir)\Captain of Industry_Data\Managed\Mafi.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mafi.Core">
+      <HintPath>$(GameDir)\Captain of Industry_Data\Managed\Mafi.Core.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Mafi.Unity">
+      <HintPath>$(GameDir)\Captain of Industry_Data\Managed\Mafi.Unity.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="UnityEngine.CoreModule">
+      <HintPath>$(GameDir)\Captain of Industry_Data\Managed\UnityEngine.CoreModule.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="0Harmony">
+      <HintPath>$(HarmonyDir)\0Harmony.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+  </ItemGroup>
+
+  <!-- Translation files to ship with the mod -->
+  <ItemGroup>
+    <TranslationFiles Include="$(ProjectDir)translations\*.*" />
+  </ItemGroup>
+
+  <Target Name="CopyToMods" AfterTargets="Build">
+    <!-- Deploy DLL + manifest -->
+    <MakeDir Directories="C:\Users\YOURNAME\AppData\Roaming\Captain of Industry\Mods\your-mod-id" />
+    <Copy SourceFiles="$(TargetPath)"
+          DestinationFolder="C:\Users\YOURNAME\AppData\Roaming\Captain of Industry\Mods\your-mod-id"
+          OverwriteReadOnlyFiles="true" />
+    <Copy SourceFiles="$(ProjectDir)manifest.json"
+          DestinationFolder="C:\Users\YOURNAME\AppData\Roaming\Captain of Industry\Mods\your-mod-id"
+          OverwriteReadOnlyFiles="true" />
+    <Copy SourceFiles="$(HarmonyDir)\0Harmony.dll"
+          DestinationFolder="C:\Users\YOURNAME\AppData\Roaming\Captain of Industry\Mods\your-mod-id"
+          OverwriteReadOnlyFiles="true" />
+
+    <!-- Deploy translation files -->
+    <MakeDir Directories="C:\Users\YOURNAME\AppData\Roaming\Captain of Industry\Mods\your-mod-id\translations" />
+    <Copy SourceFiles="@(TranslationFiles)"
+          DestinationFolder="C:\Users\YOURNAME\AppData\Roaming\Captain of Industry\Mods\your-mod-id\translations"
+          OverwriteReadOnlyFiles="true" />
+  </Target>
+
+</Project>

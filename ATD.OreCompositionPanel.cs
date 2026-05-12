@@ -102,7 +102,9 @@ namespace AutoTerrainDesignations
             try
             {
                 var contentCol = new Column(2.pt());
-                var promptLabel = new Label(new LocStrFormatted("Press \u21ba to scan ore composition."))
+                var promptLabel = new Label(new LocStrFormatted(AtdLocalization.Tr(
+                        "panel.ore.prompt_scan",
+                        "Press \u21ba to scan ore composition.")))
                     .Color(Theme.InactiveColor);
                 contentCol.Add(promptLabel);
 
@@ -120,8 +122,12 @@ namespace AutoTerrainDesignations
                 };
 
                 var orePanel = new PanelWithHeader()
-                    .Title(new LocStrFormatted("Ore Composition"),
-                           new LocStrFormatted($"Ore resources within this tower's current mining designations. (Does not account for potential landslides.) [{AutoTerrainDesignationsMod.ModMarker}]"));
+                    .Title(new LocStrFormatted(AtdLocalization.Tr(
+                               "panel.ore.title",
+                               "Ore Composition")),
+                           new LocStrFormatted(AtdLocalization.Tt(
+                               "panel.ore.description",
+                               "Ore resources within this tower's current mining designations. (Does not account for potential landslides.)")));
                 orePanel.Collapsed(AutoTerrainDesignationsMod.OreCompositionPanelCollapsed);
 
                 orePanel.Header.Add(new ButtonIcon(Button.General,
@@ -134,7 +140,9 @@ namespace AutoTerrainDesignations
                     .Compact()
                     .IconSize(14.px())
                     .MarginLeft(4.pt())
-                    .Tooltip(new LocStrFormatted(AutoTerrainDesignationsMod.Tt("Scan ore composition"))));
+                    .Tooltip(new LocStrFormatted(AtdLocalization.Tt(
+                        "panel.ore.scan_tooltip",
+                        "Scan ore composition"))));
 
                 orePanel.BodyAdd(contentCol);
                 mainBody.InsertAt(1, orePanel);
@@ -154,7 +162,9 @@ namespace AutoTerrainDesignations
         internal static PanelWithHeader Build(Func<IAreaManagingTower?> getTower, object key)
         {
             var contentCol = new Column(2.pt());
-            var promptLabel = new Label(new LocStrFormatted("Press \u21ba to scan ore composition."))
+            var promptLabel = new Label(new LocStrFormatted(AtdLocalization.Tr(
+                    "panel.ore.prompt_scan",
+                    "Press \u21ba to scan ore composition.")))
                 .Color(Theme.InactiveColor);
             contentCol.Add(promptLabel);
 
@@ -171,8 +181,12 @@ namespace AutoTerrainDesignations
             };
 
             var orePanel = new PanelWithHeader()
-                .Title(new LocStrFormatted("Ore Composition"),
-                       new LocStrFormatted($"Ore resources within this tower's current mining designations. (Does not account for potential landslides.) [{AutoTerrainDesignationsMod.ModMarker}]"));
+                .Title(new LocStrFormatted(AtdLocalization.Tr(
+                           "panel.ore.title",
+                           "Ore Composition")),
+                       new LocStrFormatted(AtdLocalization.Tt(
+                           "panel.ore.description",
+                           "Ore resources within this tower's current mining designations. (Does not account for potential landslides.)")));
             orePanel.Collapsed(AutoTerrainDesignationsMod.OreCompositionPanelCollapsed);
 
             orePanel.Header.Add(new ButtonIcon(Button.General,
@@ -184,7 +198,9 @@ namespace AutoTerrainDesignations
                 .Compact()
                 .IconSize(14.px())
                 .MarginLeft(4.pt())
-                .Tooltip(new LocStrFormatted(AutoTerrainDesignationsMod.Tt("Scan ore composition"))));
+                .Tooltip(new LocStrFormatted(AtdLocalization.Tt(
+                    "panel.ore.scan_tooltip",
+                    "Scan ore composition"))));
 
             orePanel.BodyAdd(contentCol);
             return orePanel;
@@ -200,7 +216,9 @@ namespace AutoTerrainDesignations
 
             if (tower == null || s_desigManager == null || s_protosDb == null)
             {
-                col.Add(new Label(new LocStrFormatted("No tower selected.")));
+                col.Add(new Label(new LocStrFormatted(AtdLocalization.Tr(
+                    "panel.ore.no_tower",
+                    "No tower selected."))));
                 return;
             }
             var mineTower = tower as MineTower;
@@ -265,7 +283,9 @@ namespace AutoTerrainDesignations
 
             if (results.Count == 0)
             {
-                col.Add(new Label(new LocStrFormatted("No minable designations found.")));
+                col.Add(new Label(new LocStrFormatted(AtdLocalization.Tr(
+                    "panel.ore.no_minable_designations",
+                    "No minable designations found."))));
                 return;
             }
 
@@ -285,8 +305,14 @@ namespace AutoTerrainDesignations
                     entry.Button.Selected(isSelected);
                     string pName = $"<b><color=#{entry.Color.ToHexRgb()}>{entry.Product.Strings.Name.TranslatedString}</color></b>";
                     string tt = isSelected
-                        ? $"Excavators set to prioritize {pName}. Click to unset."
-                        : $"Set all excavators to prioritize {pName}.";
+                        ? AtdLocalization.TrFormat(
+                            "panel.ore.priority_selected_tooltip",
+                            "Excavators set to prioritize {0}. Click to unset.",
+                            pName)
+                        : AtdLocalization.TrFormat(
+                            "panel.ore.priority_set_tooltip",
+                            "Set all excavators to prioritize {0}.",
+                            pName);
                     entry.Button.Tooltip(new LocStrFormatted(tt));
                 }
             }
@@ -358,8 +384,14 @@ namespace AutoTerrainDesignations
                         .IconSize(14.px())
                         .AlignSelfCenter()
                         .Tooltip(new LocStrFormatted(selectedPriorityProduct == cardProduct
-                            ? $"Excavators set to prioritize <b><color=#{barColor.ToHexRgb()}>{name}</color></b>. Click to unset."
-                            : $"Set all excavators to prioritize <b><color=#{barColor.ToHexRgb()}>{name}</color></b>."));
+                            ? AtdLocalization.TrFormat(
+                                "panel.ore.priority_selected_tooltip",
+                                "Excavators set to prioritize {0}. Click to unset.",
+                                $"<b><color=#{barColor.ToHexRgb()}>{name}</color></b>")
+                            : AtdLocalization.TrFormat(
+                                "panel.ore.priority_set_tooltip",
+                                "Set all excavators to prioritize {0}.",
+                                $"<b><color=#{barColor.ToHexRgb()}>{name}</color></b>")));
                     priorityButtons.Add((cardProduct, priorityBtn, barColor));
                     card.Add(priorityBtn);
                 }

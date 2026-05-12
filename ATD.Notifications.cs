@@ -43,15 +43,37 @@ namespace AutoTerrainDesignations
 
         internal static void RegisterPrototypes(ProtoRegistrator registrator)
         {
-            RegisterWarning(registrator, "[ATD] {entity} could not start an access ramp", RampAccessFailedId);
-            RegisterWarning(registrator, "[ATD] {entity} could not fit a full access ramp", RampAccessTruncatedId);
-            RegisterWarning(registrator, "[ATD] {entity} could not path to the ramp", RampAccessNotAccessibleId);
-            RegisterSuccess(registrator, "[ATD] {entity} farming preparation and filling complete", FarmingCompleteId);
+            RegisterWarning(
+                registrator,
+                AtdLocalization.Tr(
+                    "notification.ramp_access_failed",
+                    "[ATD] {entity} could not start an access ramp"),
+                RampAccessFailedId);
+            RegisterWarning(
+                registrator,
+                AtdLocalization.Tr(
+                    "notification.ramp_access_truncated",
+                    "[ATD] {entity} could not fit a full access ramp"),
+                RampAccessTruncatedId);
+            RegisterWarning(
+                registrator,
+                AtdLocalization.Tr(
+                    "notification.ramp_access_not_accessible",
+                    "[ATD] {entity} could not path to the ramp"),
+                RampAccessNotAccessibleId);
             RegisterSuccess(
                 registrator,
-                "[ATD] {entity} completed an excavator",
+                AtdLocalization.Tr(
+                    "notification.farming_complete",
+                    "[ATD] {entity} farming preparation and filling complete"),
+                FarmingCompleteId);
+            RegisterSuccess(
+                registrator,
+                AtdLocalization.Tr(
+                    "notification.excavator_completed",
+                    "[ATD] {entity} completed an excavator"),
                 ExcavatorCompletedId,
-                "Assets/Unity/UserInterface/EntityIcons/Mining.png");
+                "Assets/Unity/UserInterface/Toolbar/Mining.svg");
         }
 
         private static void RegisterWarning(ProtoRegistrator registrator, string message, EntityNotificationProto.ID id)

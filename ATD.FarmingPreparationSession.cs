@@ -107,6 +107,16 @@ namespace AutoTerrainDesignations
         private static bool s_farmingSaveRestorePending;
         private const float FARMING_FILLING_STABILIZATION_SECONDS = 3f;
 
+        private static string FarmingTr(string key, string englishDefault)
+        {
+            return AtdLocalization.Tr("farming." + key, englishDefault);
+        }
+
+        private static string FarmingTrFormat(string key, string englishDefault, params object[] args)
+        {
+            return AtdLocalization.TrFormat("farming." + key, englishDefault, args);
+        }
+
         private static void ClearFarmingRuntimeState()
         {
             s_farmingDebugStoredDesignations.Clear();
@@ -188,16 +198,16 @@ namespace AutoTerrainDesignations
         private static string StartFarmingPreparationForTower(IAreaManagingTower? tower, bool autoStartFilling)
         {
             if (tower == null)
-                return "[ATD Farming] No tower selected.";
+                return FarmingTr("no_tower", "[ATD Farming] No tower selected.");
 
             if (s_desigManager == null)
-                return "[ATD Farming] Terrain designation manager is unavailable.";
+                return FarmingTr("designation_manager_unavailable", "[ATD Farming] Terrain designation manager is unavailable.");
 
             if (s_levelingProto == null)
-                return "[ATD Farming] Leveling prototype is unavailable.";
+                return FarmingTr("leveling_proto_unavailable", "[ATD Farming] Leveling prototype is unavailable.");
 
             if (!TryGetTowerEntityId(tower, out EntityId towerId) || !towerId.IsValid)
-                return "[ATD Farming] Selected tower has no stable entity id.";
+                return FarmingTr("no_stable_entity_id", "[ATD Farming] Selected tower has no stable entity id.");
 
             FarmingPreparationSession session = GetOrCreateFarmingPreparationSession(towerId);
             session.Tower = tower;
@@ -221,32 +231,34 @@ namespace AutoTerrainDesignations
                 if (CanStartTowerLevelFilling(session))
                     return BeginFarmingFillingForSession(tower, towerId, session);
 
-                return "[ATD Farming] Filling is waiting: all tracked tower designations must be ReadyForFilling or Done before tower dump rules can change.";
+                return FarmingTr(
+                    "filling_waiting_all_tracked_ready",
+                    "[ATD Farming] Filling is waiting: all tracked tower designations must be ReadyForFilling or Done before tower dump rules can change.");
             }
 
             session.Active = true;
             session.LastReport = autoStartFilling
-                ? "[ATD Farming] Farming automation enabled."
-                : "[ATD Farming] Stage 3 preparation session started.";
+                ? FarmingTr("automation_enabled", "[ATD Farming] Farming automation enabled.")
+                : FarmingTr("stage3_started", "[ATD Farming] Stage 3 preparation session started.");
             return session.LastReport;
         }
 
         internal static string RestoreFarmingPreparationForTower(IAreaManagingTower? tower)
         {
             if (tower == null)
-                return "[ATD Farming] No tower selected.";
+                return FarmingTr("no_tower", "[ATD Farming] No tower selected.");
 
             if (s_desigManager == null)
-                return "[ATD Farming] Terrain designation manager is unavailable.";
+                return FarmingTr("designation_manager_unavailable", "[ATD Farming] Terrain designation manager is unavailable.");
 
             if (s_levelingProto == null)
-                return "[ATD Farming] Leveling prototype is unavailable.";
+                return FarmingTr("leveling_proto_unavailable", "[ATD Farming] Leveling prototype is unavailable.");
 
             if (!TryGetTowerEntityId(tower, out EntityId towerId) || !towerId.IsValid)
-                return "[ATD Farming] Selected tower has no stable entity id.";
+                return FarmingTr("no_stable_entity_id", "[ATD Farming] Selected tower has no stable entity id.");
 
             if (!s_farmingPreparationSessions.TryGetValue(towerId, out FarmingPreparationSession session))
-                return "[ATD Farming] Farming automation is already disabled for this tower.";
+                return FarmingTr("already_disabled", "[ATD Farming] Farming automation is already disabled for this tower.");
 
             session.Enabled = false;
             session.Active = false;
@@ -280,40 +292,53 @@ namespace AutoTerrainDesignations
             if (failed == 0)
                 s_farmingPreparationSessions.Remove(towerId);
             else
-                session.LastReport = $"[ATD Farming] Restore attempted: restored={restored}, failed={failed}.";
+                session.LastReport = FarmingTrFormat(
+                    "restore_attempted",
+                    "[ATD Farming] Restore attempted: restored={0}, failed={1}.",
+                    restored,
+                    failed);
 
             return failed == 0
-                ? $"[ATD Farming] Restored {restored} Stage 3 origin(s) for this tower."
+                ? FarmingTrFormat(
+                    "restored_origins",
+                    "[ATD Farming] Restored {0} Stage 3 origin(s) for this tower.",
+                    restored)
                 : session.LastReport;
         }
 
         internal static string StartFarmingFillingForTower(IAreaManagingTower? tower)
         {
             if (tower == null)
-                return "[ATD Farming] No tower selected.";
+                return FarmingTr("no_tower", "[ATD Farming] No tower selected.");
 
             if (s_desigManager == null)
-                return "[ATD Farming] Terrain designation manager is unavailable.";
+                return FarmingTr("designation_manager_unavailable", "[ATD Farming] Terrain designation manager is unavailable.");
 
             if (s_levelingProto == null)
-                return "[ATD Farming] Leveling prototype is unavailable.";
+                return FarmingTr("leveling_proto_unavailable", "[ATD Farming] Leveling prototype is unavailable.");
 
             if (!TryGetTowerEntityId(tower, out EntityId towerId) || !towerId.IsValid)
-                return "[ATD Farming] Selected tower has no stable entity id.";
+                return FarmingTr("no_stable_entity_id", "[ATD Farming] Selected tower has no stable entity id.");
 
             if (!s_farmingPreparationSessions.TryGetValue(towerId, out FarmingPreparationSession session))
-                return "[ATD Farming] No Stage 3 preparation session exists for this tower. Run preparation first.";
+                return FarmingTr(
+                    "no_stage3_session",
+                    "[ATD Farming] No Stage 3 preparation session exists for this tower. Run preparation first.");
 
             session.Tower = tower;
             session.Enabled = true;
             session.AutoStartFilling = true;
             if (session.Active)
-                return "[ATD Farming] A preparation/filling session is already active for this tower.";
+                return FarmingTr(
+                    "session_already_active",
+                    "[ATD Farming] A preparation/filling session is already active for this tower.");
 
             if (RunFarmingPreparationPass(tower, session))
             {
                 session.Active = true;
-                return "[ATD Farming] Filling is waiting: one or more tower designations still need leveling or preparation.";
+                return FarmingTr(
+                    "filling_waiting_preparation",
+                    "[ATD Farming] Filling is waiting: one or more tower designations still need leveling or preparation.");
             }
 
             return BeginFarmingFillingForSession(tower, towerId, session);
@@ -325,28 +350,35 @@ namespace AutoTerrainDesignations
             FarmingPreparationSession session)
         {
             if (s_desigManager == null)
-                return "[ATD Farming] Stage 4 blocked: designation manager unavailable.";
+                return FarmingTr("stage4_designation_manager_unavailable", "[ATD Farming] Stage 4 blocked: designation manager unavailable.");
 
             if (s_levelingProto == null)
-                return "[ATD Farming] Stage 4 blocked: leveling prototype unavailable.";
+                return FarmingTr("stage4_leveling_proto_unavailable", "[ATD Farming] Stage 4 blocked: leveling prototype unavailable.");
 
             if (!CanStartTowerLevelFilling(session))
             {
                 session.LastReport = FormatFarmingPreparationSummary(session);
-                return "[ATD Farming] Filling is waiting: all tracked tower designations must be ReadyForFilling or Done before tower dump rules can change.";
+                return FarmingTr(
+                    "filling_waiting_all_tracked_ready",
+                    "[ATD Farming] Filling is waiting: all tracked tower designations must be ReadyForFilling or Done before tower dump rules can change.");
             }
 
             if (!HasQueuedFarmingFillingOrigins(session))
             {
                 session.LastReport = FormatFarmingPreparationSummary(session);
-                return "[ATD Farming] No origins are ready for filling/restoration. Run preparation first or wait for leveling/preparation to finish.";
+                return FarmingTr(
+                    "no_origins_ready",
+                    "[ATD Farming] No origins are ready for filling/restoration. Run preparation first or wait for leveling/preparation to finish.");
             }
 
             ReleaseEmptyTowerTrucksForFilling(tower, session);
             if (TryStartFarmingFillingVehicleClearOut(tower, session, out int vehiclesInside))
             {
                 session.Active = true;
-                session.LastReport = $"[ATD Farming] Stage 4 filling started: waiting briefly for {vehiclesInside} vehicle(s) to leave the fill area before committing fill designations.";
+                session.LastReport = FarmingTrFormat(
+                    "stage4_waiting_vehicles",
+                    "[ATD Farming] Stage 4 filling started: waiting briefly for {0} vehicle(s) to leave the fill area before committing fill designations.",
+                    vehiclesInside);
                 return session.LastReport;
             }
 
@@ -361,13 +393,23 @@ namespace AutoTerrainDesignations
                 RestoreTowerDumpRulesIfOwned(tower, session);
                 RestoreTowerTrucksReleasedForFilling(tower, session);
                 session.LastReport = failed > 0
-                    ? $"[ATD Farming] Stage 4 blocked: failed to restore {failed} ready origin(s)."
-                    : "[ATD Farming] Stage 4 blocked: no fill origins could be activated.";
+                    ? FarmingTrFormat(
+                        "stage4_failed_restore",
+                        "[ATD Farming] Stage 4 blocked: failed to restore {0} ready origin(s).",
+                        failed)
+                    : FarmingTr(
+                        "stage4_no_fill_origins",
+                        "[ATD Farming] Stage 4 blocked: no fill origins could be activated.");
                 return session.LastReport;
             }
 
             session.Active = true;
-            session.LastReport = $"[ATD Farming] Stage 4 filling started: activated={restored}, failed={failed}, farmableProducts={farmableProductCount}.";
+            session.LastReport = FarmingTrFormat(
+                "stage4_started",
+                "[ATD Farming] Stage 4 filling started: activated={0}, failed={1}, farmableProducts={2}.",
+                restored,
+                failed,
+                farmableProductCount);
             return session.LastReport;
         }
 
@@ -379,13 +421,13 @@ namespace AutoTerrainDesignations
         private static string FormatFarmingPreparationStatusForTower(IAreaManagingTower? tower, int maxRows)
         {
             if (tower == null)
-                return "[ATD Farming] No tower selected.";
+                return FarmingTr("no_tower", "[ATD Farming] No tower selected.");
 
             if (!TryGetTowerEntityId(tower, out EntityId towerId) || !towerId.IsValid)
-                return "[ATD Farming] Selected tower has no stable entity id.";
+                return FarmingTr("no_stable_entity_id", "[ATD Farming] Selected tower has no stable entity id.");
 
             if (!s_farmingPreparationSessions.TryGetValue(towerId, out FarmingPreparationSession session))
-                return "[ATD Farming] Farming automation: off.";
+                return FarmingTr("automation_off_period", "[ATD Farming] Farming automation: off.");
 
             return FormatFarmingPreparationReport(session, maxRows);
         }
@@ -949,7 +991,6 @@ namespace AutoTerrainDesignations
             out int vehiclesInside)
         {
             vehiclesInside = OrderVehiclesOutOfFillingAreaForTransition(tower, session);
-            session.FillingVehicleClearOutStuckVehicles.Clear();
             if (vehiclesInside <= 0)
                 return false;
 
@@ -991,6 +1032,7 @@ namespace AutoTerrainDesignations
             int inside = 0;
             int enqueued = 0;
             int notEnqueued = 0;
+            int assumedStuck = 0;
             int failed = 0;
 
             foreach (Vehicle vehicle in s_entitiesManager.GetAllEntitiesOfType<Vehicle>())
@@ -1011,24 +1053,33 @@ namespace AutoTerrainDesignations
                         continue;
 
                     inside++;
-                    session.FillingVehicleClearOutVehicles.Add(vehicle);
-                    session.FillingVehicleClearOutLastPositions[vehicle] = vehicle.GroundPositionTile2i;
                     vehicle.CancelAllJobsAndResetState();
                     if (s_parkAndWaitJobFactory.TryEnqueueParkingJobIfNeeded(vehicle, mineTower))
+                    {
                         enqueued++;
+                        session.FillingVehicleClearOutVehicles.Add(vehicle);
+                        session.FillingVehicleClearOutLastPositions[vehicle] = vehicle.GroundPositionTile2i;
+                    }
                     else
+                    {
                         notEnqueued++;
+                        assumedStuck++;
+                        session.FillingVehicleClearOutStuckVehicles.Add(vehicle);
+                    }
                 }
                 catch
                 {
                     failed++;
+                    session.FillingVehicleClearOutStuckVehicles.Add(vehicle);
+                    session.FillingVehicleClearOutVehicles.Remove(vehicle);
+                    session.FillingVehicleClearOutLastPositions.Remove(vehicle);
                 }
             }
 
             session.LastVehicleClearOutDetail =
-                $"Filling transition ordered vehicles out of fill area: scanned={total}, inside={inside}, enqueued={enqueued}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.";
+                $"Filling transition ordered vehicles out of fill area: scanned={total}, inside={inside}, enqueued={enqueued}, assumedStuck={assumedStuck}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.";
             LogDebug(session.LastVehicleClearOutDetail);
-            return inside;
+            return enqueued;
         }
 
         private static int PruneAndCountVehiclesInPendingFillingArea(
@@ -1291,11 +1342,22 @@ namespace AutoTerrainDesignations
 
             var sb = new StringBuilder();
             sb.AppendLine(session.Enabled
-                ? "[ATD Farming] Farming automation: on"
-                : "[ATD Farming] Farming automation: off");
-            sb.AppendLine($"  Active origins={session.Origins.Count}, Analysis/Leveling={analysis}, Preparing={preparing}, ReadyForFilling={ready}, Filling={filling}, Done={done}, Blocked={blocked}");
+                ? FarmingTr("automation_on", "[ATD Farming] Farming automation: on")
+                : FarmingTr("automation_off", "[ATD Farming] Farming automation: off"));
+            sb.AppendLine(FarmingTrFormat(
+                "summary_counts",
+                "  Active origins={0}, Analysis/Leveling={1}, Preparing={2}, ReadyForFilling={3}, Filling={4}, Done={5}, Blocked={6}",
+                session.Origins.Count,
+                analysis,
+                preparing,
+                ready,
+                filling,
+                done,
+                blocked));
             if (session.TowerDumpRulesOwned)
-                sb.AppendLine("  Tower dump rules are temporarily restricted to farmable products.");
+                sb.AppendLine(FarmingTr(
+                    "tower_dump_rules_restricted",
+                    "  Tower dump rules are temporarily restricted to farmable products."));
             if (!string.IsNullOrEmpty(session.LastFillingActivationDetail))
                 sb.AppendLine("  " + session.LastFillingActivationDetail);
             if (!string.IsNullOrEmpty(session.LastVehicleClearOutDetail))
@@ -1323,11 +1385,22 @@ namespace AutoTerrainDesignations
 
             var sb = new StringBuilder();
             sb.AppendLine(session.Enabled
-                ? "[ATD Farming] Farming automation: on"
-                : "[ATD Farming] Farming automation: off");
-            sb.AppendLine($"  Active origins={session.Origins.Count}, Analysis/Leveling={analysis}, Preparing={preparing}, ReadyForFilling={ready}, Filling={filling}, Done={done}, Blocked={blocked}");
+                ? FarmingTr("automation_on", "[ATD Farming] Farming automation: on")
+                : FarmingTr("automation_off", "[ATD Farming] Farming automation: off"));
+            sb.AppendLine(FarmingTrFormat(
+                "summary_counts",
+                "  Active origins={0}, Analysis/Leveling={1}, Preparing={2}, ReadyForFilling={3}, Filling={4}, Done={5}, Blocked={6}",
+                session.Origins.Count,
+                analysis,
+                preparing,
+                ready,
+                filling,
+                done,
+                blocked));
             if (session.TowerDumpRulesOwned)
-                sb.AppendLine("  Tower dump rules are temporarily restricted to farmable products.");
+                sb.AppendLine(FarmingTr(
+                    "tower_dump_rules_restricted",
+                    "  Tower dump rules are temporarily restricted to farmable products."));
             if (!string.IsNullOrEmpty(session.LastFillingActivationDetail))
                 sb.AppendLine("  " + session.LastFillingActivationDetail);
             if (!string.IsNullOrEmpty(session.LastVehicleClearOutDetail))
@@ -1353,7 +1426,10 @@ namespace AutoTerrainDesignations
                 }
 
                 if (maxRows.HasValue && session.Origins.Count > maxRows.Value)
-                    sb.AppendLine($"  ... {session.Origins.Count - maxRows.Value} more origin(s) omitted.");
+                    sb.AppendLine(FarmingTrFormat(
+                        "more_origins_omitted",
+                        "  ... {0} more origin(s) omitted.",
+                        session.Origins.Count - maxRows.Value));
             }
 
             return sb.ToString().TrimEnd();

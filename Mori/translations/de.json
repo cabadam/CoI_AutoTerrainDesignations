@@ -1,0 +1,68 @@
+{
+  "Utilities++": "Utilities++",
+
+  "Hide Belts/Pipes": "Bänder/Rohre ausblenden",
+
+  "Coming Soon": "Demnächst verfügbar",
+
+  "More utilities coming in future updates.": "Weitere Dienstprogramme folgen in zukünftigen Updates.",
+
+  "Surplus Power": "Überschuss­strom",
+
+  "Override the surplus-power setting on every applicable building when placing a blueprint or pasting a copy. 'Default' leaves each building's saved setting alone.": "Überschreibt die Überschussstrom-Einstellung jedes geeigneten Gebäudes beim Platzieren eines Bauplans oder Einfügen einer Kopie. „Standard“ behält die in jedem Gebäude gespeicherte Einstellung bei.",
+
+  "Hotkey: Ctrl+S cycles between modes.": "Tastenkürzel: Strg+S wechselt zwischen den Modi.",
+
+  "Default": "Standard",
+
+  "Surplus ON": "Überschuss EIN",
+
+  "Surplus OFF": "Überschuss AUS",
+
+  "Keep each building's saved surplus setting from the blueprint.": "Behält die im Bauplan gespeicherte Überschuss-Einstellung jedes Gebäudes bei.",
+
+  "Force every applicable building to consume only when there is surplus power.": "Erzwingt, dass jedes geeignete Gebäude nur bei Stromüberschuss verbraucht.",
+
+  "Force every applicable building to consume power normally (not surplus-only).": "Erzwingt, dass jedes geeignete Gebäude Strom normal verbraucht (nicht nur bei Überschuss).",
+
+  "Surplus Power: Default": "Überschussstrom: Standard",
+  "Surplus Power: ON": "Überschussstrom: EIN",
+  "Surplus Power: OFF": "Überschussstrom: AUS",
+
+  "Toggle levels to show or hide belts and pipes at each height.": "Schalte Ebenen um, um Bänder und Rohre in der jeweiligen Höhe ein- oder auszublenden.",
+
+  "Hotkeys: PageUp shows one more level, PageDown hides one more level.": "Tastenkürzel: Bild-auf blendet eine weitere Ebene ein, Bild-ab blendet eine weitere Ebene aus.",
+
+  "Note: If you hide levels while placing belts or pipes, connection arrows from hidden levels will still show. Exit and re-enter build mode to refresh.": "Hinweis: Wenn du Ebenen beim Platzieren von Bändern oder Rohren ausblendest, werden Verbindungspfeile von versteckten Ebenen weiterhin angezeigt. Verlasse den Baumodus und betritt ihn erneut, um die Ansicht zu aktualisieren.",
+
+
+  "Level {0}": "Ebene {0}",
+
+  "Show All": "Alle anzeigen",
+
+  "Hide All": "Alle ausblenden",
+
+  "Close": "Schließen",
+
+  "Balancers": "Ausgleicher",
+
+  "Lifts": "Aufzüge",
+
+  "Vehicle Mover": "Fahrzeug-Beweger",
+
+  "Select a vehicle type and drag to select vehicles on the map, then click a destination to move them.": "Wähle einen Fahrzeugtyp aus und ziehe einen Rahmen, um Fahrzeuge auf der Karte zu markieren. Klicke dann auf ein Ziel, um sie zu bewegen.",
+
+  "Select vehicle type": "Fahrzeugtyp auswählen",
+
+  "All Types": "Alle Typen",
+
+  "Activate Drag Tool": "Auswahlwerkzeug aktivieren",
+
+  "Drag to select vehicles...": "Ziehen, um Fahrzeuge auszuwählen...",
+
+  "Click destination for {0} vehicles": "Klicke auf das Ziel für {0} Fahrzeuge",
+
+  "No vehicles found in selection": "Keine Fahrzeuge in der Auswahl gefunden",
+
+  "Moved {0} vehicles": "{0} Fahrzeuge bewegt"
+}

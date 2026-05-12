@@ -923,8 +923,12 @@ namespace AutoTerrainDesignations
                     if (innerItem.m_btn is ButtonIcon innerBtnIcon)
                         innerBtnIcon.Icon.Element.transform.rotation = Quaternion.Euler(0f, 0f, 180f);
 
-                    outerItem.Tooltip(new LocStrFormatted(AutoTerrainDesignationsMod.Tt("Corner (outer): place convex corner ramps.")));
-                    innerItem.Tooltip(new LocStrFormatted(AutoTerrainDesignationsMod.Tt("Corner (inner): place concave corner ramps.")));
+                    outerItem.Tooltip(new LocStrFormatted(AtdLocalization.Tt(
+                        "toolbox.corner_outer.tooltip",
+                        "Corner (outer): place convex corner ramps.")));
+                    innerItem.Tooltip(new LocStrFormatted(AtdLocalization.Tt(
+                        "toolbox.corner_inner.tooltip",
+                        "Corner (inner): place concave corner ramps.")));
 
                     var divider = new VerticalDivider().AlignSelfStretch().MarginTopBottom(2.pt());
                     body.InsertAt(0, outerItem);

@@ -72,6 +72,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         AutoDepthDesignation.ApplyCornerPatches(m_harmony);
         AutoDepthDesignation.ApplyVehicleDepotPatches(m_harmony);
 
+        AtdLocalization.Initialize(Manifest.RootDirectoryPath);
         AtdNotifications.RegisterPrototypes(registrator);
     }
 

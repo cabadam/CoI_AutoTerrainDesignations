@@ -1,0 +1,5 @@
+Translation Credits
+===================
+
+German — Huge thanks to Dynorg & Gamer.1337 for extensive testing and completing the translation template for all languages
+Russian — Huge thanks to Serjevski for extensive testing and completing the translation template for all languages

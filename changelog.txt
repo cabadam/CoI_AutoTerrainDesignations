@@ -1,9 +1,15 @@
+v0.3.1d | 2026-05-13
+* Added localization support for ATD notifications, the **Terrain Designations** panel, the **Farmland Preparation** panel, the **Ore Composition** panel, and related tooltips/status text
+* Added English, Swedish, German, and Russian translation files under **translations**
+* Changed the excavator completion notification to use the mining toolbar icon
+
 v0.3.1c | 2026-05-11
 * Renamed the farming inspector panel to **Farmland Preparation** and simplified it to a single **Farmland Preparation Automation** checkbox.
 * Removed detailed farming preparation analysis from the inspector panel and removed the **atd_set_farming_analysis_debug** toggle.
 * Reduced farming automation tick overhead by keeping routine status updates to compact summaries; detailed per-origin farming diagnostics remain available through **atd_farming_dump_all_towers**.
 * Added **atd_set_re_enable_farming_on_load** / **atd_re_enable_farming_on_load** and the matching **ATDsettings.json** key **reEnableFarmingOnLoad** (default: true). On load, ATD re-enables farming automation for towers whose managed designations appear to be farmland preparation work.
 * Replaced the old experimental filling sequencing with a vehicle clear-out guard. Before final filling commits, ATD orders vehicles in the fill area to park at the tower, waits for moving vehicles to leave, rechecks before committing, and proceeds if a vehicle appears stuck or paused.
+* Improved the vehicle clear-out guard so vehicles that cannot receive an evacuation parking job are treated as stuck immediately instead of blocking filling forever.
 * Delays switching the tower to farmable dump products until immediately before final fill designations are committed, preventing dirt/topsoil from being used on remaining preparation work.
 * Temporarily releases empty tower-assigned trucks during final filling so they can help with dirt deliveries, while keeping at least one truck assigned to the tower for alerts and leftover debris work. Loaded tower trucks stay assigned until they dump their final prep cargo, and released trucks are reassigned to the tower when filling is done.
 * Kept completed temporary preparation designations active until final filling commits, so fresh spills on prepared ground can still be scooped up.

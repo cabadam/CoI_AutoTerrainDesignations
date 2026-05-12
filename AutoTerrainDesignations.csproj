@@ -30,6 +30,10 @@ is included by mistake, I intend to correct it promptly upon discovery or notice
   </Target>
 
   <ItemGroup>
+    <Compile Remove="Mori\**\*.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
     <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2">
       <IncludeAssets>build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>

@@ -69,6 +69,6 @@ During implementation: use a debug/status bar.
 
 ## Refactor out of the temporary .cs files created during development of farming designations
 
-### Consider improving land reclaim algo; consumes more dirt than necessary as it slides less steep
+## Analyze 3s stutter during preparation
 
-## Add a bonus: notification when Excavator is complete in the vehicle depot; maybe even the order-from-tower including pre-assign to tower?
+##Place leveling designations with a farm

@@ -1,0 +1,68 @@
+{
+  "Utilities++": "Utilities++",
+
+  "Hide Belts/Pipes": "Hide Belts/Pipes",
+
+  "Coming Soon": "Coming Soon",
+
+  "More utilities coming in future updates.": "More utilities coming in future updates.",
+
+  "Surplus Power": "Surplus Power",
+
+  "Override the surplus-power setting on every applicable building when placing a blueprint or pasting a copy. 'Default' leaves each building's saved setting alone.": "Override the surplus-power setting on every applicable building when placing a blueprint or pasting a copy. 'Default' leaves each building's saved setting alone.",
+
+  "Hotkey: Ctrl+S cycles between modes.": "Hotkey: Ctrl+S cycles between modes.",
+
+  "Default": "Default",
+
+  "Surplus ON": "Surplus ON",
+
+  "Surplus OFF": "Surplus OFF",
+
+  "Keep each building's saved surplus setting from the blueprint.": "Keep each building's saved surplus setting from the blueprint.",
+
+  "Force every applicable building to consume only when there is surplus power.": "Force every applicable building to consume only when there is surplus power.",
+
+  "Force every applicable building to consume power normally (not surplus-only).": "Force every applicable building to consume power normally (not surplus-only).",
+
+  "Surplus Power: Default": "Surplus Power: Default",
+  "Surplus Power: ON": "Surplus Power: ON",
+  "Surplus Power: OFF": "Surplus Power: OFF",
+
+  "Toggle levels to show or hide belts and pipes at each height.": "Toggle levels to show or hide belts and pipes at each height.",
+
+  "Hotkeys: PageUp shows one more level, PageDown hides one more level.": "Hotkeys: PageUp shows one more level, PageDown hides one more level.",
+
+  "Note: If you hide levels while placing belts or pipes, connection arrows from hidden levels will still show. Exit and re-enter build mode to refresh.": "Note: If you hide levels while placing belts or pipes, connection arrows from hidden levels will still show. Exit and re-enter build mode to refresh.",
+
+
+  "Level {0}": "Level {0}",
+
+  "Show All": "Show All",
+
+  "Hide All": "Hide All",
+
+  "Close": "Close",
+
+  "Balancers": "Balancers",
+
+  "Lifts": "Lifts",
+
+  "Vehicle Mover": "Vehicle Mover",
+
+  "Select a vehicle type and drag to select vehicles on the map, then click a destination to move them.": "Select a vehicle type and drag to select vehicles on the map, then click a destination to move them.",
+
+  "Select vehicle type": "Select vehicle type",
+
+  "All Types": "All Types",
+
+  "Activate Drag Tool": "Activate Drag Tool",
+
+  "Drag to select vehicles...": "Drag to select vehicles...",
+
+  "Click destination for {0} vehicles": "Click destination for {0} vehicles",
+
+  "No vehicles found in selection": "No vehicles found in selection",
+
+  "Moved {0} vehicles": "Moved {0} vehicles"
+}
