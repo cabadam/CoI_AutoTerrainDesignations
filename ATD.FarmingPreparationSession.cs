@@ -92,6 +92,7 @@ namespace AutoTerrainDesignations
             public string LastFillingActivationDetail { get; set; } = string.Empty;
             public string LastVehicleClearOutDetail { get; set; } = string.Empty;
             public string LastTruckAssignmentDetail { get; set; } = string.Empty;
+            public HashSet<Tile2i> PreparationShoulderOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> PreparationAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> FillingAccessRampOrigins { get; } = new HashSet<Tile2i>();
         }
@@ -254,6 +255,7 @@ namespace AutoTerrainDesignations
             session.FillingAllDoneSinceRealtime = null;
             ClearFarmingFillingVehicleClearOut(session);
             ClearFarmingFillingActivation(session);
+            RemoveOwnedFarmingPreparationShoulders(session);
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             RemoveOwnedFarmingAccessRamps(session, isFilling: true);
             RestoreTowerDumpRulesIfOwned(tower, session);
@@ -340,19 +342,6 @@ namespace AutoTerrainDesignations
                 return "[ATD Farming] No origins are ready for filling/restoration. Run preparation first or wait for leveling/preparation to finish.";
             }
 
-            List<LooseProductProto> farmableDumpProducts = GetFarmableDumpProducts();
-            if (farmableDumpProducts.Count == 0)
-            {
-                session.LastReport = "[ATD Farming] Stage 4 blocked: no farmable dump products discovered.";
-                return session.LastReport;
-            }
-
-            if (!TryApplyTowerFarmableDumpRules(tower, session, farmableDumpProducts, out string dumpRulesError))
-            {
-                session.LastReport = "[ATD Farming] Stage 4 blocked: " + dumpRulesError;
-                return session.LastReport;
-            }
-
             ReleaseEmptyTowerTrucksForFilling(tower, session);
             if (TryStartFarmingFillingVehicleClearOut(tower, session, out int vehiclesInside))
             {
@@ -360,6 +349,9 @@ namespace AutoTerrainDesignations
                 session.LastReport = $"[ATD Farming] Stage 4 filling started: waiting briefly for {vehiclesInside} vehicle(s) to leave the fill area before committing fill designations.";
                 return session.LastReport;
             }
+
+            if (!TrySwitchTowerToFarmableDumpRulesForFilling(tower, session, out int farmableProductCount))
+                return session.LastReport;
 
             ClearFarmingFillingActivation(session);
             int restored = ActivateFarmingFillingOrigins(session, out int failed);
@@ -375,7 +367,7 @@ namespace AutoTerrainDesignations
             }
 
             session.Active = true;
-            session.LastReport = $"[ATD Farming] Stage 4 filling started: activated={restored}, failed={failed}, farmableProducts={farmableDumpProducts.Count}.";
+            session.LastReport = $"[ATD Farming] Stage 4 filling started: activated={restored}, failed={failed}, farmableProducts={farmableProductCount}.";
             return session.LastReport;
         }
 
@@ -627,6 +619,7 @@ namespace AutoTerrainDesignations
                 {
                     RemoveOwnedFarmingAccessRamps(session, isFilling: false);
                     RemoveOwnedFarmingAccessRamps(session, isFilling: true);
+                    RemoveOwnedFarmingPreparationShoulders(session);
                     RestoreTowerDumpRulesIfOwned(tower, session);
                     RestoreTowerTrucksReleasedForFilling(tower, session);
                 }
@@ -775,6 +768,9 @@ namespace AutoTerrainDesignations
                     return true;
                 }
 
+                if (!TrySwitchTowerToFarmableDumpRulesForFilling(tower, session, out _))
+                    return true;
+
                 int activated = ActivateFarmingFillingOrigins(session, out int failed);
                 session.LastReport = FormatFarmingPreparationReport(session);
                 session.FillingAllDoneSinceRealtime = null;
@@ -879,7 +875,7 @@ namespace AutoTerrainDesignations
                     case FarmingOriginPhase.Blocked:
                         break;
                     default:
-                        AdvanceAnalysisOrigin(originState, row);
+                        AdvanceAnalysisOrigin(session, originState, row);
                         break;
                 }
             }
@@ -891,7 +887,10 @@ namespace AutoTerrainDesignations
             }
         }
 
-        private static void AdvanceAnalysisOrigin(FarmingOriginSession originState, FarmingAnalysisRow row)
+        private static void AdvanceAnalysisOrigin(
+            FarmingPreparationSession session,
+            FarmingOriginSession originState,
+            FarmingAnalysisRow row)
         {
             switch (row.State)
             {
@@ -908,10 +907,17 @@ namespace AutoTerrainDesignations
                     originState.Detail = row.Detail;
                     break;
                 case FarmingAnalysisState.NeedsPreparation:
-                    if (TryPlaceFarmingPreparationDesignation(originState.Origin, originState.OriginalData, originState.TargetHeight))
+                    if (TryPlaceFarmingPreparationDesignation(
+                        originState.Origin,
+                        originState.OriginalData,
+                        originState.TargetHeight,
+                        session,
+                        out int shoulderCount))
                     {
                         originState.Phase = FarmingOriginPhase.Preparing;
-                        originState.Detail = $"placed temporary preparation target={originState.TargetHeight - 1}";
+                        originState.Detail = shoulderCount > 0
+                            ? $"placed temporary preparation target={originState.TargetHeight - 1}, support shoulders={shoulderCount}"
+                            : $"placed temporary preparation target={originState.TargetHeight - 1}";
                     }
                     else
                     {
@@ -1098,9 +1104,16 @@ namespace AutoTerrainDesignations
             int released = 0;
             int loaded = 0;
             int failed = 0;
+            int assignedTrucks = 0;
             var assignedVehicles = new List<Vehicle>();
             foreach (Vehicle vehicle in mineTower.AllVehicles)
                 assignedVehicles.Add(vehicle);
+
+            foreach (Vehicle vehicle in assignedVehicles)
+            {
+                if (vehicle is Truck truck && !truck.IsDestroyed)
+                    assignedTrucks++;
+            }
 
             foreach (Vehicle vehicle in assignedVehicles)
             {
@@ -1119,10 +1132,14 @@ namespace AutoTerrainDesignations
                 if (session.ReleasedFillingTrucks.Contains(truck))
                     continue;
 
+                if (assignedTrucks <= 1)
+                    continue;
+
                 session.ReleasedFillingTrucks.Add(truck);
                 try
                 {
                     mineTower.UnassignVehicle(truck, true);
+                    assignedTrucks--;
                     released++;
                 }
                 catch
@@ -1214,6 +1231,29 @@ namespace AutoTerrainDesignations
             }
 
             return area;
+        }
+
+        private static bool TrySwitchTowerToFarmableDumpRulesForFilling(
+            IAreaManagingTower tower,
+            FarmingPreparationSession session,
+            out int farmableProductCount)
+        {
+            farmableProductCount = 0;
+            List<LooseProductProto> farmableDumpProducts = GetFarmableDumpProducts();
+            if (farmableDumpProducts.Count == 0)
+            {
+                session.LastReport = "[ATD Farming] Stage 4 blocked: no farmable dump products discovered.";
+                return false;
+            }
+
+            if (!TryApplyTowerFarmableDumpRules(tower, session, farmableDumpProducts, out string dumpRulesError))
+            {
+                session.LastReport = "[ATD Farming] Stage 4 blocked: " + dumpRulesError;
+                return false;
+            }
+
+            farmableProductCount = farmableDumpProducts.Count;
+            return true;
         }
 
         private static void AdvancePreparingOrigin(FarmingOriginSession originState, FarmingAnalysisRow row)

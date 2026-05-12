@@ -70,6 +70,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         m_harmony = new Harmony("com.auto-terrain-designations.mod");
         AutoDepthDesignation.ApplyInspectorPatches(m_harmony);
         AutoDepthDesignation.ApplyCornerPatches(m_harmony);
+        AutoDepthDesignation.ApplyVehicleDepotPatches(m_harmony);
 
         AtdNotifications.RegisterPrototypes(registrator);
     }
@@ -97,6 +98,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetOreCompositionPanelCollapsed(false);
         SetFarmingAnalysisDebugEnabled(false);
         SetReEnableFarmingOnLoad(true);
+        SetExcavatorCompletionNotificationsEnabled(true);
     }
 
     public static void SetMaxHeightDiff(int value)
@@ -190,6 +192,14 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     public static void SetReEnableFarmingOnLoad(bool value)
     {
         ReEnableFarmingOnLoad = value;
+    }
+
+    /// <summary>Whether ATD shows a green notification when a vehicle depot completes an excavator.</summary>
+    public static bool ExcavatorCompletionNotificationsEnabled { get; private set; } = true;
+
+    public static void SetExcavatorCompletionNotificationsEnabled(bool value)
+    {
+        ExcavatorCompletionNotificationsEnabled = value;
     }
 
     public void Initialize(DependencyResolver resolver, bool gameWasLoaded)

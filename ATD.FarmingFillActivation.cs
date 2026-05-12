@@ -53,6 +53,7 @@ namespace AutoTerrainDesignations
             }
 
             int activated = 0;
+            RemoveOwnedFarmingPreparationShoulders(session);
             foreach (FarmingOriginSession originState in queued)
             {
                 if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))

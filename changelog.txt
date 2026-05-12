@@ -1,11 +1,15 @@
 v0.3.1c | 2026-05-11
-* Renamed the farming inspector panel to **Farmland Preparation**.
-* Hid detailed farming prep analysis/status rows in the inspector by default; enable them with **atd_set_farming_analysis_debug true** when debugging is needed.
-* Added **atd_set_re_enable_farming_on_load** / **atd_re_enable_farming_on_load** and the matching **ATDsettings.json** key **reEnableFarmingOnLoad** (default: true). On load, ATD re-enables farming automation for towers whose managed designations appear to be farmland work: non-empty, all flat level designations.
+* Renamed the farming inspector panel to **Farmland Preparation** and simplified it to a single **Farmland Preparation Automation** checkbox.
+* Hid detailed farming preparation analysis from the inspector. It can still be enabled for console/debug work with **atd_set_farming_analysis_debug true**.
+* Added **atd_set_re_enable_farming_on_load** / **atd_re_enable_farming_on_load** and the matching **ATDsettings.json** key **reEnableFarmingOnLoad** (default: true). On load, ATD re-enables farming automation for towers whose managed designations appear to be farmland preparation work.
+* Replaced the old experimental filling sequencing with a vehicle clear-out guard. Before final filling commits, ATD orders vehicles in the fill area to park at the tower, waits for moving vehicles to leave, rechecks before committing, and proceeds if a vehicle appears stuck or paused.
+* Delays switching the tower to farmable dump products until immediately before final fill designations are committed, preventing dirt/topsoil from being used on remaining preparation work.
+* Temporarily releases empty tower-assigned trucks during final filling so they can help with dirt deliveries, while keeping at least one truck assigned to the tower for alerts and leftover debris work. Loaded tower trucks stay assigned until they dump their final prep cargo, and released trucks are reassigned to the tower when filling is done.
+* Kept completed temporary preparation designations active until final filling commits, so fresh spills on prepared ground can still be scooped up.
+* Added temporary sloped dumping support shoulders on exposed sides when adjacent terrain is below the target-1 preparation height, reducing dirt spill-off during final filling near steep drops or ocean edges without cascading farming preparation outward.
 * Reduced farming access/pathability check cost on large jobs by indexing reachable target tiles instead of checking every active designation for every visited path tile.
-* Keeps completed temporary preparation designations active until final filling commits, so fresh spills on prepared ground can still be scooped up.
-* Implemented vehicle clear-out guard: before filling starts, ATD orders vehicles in the fill area to park at the tower, waits for moving vehicles to leave, rechecks before committing, proceeds if a vehicle appears stuck or paused, temporarily releases empty tower-assigned trucks to help with filling, keeps loaded tower trucks assigned until they dump their final prep cargo, and reassigns the released trucks to the tower when filling is done.
 * Added a green one-time completion notification when farmland preparation and filling are all done.
+* Added a green one-time notification when any vehicle depot completes an excavator. Toggle with **excavatorCompletionNotifications** in **ATDsettings.json** or **atd_set_excavator_completion_notifications**.
 
 v0.3.1b | 2026-05-10
 * Continued alpha testing for experimental farming designations.
