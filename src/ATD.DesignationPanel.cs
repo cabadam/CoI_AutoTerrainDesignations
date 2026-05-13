@@ -625,12 +625,12 @@ namespace AutoTerrainDesignations
             DesignationMode designationMode)
         {
             bool isResourceMining = designationMode == DesignationMode.ResourceMining;
-            SetRowEnabled(flatteningDesignationTypeRow, isResourceMining);
-            SetRowEnabled(rampWidthRow, !isResourceMining);
-            SetRowEnabled(maxLayersRow, !isResourceMining);
-            SetRowEnabled(orePurityRow, !isResourceMining);
-            SetRowEnabled(clearanceRow, !isResourceMining);
-            SetRowEnabled(orePickerRow, !isResourceMining);
+            SetRowEnabled(flatteningDesignationTypeRow, !isResourceMining);
+            SetRowEnabled(rampWidthRow, isResourceMining);
+            SetRowEnabled(maxLayersRow, isResourceMining);
+            SetRowEnabled(orePurityRow, isResourceMining);
+            SetRowEnabled(clearanceRow, isResourceMining);
+            SetRowEnabled(orePickerRow, isResourceMining);
         }
 
         /// <summary>Enables or disables every interactive child in a row.</summary>
