@@ -7,14 +7,19 @@
 // intended to contain only original mod code/configuration; if MaFi Games material
 // is included by mistake, I intend to correct it promptly upon discovery or notice.
 // Auto Terrain Designations - Farming Fill Activation
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using Mafi;
+using Mafi.Core.Terrain;
+using Mafi.Core.Terrain.Designation;
 
 namespace AutoTerrainDesignations
 {
     public static partial class AutoDepthDesignation
     {
+        private const float FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE = 0.2f;
+
         private static bool HasQueuedFarmingFillingOrigins(FarmingPreparationSession session)
         {
             return session.Origins.Values.Any(IsQueuedForFarmingFilling);
@@ -29,6 +34,7 @@ namespace AutoTerrainDesignations
         private static void ClearFarmingFillingActivation(FarmingPreparationSession session)
         {
             session.LastFillingActivationDetail = string.Empty;
+            RemoveFarmingRimAlignmentDesignations(session);
             foreach (FarmingOriginSession origin in session.Origins.Values)
                 origin.IsFillingActivated = false;
         }
@@ -53,7 +59,6 @@ namespace AutoTerrainDesignations
             }
 
             int activated = 0;
-            RemoveOwnedFarmingPreparationShoulders(session);
             foreach (FarmingOriginSession originState in queued)
             {
                 if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
@@ -76,6 +81,136 @@ namespace AutoTerrainDesignations
             session.LastFillingActivationDetail =
                 $"Filling activation: activated queued fill origins={activated}, failed={failed}.";
             return activated;
+        }
+
+        /// <summary>
+        /// After committing fill designations, inspects each rim tile (one designation step outward
+        /// from the boundary of the filled area). If the probe tile one further step out has a surface
+        /// height within <see cref="FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE"/> of the adjacent origin's
+        /// target height, a flat fill designation is placed on the rim tile to repair ramps or other
+        /// disturbances left by the preparation phase.
+        /// </summary>
+        private static void RemoveFarmingRimAlignmentDesignations(FarmingPreparationSession session)
+        {
+            if (s_desigManager == null || session.RimAlignmentOrigins.Count == 0)
+                return;
+
+            foreach (Tile2i origin in new List<Tile2i>(session.RimAlignmentOrigins))
+            {
+                var current = s_desigManager.GetDesignationAt(origin);
+                if (current.HasValue && s_levelingProto != null && current.Value.Prototype == s_levelingProto)
+                    s_desigManager.RemoveDesignation(origin);
+            }
+
+            session.RimAlignmentOrigins.Clear();
+        }
+
+        private static int PlaceFarmingRimAlignmentDesignations(
+            FarmingPreparationSession session,
+            TerrainManager terrMgr)
+        {
+            if (s_desigManager == null || s_levelingProto == null)
+                return 0;
+
+            session.RimAlignmentOrigins.Clear();
+            HashSet<Tile2i> originSet = new HashSet<Tile2i>(session.Origins.Keys);
+            HashSet<Tile2i> rimSeen = new HashSet<Tile2i>();
+
+            int[] dx = { -4, 4, 0, 0 };
+            int[] dy = {  0, 0, -4, 4 };
+
+            int placed = 0;
+            foreach (KeyValuePair<Tile2i, FarmingOriginSession> kvp in session.Origins)
+            {
+                Tile2i origin = kvp.Key;
+                int targetHeight = kvp.Value.TargetHeight;
+
+                for (int d = 0; d < 4; d++)
+                {
+                    Tile2i rimOrigin = new Tile2i(origin.X + dx[d], origin.Y + dy[d]);
+                    if (originSet.Contains(rimOrigin))
+                        continue;  // neighbor is part of the designation area, not a rim
+
+                    if (!rimSeen.Add(rimOrigin))
+                        continue;  // already evaluated from another boundary origin
+
+                    var existingAtRim = s_desigManager.GetDesignationAt(rimOrigin);
+                    if (existingAtRim.HasValue)
+                    {
+                        // Only override leveling designations (our own rim or a preparation-phase
+                        // ramp). Non-leveling designations (mining, dumping, etc.) are left alone.
+                        if (existingAtRim.Value.Prototype != s_levelingProto)
+                            continue;
+                    }
+
+                    Tile2i probeOrigin = new Tile2i(rimOrigin.X + dx[d], rimOrigin.Y + dy[d]);
+
+                    var existingAtProbe = s_desigManager.GetDesignationAt(probeOrigin);
+                    if (existingAtProbe.HasValue)
+                    {
+                        // When the probe tile has a designation, check that both corners on its edge
+                        // facing the rim tile are at the target height — terrain may not reflect the
+                        // designation target yet (work in progress).
+                        if (!ProbeEdgeFacingRimIsAtTargetHeight(existingAtProbe.Value.Data, d, targetHeight))
+                            continue;
+                    }
+                    else
+                    {
+                        float probeHeightSum = 0f;
+                        int probeCellCount = 0;
+                        try
+                        {
+                            foreach (Tile2i cell in EnumerateDesignatableTileCells(probeOrigin))
+                            {
+                                probeHeightSum += terrMgr.GetHeight(cell).Value.ToFloat();
+                                probeCellCount++;
+                            }
+                        }
+                        catch
+                        {
+                            continue;  // probe tile out of bounds or otherwise inaccessible
+                        }
+
+                        if (probeCellCount == 0)
+                            continue;
+
+                        float probeAvgHeight = probeHeightSum / probeCellCount;
+                        if (Math.Abs(probeAvgHeight - targetHeight) > FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE)
+                            continue;
+                    }
+
+                    DesignationData rimData = BuildFlatLevelDesignationData(rimOrigin, targetHeight);
+                    if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, rimData))
+                    {
+                        placed++;
+                        session.RimAlignmentOrigins.Add(rimOrigin);
+                    }
+                }
+            }
+
+            return placed;
+        }
+
+        /// <summary>
+        /// Returns true if the two corners on the edge of <paramref name="data"/> that face back
+        /// toward the rim tile (i.e. the edge opposite to the direction traveled) are both equal to
+        /// <paramref name="targetHeight"/>.
+        /// Direction mapping (dx/dy arrays, index → movement direction):
+        ///   0 = -X (probe is West  of rim) → probe's East  edge: PlusX,   PlusXy
+        ///   1 = +X (probe is East  of rim) → probe's West  edge: Origin,   PlusY
+        ///   2 = -Y (probe is South of rim) → probe's North edge: Origin,   PlusX
+        ///   3 = +Y (probe is North of rim) → probe's South edge: PlusY,    PlusXy
+        /// </summary>
+        private static bool ProbeEdgeFacingRimIsAtTargetHeight(DesignationData data, int dir, int targetHeight)
+        {
+            switch (dir)
+            {
+                case 0: return data.PlusXTargetHeight.Value  == targetHeight && data.PlusXyTargetHeight.Value == targetHeight;
+                case 1: return data.OriginTargetHeight.Value == targetHeight && data.PlusYTargetHeight.Value  == targetHeight;
+                case 2: return data.OriginTargetHeight.Value == targetHeight && data.PlusXTargetHeight.Value  == targetHeight;
+                case 3: return data.PlusYTargetHeight.Value  == targetHeight && data.PlusXyTargetHeight.Value == targetHeight;
+                default: return false;
+            }
         }
     }
 }

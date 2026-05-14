@@ -123,6 +123,8 @@ namespace AutoTerrainDesignations
 
             var placedRampOrigins = new List<Tile2i>();
             var reservedRampTiles = new HashSet<Tile2i>(session.Origins.Keys);
+            foreach (Tile2i rimOrigin in session.RimAlignmentOrigins)
+                reservedRampTiles.Add(rimOrigin);
             RampPlacementOutcome outcome = CreateAccessRamp(
                 tower,
                 tileDepths,

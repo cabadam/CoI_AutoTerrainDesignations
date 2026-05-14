@@ -1,3 +1,9 @@
+v0.4.0a | 2026-05-14
+* Fixed: after farmland filling completes, flat level designations are now placed at rim tiles adjacent to the filled area where the surrounding terrain matches the fill target height, preventing V-shaped pits left by preparation-phase access ramps
+    - Rim designations are placed before the filling access ramp is evaluated, so the ramp avoids tiles already covered by a rim designation
+    - Rim designations are removed as soon as all fill origins reach Done, before the stabilization period, to prevent them from being picked up as new farming work
+
+
 v0.4.1 | 2026-05-14
 * Revised Swedish, German, and Russian translations — terminology aligned with base game wording and reviewed for accuracy across all panels, tooltips, and status messages
 

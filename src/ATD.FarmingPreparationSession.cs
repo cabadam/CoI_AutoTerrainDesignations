@@ -95,6 +95,7 @@ namespace AutoTerrainDesignations
             public HashSet<Tile2i> PreparationShoulderOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> PreparationAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> FillingAccessRampOrigins { get; } = new HashSet<Tile2i>();
+            public HashSet<Tile2i> RimAlignmentOrigins { get; } = new HashSet<Tile2i>();
         }
 
         private static readonly Dictionary<EntityId, FarmingPreparationSession> s_farmingPreparationSessions =
@@ -775,6 +776,13 @@ namespace AutoTerrainDesignations
             }
 
             ReleaseEmptyTowerTrucksForFilling(tower, session);
+
+            // Clean up preparation-phase artifacts and place rim alignment designations before
+            // the access-ramp check so the ramp avoids tiles already covered by a rim designation.
+            RemoveOwnedFarmingPreparationShoulders(session);
+            RemoveOwnedFarmingAccessRamps(session, isFilling: false);
+            PlaceFarmingRimAlignmentDesignations(session, terrMgr);
+
             EnsureFarmingAccessForCurrentPhase(tower, session, isFilling: true);
             var droppedOrigins = new List<Tile2i>();
             session.LastDroppedOriginDetail = string.Empty;
@@ -861,6 +869,10 @@ namespace AutoTerrainDesignations
                 session.FillingAllDoneSinceRealtime = null;
                 return hasFilling;
             }
+
+            // All original origins are done. Remove rim designations immediately — they are no
+            // longer needed and must be cleared before the farming scan picks them up as new work.
+            RemoveFarmingRimAlignmentDesignations(session);
 
             float now = Time.realtimeSinceStartup;
             if (!session.FillingAllDoneSinceRealtime.HasValue)
