@@ -122,7 +122,13 @@ namespace AutoTerrainDesignations
                 : towerSettings.RampWidth;
 
             var placedRampOrigins = new List<Tile2i>();
-            var reservedRampTiles = new HashSet<Tile2i>(session.Origins.Keys);
+            // Only reserve origins that still have an active designation so done tiles don't
+            // block the ramp entry when the last few preparation tiles are surrounded by
+            // already-finished neighbours.
+            var reservedRampTiles = new HashSet<Tile2i>(
+                session.Origins
+                    .Where(kvp => IsFarmingAccessWorkPhase(kvp.Value.Phase, isFilling))
+                    .Select(kvp => kvp.Key));
             foreach (Tile2i rimOrigin in session.RimAlignmentOrigins)
                 reservedRampTiles.Add(rimOrigin);
             RampPlacementOutcome outcome = CreateAccessRamp(
