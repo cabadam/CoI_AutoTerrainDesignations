@@ -26,6 +26,7 @@ using Mafi.Core.Terrain.Resources;
 using Mafi.Core.Vehicles.Excavators;
 using Mafi.Core.Vehicles.Jobs;
 using Mafi.Core.World;
+using CoI.AutoHelpers.Logging;
 using UnityEngine;
 
 namespace AutoTerrainDesignations
@@ -47,6 +48,7 @@ namespace AutoTerrainDesignations
         private static VehiclePathFindingParams? s_excavatorPathFindingParams;
         private static string? s_modRootDirectoryPath;
         private static int s_worldGeneration;
+        internal static readonly ModLogger s_log = new ModLogger("ATD");
 
         private const int BATCH_SIZE = 30;
         private const int MAX_BATCH_SIZE = 200;
@@ -117,7 +119,7 @@ namespace AutoTerrainDesignations
         [System.Diagnostics.Conditional("DEBUG")]
         private static void LogDebug(string message)
         {
-            Log.Info(message);
+            s_log.Info(message);
         }
 
         internal static ProductProto? GetSelectedOre(IAreaManagingTower tower)
@@ -262,22 +264,22 @@ namespace AutoTerrainDesignations
             if (protosDb.TryGetProto(new Proto.ID("MiningDesignator"), out TerrainDesignationProto proto))
                 s_miningProto = proto;
             else
-                UnityEngine.Debug.Log("AutoDepth: MiningDesignator proto not found");
+                s_log.Warning("MiningDesignator proto not found");
 
             if (protosDb.TryGetProto(new Proto.ID("DumpingDesignator"), out TerrainDesignationProto dumpProto))
                 s_dumpingProto = dumpProto;
             else
-                Log.Warning("[ATD] DumpingDesignator proto not found");
+                s_log.Warning("DumpingDesignator proto not found");
 
             if (protosDb.TryGetProto(new Proto.ID("LevelDesignator"), out TerrainDesignationProto levelProto))
                 s_levelingProto = levelProto;
             else
-                Log.Warning("[ATD] LevelDesignator proto not found");
+                s_log.Warning("LevelDesignator proto not found");
 
             if (protosDb.TryGetProto(new Proto.ID("Bedrock_Terrain"), out TerrainMaterialProto bedrockProto))
                 s_bedrockTerrainMaterial = bedrockProto;
             else
-                Log.Warning("[ATD] Bedrock terrain material not found");
+                s_log.Warning("Bedrock terrain material not found");
 
             InitializeTransientNotifications(notificationsManager, protosDb);
 

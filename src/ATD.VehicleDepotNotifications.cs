@@ -31,7 +31,7 @@ public static partial class AutoDepthDesignation
 
             if (tryBuildVehicle == null || postfix == null)
             {
-                Log.Warning("[ATD] Vehicle depot excavator notification patch target not found.");
+                s_log.Warning("Vehicle depot excavator notification patch target not found.");
                 return;
             }
 
@@ -39,7 +39,7 @@ public static partial class AutoDepthDesignation
         }
         catch (Exception ex)
         {
-            Log.Warning("[ATD] Failed to patch vehicle depot excavator notifications: " + ex.Message);
+            s_log.Warning("Failed to patch vehicle depot excavator notifications: " + ex.Message);
         }
     }
 
@@ -63,7 +63,7 @@ public static partial class AutoDepthDesignation
         }
         catch (Exception ex)
         {
-            Log.Warning("[ATD] Vehicle depot excavator notification failed: " + ex.Message);
+            s_log.Warning("Vehicle depot excavator notification failed: " + ex.Message);
         }
     }
 }

@@ -246,7 +246,7 @@ namespace AutoTerrainDesignations
                     !cornerHeights.TryGetValue(seCorner, out int hSE) ||
                     !cornerHeights.TryGetValue(swCorner, out int hSW))
                 {
-                    Log.Warning(string.Format("Missing corner heights for tile {0}", tile));
+                    s_log.Warning(string.Format("Missing corner heights for tile {0}", tile));
                     continue;
                 }
 
@@ -256,7 +256,7 @@ namespace AutoTerrainDesignations
 
                 if (!s_desigManager.AddOrReplaceDesignation(s_miningProto, data))
                 {
-                    Log.Warning(string.Format("Failed to create designation for tile {0}", tile));
+                    s_log.Warning(string.Format("Failed to create designation for tile {0}", tile));
                 }
 
                 designCount++;
@@ -319,7 +319,7 @@ namespace AutoTerrainDesignations
         {
             if (s_vehiclePathFindingManager == null || s_excavatorPathFindingParams == null)
             {
-                Log.Warning("[ATD] Ramp access check skipped because vehicle pathfinding is unavailable.");
+                s_log.Warning("Ramp access check skipped because vehicle pathfinding is unavailable.");
                 return true;
             }
 
@@ -651,7 +651,7 @@ namespace AutoTerrainDesignations
             }
             catch (Exception ex)
             {
-                Log.Warning("[ATD] Failed to collect debris props: " + ex.Message);
+                s_log.Warning("Failed to collect debris props: " + ex.Message);
             }
 
             if (origins.Count > 0)

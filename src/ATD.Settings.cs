@@ -129,18 +129,18 @@ namespace AutoTerrainDesignations
                         {
                             File.WriteAllText(genPath, BuildSettingsJson());
                             s_loadedSettingsPath = genPath;
-                            Log.Warning($"[ATD] ATDsettings.json not found \u2014 defaults written to: {genPath}");
+                            s_log.Warning($"ATDsettings.json not found \u2014 defaults written to: {genPath}");
                         }
                         catch (Exception writeEx)
                         {
                             s_loadedSettingsPath = null;
-                            Log.Warning($"[ATD] Could not write default ATDsettings.json: {writeEx.Message}");
+                            s_log.Warning($"Could not write default ATDsettings.json: {writeEx.Message}");
                         }
                     }
                     else
                     {
                         s_loadedSettingsPath = null;
-                        Log.Warning("[ATD] ATDsettings.json not found and mod root path is unknown; using built-in defaults.");
+                        s_log.Warning("ATDsettings.json not found and mod root path is unknown; using built-in defaults.");
                     }
                     return;
                 }
@@ -159,14 +159,14 @@ namespace AutoTerrainDesignations
                     if (TrySaveSettings(out string migratedPath))
                     {
                         string source = isLegacySettingsPath ? "legacy settings.json" : "ATDsettings.json";
-                        Log.Warning($"[ATD] {source} migrated to version {AutoTerrainDesignationsMod.ModVersion}: {migratedPath}");
+                        s_log.Warning($"{source} migrated to version {AutoTerrainDesignationsMod.ModVersion}: {migratedPath}");
                     }
                 }
             }
             catch (Exception ex)
             {
                 s_loadedSettingsPath = null;
-                Log.Warning($"[ATD] Failed to load ATDsettings.json: {ex.Message}");
+                s_log.Warning($"Failed to load ATDsettings.json: {ex.Message}");
             }
         }
 
@@ -418,7 +418,7 @@ namespace AutoTerrainDesignations
             }
             catch (Exception ex)
             {
-                Log.Warning($"[ATD] Error parsing ATDsettings.json: {ex.Message}");
+                s_log.Warning($"Error parsing ATDsettings.json: {ex.Message}");
             }
             return parsedVersion;
         }
@@ -746,7 +746,7 @@ namespace AutoTerrainDesignations
             if (target == null || target.Trim().Length == 0)
             {
                 savedPath = string.Empty;
-                Log.Warning("[ATD] Cannot save ATDsettings.json: mod root path is unknown.");
+                s_log.Warning("Cannot save ATDsettings.json: mod root path is unknown.");
                 return false;
             }
             string targetPath = target;
@@ -761,7 +761,7 @@ namespace AutoTerrainDesignations
             catch (Exception ex)
             {
                 savedPath = string.Empty;
-                Log.Warning($"[ATD] Failed to save ATDsettings.json: {ex.Message}");
+                s_log.Warning($"Failed to save ATDsettings.json: {ex.Message}");
                 return false;
             }
         }
