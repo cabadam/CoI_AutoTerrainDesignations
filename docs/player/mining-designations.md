@@ -122,6 +122,7 @@ Useful console commands:
 | `atd_set_ore_purity_level n` | Sets the global default ore purity preset. |
 | `atd_set_bottom_flattening on\|off` | Toggles the extra bottom-flattening pass. |
 | `atd_set_min_corridor_clearance n` | Sets the global default corridor clearance. |
+| `atd_set_ramp_notifications on\|off` | Enables or disables ramp access warning notifications on mine towers (Failed, Truncated, NotAccessible icons). |
 | `atd_save_settings` | Writes the current in-memory defaults to `ATDsettings.json`. |
 | `atd_reset_to_defaults` | Resets the in-memory defaults to the built-in values. |
 

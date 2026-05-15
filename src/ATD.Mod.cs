@@ -100,8 +100,10 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetMinCorridorClearance(2);
         SetTerrainDesignationsPanelCollapsed(false);
         SetOreCompositionPanelCollapsed(false);
+        SetFarmingPanelCollapsed(true);
         SetReEnableFarmingOnLoad(true);
         SetExcavatorCompletionNotificationsEnabled(true);
+        SetRampNotificationsEnabled(true);
     }
 
     public static void SetMaxHeightDiff(int value)
@@ -195,6 +197,22 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     public static void SetExcavatorCompletionNotificationsEnabled(bool value)
     {
         ExcavatorCompletionNotificationsEnabled = value;
+    }
+
+    /// <summary>Whether ATD shows ramp access warning notifications on mine towers.</summary>
+    public static bool RampNotificationsEnabled { get; private set; } = true;
+
+    public static void SetRampNotificationsEnabled(bool value)
+    {
+        RampNotificationsEnabled = value;
+    }
+
+    /// <summary>Default collapsed state for the Farming panel when a mine tower inspector is created.</summary>
+    public static bool FarmingPanelCollapsed { get; private set; } = true;
+
+    public static void SetFarmingPanelCollapsed(bool value)
+    {
+        FarmingPanelCollapsed = value;
     }
 
     public void Initialize(DependencyResolver resolver, bool gameWasLoaded)

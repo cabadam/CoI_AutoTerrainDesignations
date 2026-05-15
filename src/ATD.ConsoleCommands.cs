@@ -34,8 +34,10 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  MinCorridorClearance  = {AutoTerrainDesignationsMod.MinCorridorClearance}");
         sb.AppendLine($"  TerrainPanelCollapsed = {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}");
         sb.AppendLine($"  OrePanelCollapsed     = {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}");
+        sb.AppendLine($"  FarmingPanelCollapsed = {AutoTerrainDesignationsMod.FarmingPanelCollapsed}");
         sb.AppendLine($"  ReEnableFarmingOnLoad = {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}");
         sb.AppendLine($"  ExcavatorCompleteNtf  = {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}");
+        sb.AppendLine($"  RampNotifications     = {AutoTerrainDesignationsMod.RampNotificationsEnabled}");
         sb.Append(AutoDepthDesignation.FormatPurityArrays());
         return sb.ToString();
     }
@@ -153,6 +155,26 @@ public sealed class AtdConsoleCommands
 
         AutoTerrainDesignationsMod.SetExcavatorCompletionNotificationsEnabled(parsed);
         return $"[ATD] ExcavatorCompletionNotifications set to {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}.";
+    }
+
+    [ConsoleCommand(false, false, "Enables/disables ramp access warning notifications on mine towers (true/false, on/off, 1/0).", null)]
+    private string atdSetRampNotifications(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetRampNotificationsEnabled(parsed);
+        return $"[ATD] RampNotifications set to {AutoTerrainDesignationsMod.RampNotificationsEnabled}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets whether the Farming panel starts collapsed by default (true/false, on/off, 1/0).", null)]
+    private string atdSetFarmingPanelCollapsed(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetFarmingPanelCollapsed(parsed);
+        return $"[ATD] FarmingPanelCollapsed set to {AutoTerrainDesignationsMod.FarmingPanelCollapsed}.";
     }
 
     [ConsoleCommand(false, false, "Sets minBottomOreDensity for a purity level (0-4), clamped 0-1. Minimum ore/(ore+waste) ratio a zone must have to be included. E.g. atd_set_min_bottom_ore_density 2 0.25", null)]

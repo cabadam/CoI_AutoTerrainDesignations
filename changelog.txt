@@ -1,3 +1,7 @@
+v0.4.0e | 2026-05-15
+* Added **rampNotificationsEnabled** global setting: suppresses ramp access warning notifications (Failed, Truncated, NotAccessible) on all towers; toggle in **ATDsettings.json** or with **atd_set_ramp_notifications on|off**
+* Added **farmingPanelCollapsed** global setting: the **Farmland Preparation** inspector panel now starts collapsed by default; toggle in **ATDsettings.json** or with **atd_set_farming_panel_collapsed on|off**
+
 v0.4.0d | 2026-05-15
 * When multiple farming designation clusters are inaccessible at the same time, access ramps are now placed for all clusters in the same tick instead of one per tick; applies to both preparation and filling phases
 * Fixed: access ramps could overlap previously placed ramps from the same or another session, or land on any other existing designation

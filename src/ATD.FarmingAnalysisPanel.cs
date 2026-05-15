@@ -67,7 +67,7 @@ namespace AutoTerrainDesignations
                     .Title(
                         AtdLocalization.FarmingTitle,
                         AtdLocalization.Tip(AtdLocalization.FarmingDescription));
-                panel.Collapsed(false);
+                panel.Collapsed(AutoTerrainDesignationsMod.FarmingPanelCollapsed);
 
                 panel.BodyAdd(contentCol);
                 mainBody.InsertAt(2, panel);

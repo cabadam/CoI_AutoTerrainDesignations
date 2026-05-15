@@ -57,6 +57,16 @@ Set this to `false` if you prefer to always enable the toggle manually after a r
 
 Can also be changed at runtime — see console commands below.
 
+### `farmingPanelCollapsed` (ATDsettings.json)
+
+Controls the default collapsed state of the **Farmland Preparation** panel in the mine tower inspector.
+
+Default: `true` (collapsed)
+
+Set this to `false` if you prefer the panel to start expanded whenever you open a mine tower inspector.
+
+Can also be changed at runtime — see console commands below.
+
 ## Console commands
 
 Open the in-game developer console (default: **F8** or **~**) to run these.
@@ -64,6 +74,7 @@ Open the in-game developer console (default: **F8** or **~**) to run these.
 | Command | What it does |
 |---|---|
 | `atd_set_re_enable_farming_on_load true\|false` | Toggles the re-enable-on-load setting at runtime. Change is saved to `ATDsettings.json`. |
+| `atd_set_farming_panel_collapsed true\|false` | Sets whether the **Farmland Preparation** panel starts collapsed by default. Change is saved to `ATDsettings.json`. |
 | `atd_farming_analyze_origin x y` | Prints the read-only farming analysis for the designation at tile (x, y). Coordinates snap to the 4×4 designation origin. Useful for checking why a tile is `Blocked` or `NeedsPreparation`. |
 | `atd_farming_dump_all` | Prints full session state and terrain analysis for every mine tower. Useful for a broad overview of what all towers are doing. |
 

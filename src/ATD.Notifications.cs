@@ -180,6 +180,12 @@ namespace AutoTerrainDesignations
 
         private static void UpdateTowerRampWarningNotification(IAreaManagingTower tower, RampPlacementOutcome outcome)
         {
+            if (!AutoTerrainDesignationsMod.RampNotificationsEnabled)
+            {
+                ClearTowerRampWarningNotification(tower);
+                return;
+            }
+
             if (!TryGetRampWarningNotification(outcome, out TransientNotificationKind kind, out EntityNotificationProto? proto))
             {
                 ClearTowerRampWarningNotification(tower);

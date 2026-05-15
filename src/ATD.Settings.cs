@@ -415,6 +415,14 @@ namespace AutoTerrainDesignations
                 bool? excavatorCompletionNotifications = ParseBool(json, "excavatorCompletionNotifications");
                 if (excavatorCompletionNotifications.HasValue && ShouldPreserveBool(excavatorCompletionNotifications.Value, migrateGeneratedDefaults, true))
                     AutoTerrainDesignationsMod.SetExcavatorCompletionNotificationsEnabled(excavatorCompletionNotifications.Value);
+
+                bool? rampNotificationsEnabled = ParseBool(json, "rampNotificationsEnabled");
+                if (rampNotificationsEnabled.HasValue && ShouldPreserveBool(rampNotificationsEnabled.Value, migrateGeneratedDefaults, true))
+                    AutoTerrainDesignationsMod.SetRampNotificationsEnabled(rampNotificationsEnabled.Value);
+
+                bool? farmingPanelCollapsed = ParseBool(json, "farmingPanelCollapsed");
+                if (farmingPanelCollapsed.HasValue && ShouldPreserveBool(farmingPanelCollapsed.Value, migrateGeneratedDefaults, true))
+                    AutoTerrainDesignationsMod.SetFarmingPanelCollapsed(farmingPanelCollapsed.Value);
             }
             catch (Exception ex)
             {
@@ -697,6 +705,12 @@ namespace AutoTerrainDesignations
             sb.AppendLine();
             sb.AppendLine("  \"_comment_excavatorCompletionNotifications\": \"Whether ATD shows a green one-time notification when any vehicle depot completes an excavator. This can also be changed at runtime with atd_set_excavator_completion_notifications. Default: true.\",");
             sb.AppendLine($"  \"excavatorCompletionNotifications\": {BoolToJsonStr(AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_rampNotificationsEnabled\": \"Whether ATD shows ramp access warning notifications on mine towers (Failed, Truncated, NotAccessible). Disable to suppress ramp warning icons on all towers. This can also be changed at runtime with atd_set_ramp_notifications. Default: true.\",");
+            sb.AppendLine($"  \"rampNotificationsEnabled\": {BoolToJsonStr(AutoTerrainDesignationsMod.RampNotificationsEnabled)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_farmingPanelCollapsed\": \"Default collapsed state for the Farming panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: true.\",");
+            sb.AppendLine($"  \"farmingPanelCollapsed\": {BoolToJsonStr(AutoTerrainDesignationsMod.FarmingPanelCollapsed)},");
             sb.AppendLine();
             sb.AppendLine("  \"purityLevels\": {");
             sb.AppendLine("    \"_comment\": \"Thresholds applied at each Ore Purity Level. Arrays have 5 entries: [Off, Low, Med, High, Max]. Off (index 0) should always be 0 / no filtering. These define what each level means \u2014 edit if you want to retune the purity steps.\",");
