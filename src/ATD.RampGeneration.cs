@@ -1118,6 +1118,10 @@ namespace AutoTerrainDesignations
                 return false;
             if (DoesTileOverlapBuildingFootprint(tile, rampDepth, rampDirection))
                 return false;
+            // Reject tiles that already have any designation (e.g. ramps placed by other sessions,
+            // or in a previous tick by this session that weren't in reservedRampTiles yet).
+            if (s_desigManager != null && s_desigManager.GetDesignationAt(tile).HasValue)
+                return false;
             return true;
         }
 

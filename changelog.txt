@@ -1,4 +1,8 @@
 v0.4.0d | 2026-05-15
+* When multiple farming designation clusters are inaccessible at the same time, access ramps are now placed for all clusters in the same tick instead of one per tick; applies to both preparation and filling phases
+* Fixed: access ramps could overlap previously placed ramps from the same or another session, or land on any other existing designation
+* Fixed: shoulder designations could be placed on hidden (completed) farming origins belonging to another tower's session, potentially corrupting its designation tracking
+* Fixed: rim alignment designations could be placed on farming origins belonging to another tower's session
 * Ramp generation: removed the half-space direction filter so all four cardinal directions are evaluated as ramp candidates; scoring already ranks by alignment toward the tower, so preferred directions are still tried first while directions away from the tower serve as fallbacks when the preferred corridor is blocked by a building, debris, or void
 * Ramp placement now checks vehicle accessibility before committing a candidate; accessible candidates are preferred; if no accessible candidate exists the best available is placed and reported as not accessible
 * Farming access ramp failures now show a warning notification on the tower, matching mining ramp notification behavior; the notification is cleared when all farming designations become accessible

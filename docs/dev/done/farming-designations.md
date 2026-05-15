@@ -2,7 +2,7 @@
 
 ## Feature summary
 
-Farming Designations automates the preparation and topsoil filling of flat level designations so the resulting surface is farmable. It runs as a background per-tower session driven by `AutoTerrainDesignationsTicker`. The inspector panel is a control and status surface only; closing it does not pause automation.
+Farming Designations automates the preparation and topsoil filling of flat level designations so the resulting surface is farmable. It runs as a background per-tower session driven by `AutoTerrainDesignationsTicker`. Each tower gets its own `FarmingPreparationSession` (keyed by `EntityId`), which holds a `FarmingOriginSession` per tracked designation. The inspector panel is a control and status surface only; closing it does not pause automation.
 
 ---
 
@@ -12,9 +12,9 @@ Farming Designations automates the preparation and topsoil filling of flat level
 |---|---|
 | `ATD.FarmingAnalysis.cs` | Read-only per-origin analysis; produces `FarmingAnalysisRow` |
 | `ATD.FarmingPreparationSession.cs` | Session data structures, tick loop, state transitions, save hook |
-| `ATD.FarmingFillActivation.cs` | Stage 4 — filling: dump rule manipulation, vehicle clear-out, fill designation activation |
+| `ATD.FarmingFillActivation.cs` | Stage 4 — filling: dump rule manipulation, vehicle clear-out, fill designation activation, rim alignment |
 | `ATD.FarmingAccess.cs` | Access ramp placement (preparation and filling phases), result caching |
-| `ATD.FarmingDebugTransitions.cs` | Debug console commands (`atd_farming_*`) for single-origin testing |
+| `ATD.FarmingDebugTransitions.cs` | Shoulder placement, preparation transitions; debug console commands (`atd_farming_*`) |
 | `ATD.FarmingAnalysisPanel.cs` | UI: injects the Farmland Preparation panel into the mine tower inspector |
 
 All farming code lives inside the `AutoDepthDesignation` partial class (`namespace AutoTerrainDesignations`), except the session data classes and the panel helper.
@@ -44,11 +44,11 @@ Persisted in `FarmingOriginSession` across ticks.
 
 | Value | Meaning |
 |---|---|
-| `AnalysisLeveling` | Captured; terrain analysis says `NeedsLeveling`; waiting for vanilla leveling |
-| `Preparing` | Temporary preparation designation placed; waiting for excavators |
-| `ReadyForFilling` | Preparation done; level designation hidden; queued for tower-level filling |
-| `Filling` | Fill designation is active; waiting for trucks |
-| `Done` | Topsoil band validated as farmable; origin is complete |
+| `AnalysisLeveling` | Captured; terrain analysis says `NeedsLeveling`; the original level designation stays active; waiting for vanilla leveling |
+| `Preparing` | Surface was below preparation level or had non-farmable material in the topsoil band; temporary preparation designation placed at `targetHeight − 1`; waiting for excavators |
+| `ReadyForFilling` | Preparation done; level designation hidden (`IsHiddenUntilFilling = true`); queued for tower-level filling |
+| `Filling` | Original fill designation restored at `targetHeight`; waiting for trucks |
+| `Done` | Topsoil band validated as farmable; designation hidden; origin is complete |
 | `Blocked` | Progress failed (missing designation manager, placement failed, etc.) |
 
 ---
@@ -94,8 +94,7 @@ This handles dirt variants, compost, and any future or modded farmable materials
 
 ## "Hide until filling" pattern
 
-When an origin reaches `ReadyForFilling` or is already `Done`, ATD removes its
-visible level designation from the terrain manager:
+When an origin reaches `ReadyForFilling` or is already `Done`, ATD removes its visible level designation from the terrain manager:
 
 ```csharp
 s_desigManager.RemoveDesignation(originState.Origin);
@@ -104,47 +103,88 @@ originState.IsHiddenUntilFilling = true;
 
 The original `DesignationData` is still stored in `FarmingOriginSession`. When the tower enters the filling phase, the original level designations are restored for all queued origins in one pass.
 
-This ensures the game's own fill-completion detection can see the level
-designations and mark them done after trucks finish.
+This ensures the game's own fill-completion detection can see the level designations and mark them done after trucks finish.
 
 ---
 
-## Tower-level filling (Stage 4)
+## Tick loop
 
-Filling is tower-scoped, not per-origin, because dump rule ownership must be
-held at tower level.
+Every tick, each enabled session runs one of two passes:
 
-Steps when filling begins for a tower:
+- **Preparation pass** — if no `Filling`-phase origins are active and tower dump rules are not owned.
+- **Filling pass** — if at least one origin is in `Filling`, or the tower dump rules are currently owned by the session.
 
-1. **Vehicle clear-out** — all vehicles on the future fill area are parked to the
-   tower via `IParkAndWaitJobFactory`.  The session waits until the area is clear
-   (or treats a vehicle as "stuck" after it fails to move, allowing it to be ignored).
-2. **Dump rule snapshot** — the tower's current `DumpableProducts` set is recorded.
-3. **Dump rule restriction** — tower is set to only accept farmable products.
-4. **Fill designation activation** — stored original level designations are restored
-   for all `ReadyForFilling` origins.
-5. **Monitoring** — each tick re-analyses origins; `Done` ones clear, `Blocked`
-   ones are logged.  A stabilization window (`FARMING_FILLING_STABILIZATION_SECONDS`)
-   holds dump rules active briefly after all origins reach `Done` to let final
-   trucks finish.
-6. **Dump rule restore** — original dump rules are reinstated; session ends.
+When the preparation pass finishes with all origins `ReadyForFilling` or `Done`, `BeginFarmingFillingForSession` is called automatically.
+
+---
+
+## Preparation pass
+
+1. **Capture** (`CaptureCurrentFlatFarmingDesignations`): scans all level designations currently managed by the tower; any not yet tracked are added as new `AnalysisLeveling` origins. Rim alignment designations (`RimAlignmentOrigins`) are explicitly skipped so they are never captured as new work.
+
+2. **Advance** (`AdvanceCapturedFarmingOrigins`): for each origin, runs terrain analysis and advances the phase:
+   - `AnalysisLeveling`: `NeedsLeveling` → stays; `NeedsPreparation` → see below; `Done`/`ReadyForFilling` → designation hidden, origin waits.
+   - `NeedsPreparation`: original designation replaced with a temporary level designation at `targetHeight − 1`. **Shoulders** placed where adjacent terrain drops below that level. Transitions to `Preparing`.
+   - `Preparing`: re-analyzed each tick. When the surface reaches preparation level (`NeedsLeveling` or better) → transitions to `ReadyForFilling`, designation hidden.
+
+3. **Access check** (`EnsureFarmingAccessForCurrentPhase`, `isFilling: false`): BFS from the tower's nearest pathable tile. Unreachable designations are grouped into spatially disconnected clusters; one **mining-proto access ramp** is placed per cluster so all clusters are unblocked in the same tick. Results are cached per work-key and re-checked every `FARMING_ACCESS_RECHECK_TICKS = 10` ticks.
+
+Pass returns `true` (keep running) while any origin is `AnalysisLeveling` or `Preparing`, or while access is not yet confirmed.
+
+### Shoulders
+
+Sloped dumping designations placed immediately outside the boundary of a `Preparing` origin on any side where the adjacent terrain edge is below the preparation height. Each shoulder slopes from `preparationHeight` on its inner edge down to `preparationHeight − 1` on its outer edge. Tracked in `PreparationShoulderOrigins`; removed at the start of the filling pass.
+
+Shoulder placement skips any tile tracked as a farming origin by any active session — including hidden origins from other sessions that have no active designation in the manager — to prevent corrupting cross-session origin tracking.
+
+### Preparation ramps
+
+Mining-proto ramp designations placed by the access check. Tracked in `PreparationAccessRampOrigins`; removed at the start of the filling pass.
+
+Ramp tile eligibility (`IsFreeRampTile`):
+- Tiles already occupied by any designation (including designations placed by other sessions) are rejected.
+- Active work-phase origins (`AnalysisLeveling`/`Preparing`) of the current session are reserved.
+- Hidden (completed) origins of the current session are intentionally **not** reserved — ramps must be able to pass through already-finished neighbours to reach an inaccessible cluster.
+- All origins from other sessions (all phases) are reserved to prevent cross-session corruption.
+- Ramps placed in previous ticks by this session are also reserved before candidate collection begins.
+
+---
+
+## Transition to filling
+
+Filling begins when every tracked origin is either `ReadyForFilling` or `Done`.
+
+Steps in `BeginFarmingFillingForSession`:
+
+1. Empty trucks are unassigned from the tower so they don't compete with dump vehicles.
+2. Vehicles currently inside the pending fill area are ordered to park outside. The session waits until they leave (or until stuck vehicles are detected and ignored).
+3. Tower dump rules are switched to farmable products only (`TrySwitchTowerToFarmableDumpRulesForFilling`). The original rules are snapshotted for later restore.
+4. All queued origins (`ReadyForFilling` and un-activated `Done`) have their original level designation restored at `targetHeight`. Each origin moves to `Filling`.
+5. `ActivateFarmingFillingOrigins` records `IsFillingActivated = true`; `IsHiddenUntilFilling` is cleared.
 
 ATD **never** reads or modifies `ITerrainDumpingManager.ProductsAllowedToDump` (global dump rules). Only `MineTower.DumpableProducts` is touched.
 
 ---
 
-## Access ramps
+## Filling pass
 
-`ATD.FarmingAccess.cs` reuses the existing `CreateAccessRamp` path-finding
-infrastructure.
+Each tick while filling:
 
-- A **preparation** access ramp uses `MiningDesignator` proto.
-- A **filling** access ramp uses `DumpingDesignator` proto.
-- Results are cached per work-key (a hash of current work origin set and heights)
-  and re-checked every `FARMING_ACCESS_RECHECK_TICKS = 10` ticks.
-- Stale ramp designations are removed when there is no more work in that phase.
-- Ramp origins are tracked in `FarmingPreparationSession.PreparationAccessRampOrigins`
-  and `FillingAccessRampOrigins`.
+1. **Vehicle clear-out**: if a clear-out is still pending, waits until cached vehicles have left the fill area (or ignores stuck ones).
+2. **Cleanup**: removes preparation shoulders and preparation ramps.
+3. **Rim alignment** (`PlaceFarmingRimAlignmentDesignations`): places flat level designations at `targetHeight` on boundary tiles immediately outside the fill area, where the terrain one step further out is within 0.2 tiles of `targetHeight`. These repair terrain disturbances left by preparation ramps at the boundary. Uses the leveling proto. Tracked in `RimAlignmentOrigins`. Rim placement skips tiles tracked as farming origins by any other active session to prevent overwriting their active leveling designations.
+4. **Access check** (`EnsureFarmingAccessForCurrentPhase`, `isFilling: true`): same BFS approach as preparation. Unreachable filling designations are grouped into disconnected clusters; one **dumping-proto access ramp** is placed per cluster. Tracked in `FillingAccessRampOrigins`. The same tile eligibility rules apply as for preparation ramps.
+5. **Advance origins**: for each `Filling` or `Done` origin, checks the designation still exists. Runs `AnalyzeFarmingFillingDesignation`; transitions to `Done` when the farmable band check passes.
+
+### Completion
+
+When all origins reach `Done`:
+
+1. Rim alignment designations are removed immediately.
+2. A stabilization timer (`FARMING_FILLING_STABILIZATION_SECONDS`) runs to let any in-flight material settle.
+3. After stabilization: tower dump rules restored, released trucks reassigned, filling access ramps removed.
+4. A completion notification is shown on the tower.
+5. The session's `Active` flag is cleared.
 
 ---
 
@@ -152,14 +192,24 @@ infrastructure.
 
 ATD does **not** persist session state. On save:
 
-1. A save-start hook iterates active sessions and restores all temporary
-   preparation designations to their original level designations.
-2. `session.Active` is set to `session.Enabled` (i.e. paused if the toggle is on,
-   fully off if it was already off).
-3. After the save finishes, the ticker re-bootstraps sessions from the current
-   visible state.
+1. A save-start hook iterates active sessions and restores all temporary preparation designations to their original level designations; ramps, shoulders, and rim designations are removed; dump rules and truck assignments are restored.
+2. `session.Active` is set to `session.Enabled`.
+3. After the save finishes, the ticker re-bootstraps sessions from the current visible state.
 
 This makes farming tolerant of partial progress, player edits between sessions, and save migrations. The cost is that a running session must redo preparation analysis after every reload.
+
+**On load**: if `ReEnableFarmingOnLoad` is enabled in settings, any tower whose managed designations are all flat level designations has farming automation re-enabled automatically.
+
+---
+
+## Restoration (disable)
+
+Calling `RestoreFarmingPreparationForTower` (or toggling automation off):
+
+- Restores all original level designations.
+- Removes all owned shoulders, ramps, and rim designations.
+- Restores tower dump rules and truck assignments.
+- Removes the session when all origins are successfully restored.
 
 ---
 
@@ -179,14 +229,8 @@ Defined in `ATD.FarmingDebugTransitions.cs`:
 
 ## Key Mafi API facts confirmed during development
 
-- `TerrainDesignationsManager.AddOrReplaceDesignation(proto, data)` and
-  `RemoveDesignation(origin)` are safe to call mid-game and produce the expected
-  visual and pathfinding results.
-- `MineTower.CanAcceptDumpOf(product)` checks only the tower's own
-  `DumpableProducts` set — not the global `ITerrainDumpingManager`.
-- `LooseProductProto.TerrainMaterial` is `Option<TerrainMaterialProto>`;
-  `.Value.IsFarmable` is the correct farmability check.
-- `IAreaManagingTower.ManagedDesignations` and `MineTower.ManagedDumpingDesignations`
-  are safe to enumerate during a tick.
-- `FarmFertileGroundValidator` uses `0.9` as the minimum farmable thickness
-  threshold; ATD mirrors this as `MIN_FARMABLE_THICKNESS = 0.9003906f`.
+- `TerrainDesignationsManager.AddOrReplaceDesignation(proto, data)` and `RemoveDesignation(origin)` are safe to call mid-game and produce the expected visual and pathfinding results.
+- `MineTower.CanAcceptDumpOf(product)` checks only the tower's own `DumpableProducts` set — not the global `ITerrainDumpingManager`.
+- `LooseProductProto.TerrainMaterial` is `Option<TerrainMaterialProto>`; `.Value.IsFarmable` is the correct farmability check.
+- `IAreaManagingTower.ManagedDesignations` and `MineTower.ManagedDumpingDesignations` are safe to enumerate during a tick.
+- `FarmFertileGroundValidator` uses `0.9` as the minimum farmable thickness threshold; ATD mirrors this as `MIN_FARMABLE_THICKNESS = 0.9003906f`.

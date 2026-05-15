@@ -869,6 +869,11 @@ namespace AutoTerrainDesignations
                 if (session.Origins.ContainsKey(origin))
                     continue;
 
+                // Rim alignment designations are flat leveling designations placed just outside
+                // the farmed area during filling. Skip them so they are not captured as new work.
+                if (session.RimAlignmentOrigins.Contains(origin))
+                    continue;
+
                 if (s_farmingDebugStoredDesignations.TryGetValue(origin, out FarmingDebugStoredDesignation stored))
                 {
                     session.Origins[origin] = new FarmingOriginSession(origin, stored.OriginalData, stored.TargetHeight)

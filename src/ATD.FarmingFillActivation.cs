@@ -114,6 +114,18 @@ namespace AutoTerrainDesignations
 
             session.RimAlignmentOrigins.Clear();
             HashSet<Tile2i> originSet = new HashSet<Tile2i>(session.Origins.Keys);
+
+            // Collect origins tracked by other farming sessions so rim placement does not
+            // overwrite their active leveling designations.
+            var otherSessionOrigins = new HashSet<Tile2i>();
+            foreach (FarmingPreparationSession otherSession in s_farmingPreparationSessions.Values)
+            {
+                if (otherSession == session)
+                    continue;
+                foreach (Tile2i otherOrigin in otherSession.Origins.Keys)
+                    otherSessionOrigins.Add(otherOrigin);
+            }
+
             HashSet<Tile2i> rimSeen = new HashSet<Tile2i>();
 
             int[] dx = { -4, 4, 0, 0 };
@@ -140,6 +152,11 @@ namespace AutoTerrainDesignations
                         // Only override leveling designations (our own rim or a preparation-phase
                         // ramp). Non-leveling designations (mining, dumping, etc.) are left alone.
                         if (existingAtRim.Value.Prototype != s_levelingProto)
+                            continue;
+
+                        // Don't overwrite a leveling designation that belongs to another session's
+                        // farming origin — it would corrupt that session's origin tracking.
+                        if (otherSessionOrigins.Contains(rimOrigin))
                             continue;
                     }
 

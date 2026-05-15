@@ -187,6 +187,17 @@ namespace AutoTerrainDesignations
             if (session == null || s_desigManager == null || s_dumpingProto == null)
                 return 0;
 
+            // Build the set of all origins tracked by any farming session so shoulders are never
+            // placed on a hidden origin that has no active designation in the manager.
+            var allFarmingOrigins = new HashSet<Tile2i>(session.Origins.Keys);
+            foreach (FarmingPreparationSession otherSession in s_farmingPreparationSessions.Values)
+            {
+                if (otherSession == session)
+                    continue;
+                foreach (Tile2i otherOrigin in otherSession.Origins.Keys)
+                    allFarmingOrigins.Add(otherOrigin);
+            }
+
             int placed = 0;
             foreach (var shoulder in EnumerateNeededFarmingPreparationShoulders(origin, preparationHeight))
             {
@@ -194,7 +205,7 @@ namespace AutoTerrainDesignations
                 if (!IsFarmingDesignationOriginValid(s_desigManager.TerrainManager, shoulderOrigin))
                     continue;
 
-                if (session.Origins.ContainsKey(shoulderOrigin))
+                if (allFarmingOrigins.Contains(shoulderOrigin))
                     continue;
 
                 var existing = s_desigManager.GetDesignationAt(shoulderOrigin);

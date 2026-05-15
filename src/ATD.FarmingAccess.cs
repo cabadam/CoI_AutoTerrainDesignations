@@ -102,56 +102,97 @@ namespace AutoTerrainDesignations
                 return false;
             }
 
-            var tileDepths = new Dict<Tile2i, int>();
-            var cornerHeights = new Dict<Tile2i, int>();
-            foreach (TerrainDesignation designation in inaccessible)
-            {
-                DesignationData data = designation.Data;
-                tileDepths[data.OriginTile] = data.OriginTargetHeight.Value
-                    .Min(data.PlusXTargetHeight.Value)
-                    .Min(data.PlusXyTargetHeight.Value)
-                    .Min(data.PlusYTargetHeight.Value);
-                cornerHeights[data.OriginTile] = data.OriginTargetHeight.Value;
-                cornerHeights[data.PlusXTileCoord] = data.PlusXTargetHeight.Value;
-                cornerHeights[data.PlusXyTileCoord] = data.PlusXyTargetHeight.Value;
-                cornerHeights[data.PlusYTileCoord] = data.PlusYTargetHeight.Value;
-            }
-
-            int configuredRampWidth = inaccessible.Count < towerSettings.RampWidth
-                ? 1
-                : towerSettings.RampWidth;
-
-            var placedRampOrigins = new List<Tile2i>();
-            // Only reserve origins that still have an active designation so done tiles don't
-            // block the ramp entry when the last few preparation tiles are surrounded by
-            // already-finished neighbours.
+            // Reserve this session's active work-phase origins so ramps don't overwrite designations
+            // currently being prepared. Hidden origins (ReadyForFilling/Done) are intentionally NOT
+            // reserved — ramps must be allowed to pass through already-completed tiles to reach an
+            // inaccessible cluster that is surrounded by finished neighbours.
+            // All origins from other sessions are reserved regardless of phase to prevent ramps from
+            // corrupting another session's farming tracking.
             var reservedRampTiles = new HashSet<Tile2i>(
                 session.Origins
                     .Where(kvp => IsFarmingAccessWorkPhase(kvp.Value.Phase, isFilling))
                     .Select(kvp => kvp.Key));
             foreach (Tile2i rimOrigin in session.RimAlignmentOrigins)
                 reservedRampTiles.Add(rimOrigin);
-            RampPlacementOutcome outcome = CreateAccessRamp(
-                tower,
-                tileDepths,
-                cornerHeights,
-                s_desigManager.TerrainManager,
-                configuredRampWidth,
-                rampProto,
-                placedRampOrigins,
-                reservedRampTiles,
-                useLocalSurfaceReference: isFilling,
-                out Tile2i rampTopTile);
+            foreach (FarmingPreparationSession otherSession in s_farmingPreparationSessions.Values)
+            {
+                if (otherSession == session)
+                    continue;
+                foreach (Tile2i otherOrigin in otherSession.Origins.Keys)
+                    reservedRampTiles.Add(otherOrigin);
+            }
 
+            // Place one ramp per spatially disconnected cluster so all clusters are unblocked
+            // in the same tick instead of one per tick.
+            List<List<TerrainDesignation>> clusters = ClusterFarmingDesignationsByAdjacency(inaccessible);
             string mode = isFilling ? "dumping" : "excavation";
-            session.LastAccessRampRequestKey = requestKey;
             HashSet<Tile2i> ownedRamps = GetOwnedFarmingAccessRamps(session, isFilling);
-            foreach (Tile2i origin in placedRampOrigins)
-                ownedRamps.Add(origin);
+            // Also reserve ramps already placed in previous ticks so we never double-stack.
+            foreach (Tile2i existingRamp in ownedRamps)
+                reservedRampTiles.Add(existingRamp);
+            int clustersPlaced = 0;
+            int clustersFailed = 0;
+            var clusterDetails = new List<string>();
 
-            session.LastAccessRampDetail = outcome == RampPlacementOutcome.Failed
-                ? $"Access ramp failed for {inaccessible.Count} unreachable {mode} origin(s)."
-                : $"Access ramp placed for {inaccessible.Count} unreachable {mode} origin(s): {outcome} at ({rampTopTile.X},{rampTopTile.Y}).";
+            foreach (List<TerrainDesignation> cluster in clusters)
+            {
+                var tileDepths = new Dict<Tile2i, int>();
+                var cornerHeights = new Dict<Tile2i, int>();
+                foreach (TerrainDesignation designation in cluster)
+                {
+                    DesignationData data = designation.Data;
+                    tileDepths[data.OriginTile] = data.OriginTargetHeight.Value
+                        .Min(data.PlusXTargetHeight.Value)
+                        .Min(data.PlusXyTargetHeight.Value)
+                        .Min(data.PlusYTargetHeight.Value);
+                    cornerHeights[data.OriginTile] = data.OriginTargetHeight.Value;
+                    cornerHeights[data.PlusXTileCoord] = data.PlusXTargetHeight.Value;
+                    cornerHeights[data.PlusXyTileCoord] = data.PlusXyTargetHeight.Value;
+                    cornerHeights[data.PlusYTileCoord] = data.PlusYTargetHeight.Value;
+                }
+
+                int configuredRampWidth = cluster.Count < towerSettings.RampWidth
+                    ? 1
+                    : towerSettings.RampWidth;
+
+                var placedRampOrigins = new List<Tile2i>();
+                RampPlacementOutcome outcome = CreateAccessRamp(
+                    tower,
+                    tileDepths,
+                    cornerHeights,
+                    s_desigManager.TerrainManager,
+                    configuredRampWidth,
+                    rampProto,
+                    placedRampOrigins,
+                    reservedRampTiles,
+                    useLocalSurfaceReference: isFilling,
+                    out Tile2i rampTopTile);
+
+                foreach (Tile2i origin in placedRampOrigins)
+                {
+                    ownedRamps.Add(origin);
+                    reservedRampTiles.Add(origin);
+                }
+
+                Tile2i anchor = cluster[0].OriginTileCoord;
+                if (outcome == RampPlacementOutcome.Failed)
+                {
+                    clustersFailed++;
+                    clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: failed");
+                }
+                else
+                {
+                    clustersPlaced++;
+                    clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: {outcome} at ({rampTopTile.X},{rampTopTile.Y})");
+                }
+            }
+
+            session.LastAccessRampRequestKey = requestKey;
+            session.LastAccessRampDetail = clusters.Count == 1
+                ? (clustersFailed > 0
+                    ? $"Access ramp failed for {inaccessible.Count} unreachable {mode} origin(s)."
+                    : $"Access ramp placed for {inaccessible.Count} unreachable {mode} origin(s): {clusterDetails[0].Split(':')[1].Trim()}.")
+                : $"Access ramps for {clusters.Count} {mode} clusters: {clustersPlaced} placed, {clustersFailed} failed. [{string.Join("; ", clusterDetails)}]";
             SetFarmingAccessCache(session, workKey, ready: false, session.LastAccessRampDetail);
             return false;
         }
@@ -238,6 +279,59 @@ namespace AutoTerrainDesignations
             }
 
             return sb.ToString();
+        }
+
+        /// <summary>
+        /// Groups <paramref name="designations"/> into connected clusters where two designations
+        /// are considered adjacent when their origins are exactly 4 tiles apart on one axis
+        /// (the standard farming designation grid spacing).
+        /// </summary>
+        private static List<List<TerrainDesignation>> ClusterFarmingDesignationsByAdjacency(
+            List<TerrainDesignation> designations)
+        {
+            var clusters = new List<List<TerrainDesignation>>();
+            var remaining = new HashSet<int>();
+            for (int i = 0; i < designations.Count; i++)
+                remaining.Add(i);
+
+            while (remaining.Count > 0)
+            {
+                var cluster = new List<TerrainDesignation>();
+                var queue = new Queue<int>();
+                int seed = -1;
+                foreach (int i in remaining) { seed = i; break; }
+                remaining.Remove(seed);
+                queue.Enqueue(seed);
+                cluster.Add(designations[seed]);
+
+                while (queue.Count > 0)
+                {
+                    int idx = queue.Dequeue();
+                    Tile2i origin = designations[idx].OriginTileCoord;
+                    var toExpand = new List<int>();
+                    foreach (int other in remaining)
+                    {
+                        Tile2i otherOrigin = designations[other].OriginTileCoord;
+                        int dx = origin.X - otherOrigin.X;
+                        int dy = origin.Y - otherOrigin.Y;
+                        if (dx < 0) dx = -dx;
+                        if (dy < 0) dy = -dy;
+                        if ((dx == 4 && dy == 0) || (dx == 0 && dy == 4))
+                            toExpand.Add(other);
+                    }
+
+                    foreach (int other in toExpand)
+                    {
+                        remaining.Remove(other);
+                        queue.Enqueue(other);
+                        cluster.Add(designations[other]);
+                    }
+                }
+
+                clusters.Add(cluster);
+            }
+
+            return clusters;
         }
 
         private static bool IsFarmingAccessWorkPhase(FarmingOriginPhase phase, bool isFilling)
