@@ -1064,6 +1064,14 @@ namespace AutoTerrainDesignations
                         AdvanceAnalysisOrigin(session, originState, row);
                         break;
                 }
+
+                // If this origin is being prepared (at z-1), any adjacent Done origins that
+                // still have an active designation at z will fight: physics slides dirt from z
+                // to z-1, the Done origin's terrain drops, and trucks refill it indefinitely.
+                // Re-hide them now so they are suppressed for the duration of preparation and
+                // restored together with the new tiles during the filling phase.
+                if (originState.Phase == FarmingOriginPhase.Preparing)
+                    RehideAdjacentDoneOrigins(session, originState.Origin);
             }
 
             foreach (Tile2i origin in droppedOrigins)
@@ -1122,6 +1130,29 @@ namespace AutoTerrainDesignations
                     originState.Phase = FarmingOriginPhase.Blocked;
                     originState.Detail = row.Detail;
                     break;
+            }
+        }
+
+        private static void RehideAdjacentDoneOrigins(FarmingPreparationSession session, Tile2i origin)
+        {
+            Tile2i[] neighbors =
+            {
+                new Tile2i(origin.X - 4, origin.Y),
+                new Tile2i(origin.X + 4, origin.Y),
+                new Tile2i(origin.X, origin.Y - 4),
+                new Tile2i(origin.X, origin.Y + 4),
+            };
+            foreach (Tile2i neighbor in neighbors)
+            {
+                if (!session.Origins.TryGetValue(neighbor, out FarmingOriginSession neighborState))
+                    continue;
+                if (neighborState.Phase != FarmingOriginPhase.Done)
+                    continue;
+                if (neighborState.IsHiddenUntilFilling)
+                    continue;
+                HideFarmingDesignationUntilFilling(
+                    neighborState,
+                    "re-hidden while adjacent preparation is active; will be restored during filling");
             }
         }
 

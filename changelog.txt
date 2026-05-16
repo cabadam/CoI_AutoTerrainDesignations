@@ -1,4 +1,6 @@
 v0.4.0j | 2026-05-16 [unreleased]
+* Added diagonal corner rim alignment designations: when both adjacent cardinal rim designations are placed and both outward probe tiles pass the height criteria, a corner rim is placed at the diagonal position to close the corner of the fill area
+* Fixed: completed farming origins (Done phase, designation restored after a previous fill cycle) were not re-hidden when a new adjacent preparation designation was placed; dirt sliding from the z tile into the z-1 preparation area caused the Done origin's terrain to drop, triggering trucks to continuously refill it while excavators dug it out again; Done origins adjacent to any active preparation designation are now re-hidden and will be restored together with the new tiles during the filling phase
 
 v0.4.0i | 2026-05-16
 * Added **atd_set_auto_release_vehicles_when_idle** console command to set the global default for the **Auto-release when idle** toggle; also added **AutoReleaseWhenIdle** to the **atd_get_settings** output
