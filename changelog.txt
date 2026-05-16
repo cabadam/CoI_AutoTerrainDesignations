@@ -1,4 +1,7 @@
-v0.4.0h | 2026-05-16 [unreleased]
+v0.4.0i | 2026-05-16 [unreleased]
+* Added **atd_set_auto_release_vehicles_when_idle** console command to set the global default for the **Auto-release when idle** toggle; also added **AutoReleaseWhenIdle** to the **atd_get_settings** output
+
+v0.4.0h | 2026-05-16
 * Removed ramp warning icon from the **Terrain Designations** panel; ramp outcome warnings are now shown through the vanilla notification system
 
 v0.4.0g | 2026-05-16 [packaged]

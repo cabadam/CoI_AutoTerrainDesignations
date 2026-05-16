@@ -38,6 +38,7 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  ReEnableFarmingOnLoad = {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}");
         sb.AppendLine($"  ExcavatorCompleteNtf  = {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}");
         sb.AppendLine($"  RampNotifications     = {AutoTerrainDesignationsMod.RampNotificationsEnabled}");
+        sb.AppendLine($"  AutoReleaseWhenIdle   = {AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle}");
         sb.Append(AutoDepthDesignation.FormatPurityArrays());
         return sb.ToString();
     }
@@ -175,6 +176,16 @@ public sealed class AtdConsoleCommands
 
         AutoTerrainDesignationsMod.SetFarmingPanelCollapsed(parsed);
         return $"[ATD] FarmingPanelCollapsed set to {AutoTerrainDesignationsMod.FarmingPanelCollapsed}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets the global default for the Auto-release when idle toggle on new towers (true/false, on/off, 1/0).", null)]
+    private string atdSetAutoReleaseVehiclesWhenIdle(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetAutoReleaseVehiclesWhenIdle(parsed);
+        return $"[ATD] AutoReleaseVehiclesWhenIdle set to {AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle}.";
     }
 
     [ConsoleCommand(false, false, "Sets minBottomOreDensity for a purity level (0-4), clamped 0-1. Minimum ore/(ore+waste) ratio a zone must have to be included. E.g. atd_set_min_bottom_ore_density 2 0.25", null)]
