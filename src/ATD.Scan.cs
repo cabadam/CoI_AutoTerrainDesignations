@@ -58,6 +58,8 @@ namespace AutoTerrainDesignations
                     : current;
             }
         }
+
+        private const float FLATTENING_HEIGHT_EPSILON = 0.05f;
         /// <summary>
         /// Dispatches the create-designations request to the selected tower workflow.
         /// </summary>
@@ -379,6 +381,7 @@ namespace AutoTerrainDesignations
                 yield break;
             }
 
+            var terrMgr = s_desigManager.TerrainManager;
             var towerSettings = GetOrCreateTowerSettings(tower);
             int? targetElevation = towerSettings.MaxDepthToDigTo;
             if (!targetElevation.HasValue)
@@ -400,6 +403,7 @@ namespace AutoTerrainDesignations
             var bbMax = TerrainDesignation.GetOrigin(area.BoundingBoxMax);
             int target = targetElevation.Value;
             int designCount = 0;
+            int skippedNoWorkCount = 0;
 
             LogDebug(string.Format(
                 "Creating {0} flattening-mode designations from {1} to {2} at elevation {3}...",
@@ -415,6 +419,12 @@ namespace AutoTerrainDesignations
                     var tile = new Tile2i(x, y);
                     if (!IsDesignatableTileFullyInsideArea(area, tile))
                     {
+                        continue;
+                    }
+
+                    if (!FlatteningDesignationWouldPerformWork(tile, terrMgr, target, towerSettings.FlatteningDesignationType))
+                    {
+                        skippedNoWorkCount++;
                         continue;
                     }
 
@@ -434,13 +444,40 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            LogDebug(string.Format("Created {0} {1} flattening-mode designations at elevation {2}", designCount, FlatteningDesignationTypeText(towerSettings.FlatteningDesignationType), target));
+            LogDebug(string.Format("Created {0} {1} flattening-mode designations at elevation {2}; skipped {3} tile(s) with no work", designCount, FlatteningDesignationTypeText(towerSettings.FlatteningDesignationType), target, skippedNoWorkCount));
             ClearTowerLastRampOutcome(tower);
 
             if (inspectorInstance != null)
             {
                 OreCompositionPanel.ResetContent(inspectorInstance);
                 DesignationPanel.RefreshDisplays(inspectorInstance);
+            }
+        }
+
+        /// <summary>Returns true when a flat target designation would change at least one cell in the 4x4 origin.</summary>
+        /// <param name="tileOrigin">Designation origin to inspect.</param>
+        /// <param name="terrMgr">Terrain manager used for live surface heights.</param>
+        /// <param name="target">Flat target elevation.</param>
+        /// <param name="flatteningDesignationType">Selected flattening designation type.</param>
+        /// <returns>True when the selected designation type has work to perform; otherwise, false.</returns>
+        private static bool FlatteningDesignationWouldPerformWork(
+            Tile2i tileOrigin,
+            TerrainManager terrMgr,
+            int target,
+            FlatteningDesignationType flatteningDesignationType)
+        {
+            GetSurfaceHeightRangeInDesignatableTile(tileOrigin, terrMgr, out float minSurface, out float maxSurface);
+            switch (flatteningDesignationType)
+            {
+                case FlatteningDesignationType.Mining:
+                    return maxSurface > target + FLATTENING_HEIGHT_EPSILON;
+                case FlatteningDesignationType.Dumping:
+                    return minSurface < target - FLATTENING_HEIGHT_EPSILON;
+                case FlatteningDesignationType.Leveling:
+                    return minSurface < target - FLATTENING_HEIGHT_EPSILON
+                        || maxSurface > target + FLATTENING_HEIGHT_EPSILON;
+                default:
+                    return true;
             }
         }
 
@@ -938,7 +975,14 @@ namespace AutoTerrainDesignations
 
         private static float GetMinSurfaceHeightInDesignatableTile(Tile2i tileOrigin, TerrainManager terrMgr)
         {
-            float minHeight = float.MaxValue;
+            GetSurfaceHeightRangeInDesignatableTile(tileOrigin, terrMgr, out float minHeight, out _);
+            return minHeight;
+        }
+
+        private static void GetSurfaceHeightRangeInDesignatableTile(Tile2i tileOrigin, TerrainManager terrMgr, out float minHeight, out float maxHeight)
+        {
+            minHeight = float.MaxValue;
+            maxHeight = float.MinValue;
             foreach (Tile2i cell in EnumerateDesignatableTileCells(tileOrigin))
             {
                 float h = terrMgr.GetHeight(cell).Value.ToFloat();
@@ -946,9 +990,12 @@ namespace AutoTerrainDesignations
                 {
                     minHeight = h;
                 }
-            }
 
-            return minHeight;
+                if (h > maxHeight)
+                {
+                    maxHeight = h;
+                }
+            }
         }
 
         private static bool TryGetResourcesFromAllTiles(
