@@ -95,7 +95,15 @@ namespace AutoTerrainDesignations
                 {
                     // No pending excavation — release vehicles if not already in released state.
                     if (!s_idleReleasedVehiclesByTower.ContainsKey(towerId))
+                    {
                         ReleaseIdleVehicles(tower, towerId);
+                    }
+                    else
+                    {
+                        // Already in released state, but the player may have manually assigned new
+                        // vehicles since the last release pass. Evict any that aren't in our list.
+                        ReleaseStrayVehicles(tower, towerId);
+                    }
                 }
             }
         }
@@ -156,6 +164,126 @@ namespace AutoTerrainDesignations
                 LogDebug($"[IdleRelease] Tower {towerId}: released {releasedCount} vehicle(s) (failed={failedCount}).");
             else
                 LogDebug($"[IdleRelease] Tower {towerId}: no pending excavation, no vehicles to release.");
+        }
+
+        /// <summary>
+        /// Called when the tower is already in released state but may have vehicles that were
+        /// manually assigned after the initial release. Evicts any vehicle not already tracked
+        /// in the released list and adds it to the list.
+        /// </summary>
+        private static void ReleaseStrayVehicles(MineTower tower, EntityId towerId)
+        {
+            if (!s_idleReleasedVehiclesByTower.TryGetValue(towerId, out List<Vehicle> released))
+                return;
+
+            var snapshot = new List<Vehicle>();
+            foreach (Vehicle v in tower.AllVehicles)
+                snapshot.Add(v);
+
+            int releasedCount = 0;
+            foreach (Vehicle vehicle in snapshot)
+            {
+                if (vehicle == null || vehicle.IsDestroyed)
+                    continue;
+                if (released.Contains(vehicle))
+                    continue; // already tracked
+
+                try
+                {
+                    tower.UnassignVehicle(vehicle, true);
+                    released.Add(vehicle);
+                    releasedCount++;
+                }
+                catch { }
+            }
+
+            if (releasedCount > 0)
+                LogDebug($"[IdleRelease] Tower {towerId}: evicted {releasedCount} stray vehicle(s) assigned while idle.");
+        }
+
+        /// <summary>
+        /// Called by <c>beforeSave</c>: re-assigns all currently-released vehicles back to their
+        /// towers so the save file captures the assignment. The in-memory tracking dict is left
+        /// intact; <see cref="ReReleaseIdleVehiclesAfterSave"/> unassigns them again afterward.
+        /// </summary>
+        internal static void RestoreIdleReleasedVehiclesForSave()
+        {
+            if (s_entitiesManager == null || s_idleReleasedVehiclesByTower.Count == 0)
+                return;
+
+            foreach (MineTower tower in s_entitiesManager.GetAllEntitiesOfType<MineTower>())
+            {
+                if (tower.IsDestroyed)
+                    continue;
+
+                if (!TryGetTowerEntityId(tower, out EntityId towerId))
+                    continue;
+
+                if (!s_idleReleasedVehiclesByTower.TryGetValue(towerId, out List<Vehicle> released))
+                    continue;
+
+                int restored = 0;
+                foreach (Vehicle vehicle in released)
+                {
+                    if (vehicle == null || vehicle.IsDestroyed)
+                        continue;
+                    if (tower.AllVehicles.Contains(vehicle))
+                        continue;
+                    if (vehicle.AssignedTo.HasValue)
+                        continue;
+
+                    try
+                    {
+                        tower.AssignVehicle(vehicle, true);
+                        restored++;
+                    }
+                    catch { }
+                }
+
+                if (restored > 0)
+                    LogDebug($"[IdleRelease] Tower {towerId}: re-assigned {restored} vehicle(s) before save.");
+            }
+        }
+
+        /// <summary>
+        /// Called by <c>onSaveDone</c>: unassigns the vehicles that were temporarily re-assigned
+        /// by <see cref="RestoreIdleReleasedVehiclesForSave"/>, restoring the released state.
+        /// </summary>
+        internal static void ReReleaseIdleVehiclesAfterSave()
+        {
+            if (s_entitiesManager == null || s_idleReleasedVehiclesByTower.Count == 0)
+                return;
+
+            foreach (MineTower tower in s_entitiesManager.GetAllEntitiesOfType<MineTower>())
+            {
+                if (tower.IsDestroyed)
+                    continue;
+
+                if (!TryGetTowerEntityId(tower, out EntityId towerId))
+                    continue;
+
+                if (!s_idleReleasedVehiclesByTower.TryGetValue(towerId, out List<Vehicle> released))
+                    continue;
+
+                int rereleased = 0;
+                foreach (Vehicle vehicle in released)
+                {
+                    if (vehicle == null || vehicle.IsDestroyed)
+                        continue;
+                    if (!tower.AllVehicles.Contains(vehicle))
+                        continue;
+
+                    try
+                    {
+                        tower.UnassignVehicle(vehicle, true);
+                        rereleased++;
+                    }
+                    catch { }
+                }
+
+                if (rereleased > 0)
+                    LogDebug($"[IdleRelease] Tower {towerId}: re-released {rereleased} vehicle(s) after save.");
+            }
         }
 
         private static void RestoreIdleReleasedVehicles(MineTower tower, EntityId towerId)

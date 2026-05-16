@@ -280,12 +280,14 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     {
         AutoDepthDesignation.PurgeTransientNotificationsForSave();
         AutoDepthDesignation.RestoreFarmingRuntimeForSave();
+        AutoDepthDesignation.RestoreIdleReleasedVehiclesForSave();
     }
 
     private void onSaveDone(SaveResult result)
     {
         AutoDepthDesignation.ResumeFarmingRuntimeAfterSave();
         AutoDepthDesignation.RestoreTransientNotificationsAfterSave();
+        AutoDepthDesignation.ReReleaseIdleVehiclesAfterSave();
     }
 
     private void onGameTerminated()
