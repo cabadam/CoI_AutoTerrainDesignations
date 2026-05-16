@@ -673,7 +673,7 @@ namespace AutoTerrainDesignations
                     RemoveOwnedFarmingAccessRamps(session, isFilling: true);
                     RemoveOwnedFarmingPreparationShoulders(session);
                     RestoreTowerDumpRulesIfOwned(tower, session);
-                    RestoreTowerTrucksReleasedForFilling(tower, session);
+                    RestoreTowerTrucksReleasedForFilling(tower, session, reassign: true);
                 }
 
                 session.LastAccessRampRequestKey = string.Empty;
@@ -1235,11 +1235,56 @@ namespace AutoTerrainDesignations
         }
 
         private static void RestoreTowerTrucksReleasedForFilling(
-            IAreaManagingTower _,
-            FarmingPreparationSession session)
+            IAreaManagingTower tower,
+            FarmingPreparationSession session,
+            bool reassign = false)
         {
             if (!session.FillingTruckAssignmentsReleased && session.ReleasedFillingTrucks.Count == 0)
                 return;
+
+            if (reassign && tower is MineTower mineTower)
+            {
+                int restored = 0;
+                int skipped = 0;
+                int failed = 0;
+                foreach (Truck truck in session.ReleasedFillingTrucks.ToList())
+                {
+                    if (truck == null || truck.IsDestroyed)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    if (mineTower.AllVehicles.Contains(truck))
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    if (truck.AssignedTo.HasValue)
+                    {
+                        skipped++;
+                        continue;
+                    }
+
+                    try
+                    {
+                        mineTower.AssignVehicle(truck, true);
+                        restored++;
+                    }
+                    catch
+                    {
+                        failed++;
+                    }
+                }
+
+                session.ReleasedFillingTrucks.Clear();
+                session.FillingTruckAssignmentsReleased = false;
+                session.LastTruckAssignmentDetail =
+                    $"Filling truck assignments restored for save: restored={restored}, skipped={skipped}, failed={failed}.";
+                LogDebug(session.LastTruckAssignmentDetail);
+                return;
+            }
 
             int released = session.ReleasedFillingTrucks.Count;
             session.ReleasedFillingTrucks.Clear();
