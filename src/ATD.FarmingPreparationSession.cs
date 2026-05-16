@@ -1235,58 +1235,17 @@ namespace AutoTerrainDesignations
         }
 
         private static void RestoreTowerTrucksReleasedForFilling(
-            IAreaManagingTower tower,
+            IAreaManagingTower _,
             FarmingPreparationSession session)
         {
             if (!session.FillingTruckAssignmentsReleased && session.ReleasedFillingTrucks.Count == 0)
                 return;
 
-            if (!(tower is MineTower mineTower))
-            {
-                session.ReleasedFillingTrucks.Clear();
-                session.FillingTruckAssignmentsReleased = false;
-                return;
-            }
-
-            int restored = 0;
-            int skipped = 0;
-            int failed = 0;
-            foreach (Truck truck in session.ReleasedFillingTrucks.ToList())
-            {
-                if (truck == null || truck.IsDestroyed)
-                {
-                    skipped++;
-                    continue;
-                }
-
-                if (mineTower.AllVehicles.Contains(truck))
-                {
-                    skipped++;
-                    continue;
-                }
-
-                var assignedTo = truck.AssignedTo;
-                if (assignedTo.HasValue)
-                {
-                    skipped++;
-                    continue;
-                }
-
-                try
-                {
-                    mineTower.AssignVehicle(truck, true);
-                    restored++;
-                }
-                catch
-                {
-                    failed++;
-                }
-            }
-
+            int released = session.ReleasedFillingTrucks.Count;
             session.ReleasedFillingTrucks.Clear();
             session.FillingTruckAssignmentsReleased = false;
             session.LastTruckAssignmentDetail =
-                $"Filling truck assignments restored: restored={restored}, skipped={skipped}, failed={failed}.";
+                $"Filling truck assignments cleared: released={released} (not reassigned; vehicle release is managed independently).";
             LogDebug(session.LastTruckAssignmentDetail);
         }
 

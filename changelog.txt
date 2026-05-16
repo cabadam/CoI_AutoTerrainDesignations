@@ -1,4 +1,5 @@
 v0.4.0g | 2026-05-16 [unreleased]
+* Fixed: trucks released from the tower during farmland filling were re-assigned back to the tower when filling completed; they are now left unassigned so the **Auto-release when idle** feature and external vehicle management mods can handle them
 
 v0.4.0f | 2026-05-16
 * Added **Auto-release when idle** toggle in the Terrain Designations panel: when enabled for a tower, all excavators and trucks are unassigned while none of the tower's managed mining or leveling designations have pending excavation work; released vehicles are tracked and automatically re-assigned when excavation work resumes
