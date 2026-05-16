@@ -68,6 +68,17 @@ namespace AutoTerrainDesignations
                 return true;
             }
 
+            // Rim alignment designations were placed this tick but the terrain they target has not
+            // been raised yet. The BFS uses actual terrain pathability, so it cannot see the future
+            // path through the rim and may route a filling ramp in the wrong direction (e.g. into
+            // the sea on the cliff side). Wait for the rim to be built before placing any ramp.
+            if (isFilling && session.RimAlignmentOrigins.Count > 0)
+            {
+                session.LastAccessRampDetail =
+                    "Filling access: waiting for rim alignment designations to be built before placing ramps.";
+                return false;
+            }
+
             string workKey = BuildFarmingAccessWorkKey(currentWork, isFilling);
             if (TryUseCachedFarmingAccessResult(session, workKey, out bool cachedReady))
                 return cachedReady;
@@ -80,6 +91,9 @@ namespace AutoTerrainDesignations
 
             if (inaccessible.Count == 0)
             {
+                // Proactively remove any stale filling ramps now that the fill area is accessible.
+                if (isFilling)
+                    RemoveOwnedFarmingAccessRamps(session, isFilling: true);
                 SetFarmingAccessCache(session, workKey, ready: true, string.Empty);
                 return true;
             }

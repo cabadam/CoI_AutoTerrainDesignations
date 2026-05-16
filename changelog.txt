@@ -1,8 +1,14 @@
+v0.4.0f | 2026-05-16
+* Fixed: filling access ramps were placed before rim alignment designations had a chance to be built; the BFS pathability check uses actual terrain, so a pending-but-not-yet-raised rim was invisible to it, causing ramps to be routed in wrong directions (e.g. into the sea)
+    - Filling ramp placement is now deferred until the current tick places no new rim alignment designations, giving the rim terrain a chance to reach target height first
+    - Stale filling ramps are now removed as soon as the fill area becomes pathable, rather than waiting until filling fully completes
+* Vehicle clear-out before filling transition now also evicts vehicles from shoulder designation tiles, not only from the fill area itself
+
 v0.4.0e | 2026-05-15
 * Added **rampNotificationsEnabled** global setting: suppresses ramp access warning notifications (Failed, Truncated, NotAccessible) on all towers; toggle in **ATDsettings.json** or with **atd_set_ramp_notifications on|off**
 * Added **farmingPanelCollapsed** global setting: the **Farmland Preparation** inspector panel now starts collapsed by default; toggle in **ATDsettings.json** or with **atd_set_farming_panel_collapsed on|off**
 
-v0.4.0d | 2026-05-15
+v0.4.0d | 2026-05-15 [packaged]
 * When multiple farming designation clusters are inaccessible at the same time, access ramps are now placed for all clusters in the same tick instead of one per tick; applies to both preparation and filling phases
 * Fixed: access ramps could overlap previously placed ramps from the same or another session, or land on any other existing designation
 * Fixed: shoulder designations could be placed on hidden (completed) farming origins belonging to another tower's session, potentially corrupting its designation tracking

@@ -1095,7 +1095,7 @@ namespace AutoTerrainDesignations
             }
 
             session.LastVehicleClearOutDetail =
-                $"Filling transition ordered vehicles out of fill area: scanned={total}, inside={inside}, enqueued={enqueued}, assumedStuck={assumedStuck}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.";
+                $"Filling transition ordered vehicles out of fill and shoulder area: scanned={total}, inside={inside}, enqueued={enqueued}, assumedStuck={assumedStuck}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.";
             LogDebug(session.LastVehicleClearOutDetail);
             return enqueued;
         }
@@ -1288,6 +1288,15 @@ namespace AutoTerrainDesignations
                 for (int x = originState.Origin.X - margin; x < originState.Origin.X + designationSize + margin; x++)
                 {
                     for (int y = originState.Origin.Y - margin; y < originState.Origin.Y + designationSize + margin; y++)
+                        area.Add(new Tile2i(x, y));
+                }
+            }
+
+            foreach (Tile2i shoulderOrigin in session.PreparationShoulderOrigins)
+            {
+                for (int x = shoulderOrigin.X - margin; x < shoulderOrigin.X + designationSize + margin; x++)
+                {
+                    for (int y = shoulderOrigin.Y - margin; y < shoulderOrigin.Y + designationSize + margin; y++)
                         area.Add(new Tile2i(x, y));
                 }
             }

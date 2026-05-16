@@ -14,7 +14,9 @@ The changelog.txt in the root is a user-facing change log that complies with the
 - Each release starts with `v<semver> | <YYYY-MM-DD>` (e.g. `v0.2.6 | 2026-05-08`)
 - Top-level bullet entries use `*`.
 - Sub-bullets use 4 spaces followed by `-`.
-- Unreleased / in-progress work goes in the **first entry** at the top of the file with the next version number and today's date. Do not use an "Unreleased" or "WIP" label.
+- New changes are **added to the current top entry** (the one matching `manifest.json`). Do not create a new version entry for code changes alone.
+- A `[packaged]` suffix is appended to the version header line when that version is actually built as a package, e.g. `v0.4.0d | 2026-05-15 [packaged]`.
+- The version (and its entry) is **only bumped when the user explicitly requests a package or release build**.
 
 ## Content rules
 - One bullet per user-visible change (feature, fix, or behavioral change).
@@ -36,12 +38,13 @@ The changelog.txt in the root is a user-facing change log that complies with the
 
 ## Example entries
 ```
-v0.2.5b | 2026-05-08
+v0.2.5b | 2026-05-08 [packaged]   ← bumped and marked when package was built
 * Corner designations now snap height and variant to adjacent existing designations
-
-v0.2.5a | 2026-05-01
 * Fixed: ramp generation could place ramps outside the tower area
 
-v0.2.4 | 2026-04-20   ← public release collating 0.2.4a + 0.2.4b
+v0.2.5a | 2026-05-01 [packaged]
+* Added ore purity filter
+
+v0.2.4 | 2026-04-20 [packaged]   ← public release collating 0.2.4a + 0.2.4b
 * ...
 ```
