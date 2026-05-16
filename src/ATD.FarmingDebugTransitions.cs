@@ -35,7 +35,11 @@ namespace AutoTerrainDesignations
             West,
             East,
             North,
-            South
+            South,
+            NorthWest,
+            NorthEast,
+            SouthEast,
+            SouthWest
         }
 
         internal static string AnalyzeFarmingOriginForDebug(int x, int y)
@@ -233,22 +237,45 @@ namespace AutoTerrainDesignations
                 yield break;
 
             var terrMgr = s_desigManager.TerrainManager;
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X - 3, origin.Y + 1, preparationHeight))
+            bool needsWest  = IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X - 3, origin.Y + 1, preparationHeight);
+            bool needsEast  = IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 5, origin.Y + 1, preparationHeight);
+            bool needsNorth = IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 1, origin.Y - 3, preparationHeight);
+            bool needsSouth = IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 1, origin.Y + 5, preparationHeight);
+
+            if (needsWest)
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X - 4, origin.Y),
                     FarmingPreparationShoulderSide.West);
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 5, origin.Y + 1, preparationHeight))
+            if (needsEast)
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X + 4, origin.Y),
                     FarmingPreparationShoulderSide.East);
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 1, origin.Y - 3, preparationHeight))
+            if (needsNorth)
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X, origin.Y - 4),
                     FarmingPreparationShoulderSide.North);
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 1, origin.Y + 5, preparationHeight))
+            if (needsSouth)
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X, origin.Y + 4),
                     FarmingPreparationShoulderSide.South);
+
+            // Diagonal corner shoulders: only placed when both adjacent cardinal shoulders are needed.
+            if (needsNorth && needsWest)
+                yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
+                    new Tile2i(origin.X - 4, origin.Y - 4),
+                    FarmingPreparationShoulderSide.NorthWest);
+            if (needsNorth && needsEast)
+                yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
+                    new Tile2i(origin.X + 4, origin.Y - 4),
+                    FarmingPreparationShoulderSide.NorthEast);
+            if (needsSouth && needsEast)
+                yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
+                    new Tile2i(origin.X + 4, origin.Y + 4),
+                    FarmingPreparationShoulderSide.SouthEast);
+            if (needsSouth && needsWest)
+                yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
+                    new Tile2i(origin.X - 4, origin.Y + 4),
+                    FarmingPreparationShoulderSide.SouthWest);
         }
 
         // Checks the 2×2 block starting at (startX, startY) — the center 4 tiles of the
@@ -334,6 +361,30 @@ namespace AutoTerrainDesignations
                 case FarmingPreparationShoulderSide.South:
                     sw = outerHeight;
                     se = outerHeight;
+                    break;
+                case FarmingPreparationShoulderSide.NorthWest:
+                    // SE corner (inner) stays at innerHeight; all other corners step down.
+                    nw = outerHeight;
+                    ne = outerHeight;
+                    sw = outerHeight;
+                    break;
+                case FarmingPreparationShoulderSide.NorthEast:
+                    // SW corner (inner) stays at innerHeight.
+                    nw = outerHeight;
+                    ne = outerHeight;
+                    se = outerHeight;
+                    break;
+                case FarmingPreparationShoulderSide.SouthEast:
+                    // NW corner (inner) stays at innerHeight.
+                    ne = outerHeight;
+                    se = outerHeight;
+                    sw = outerHeight;
+                    break;
+                case FarmingPreparationShoulderSide.SouthWest:
+                    // NE corner (inner) stays at innerHeight.
+                    nw = outerHeight;
+                    se = outerHeight;
+                    sw = outerHeight;
                     break;
             }
 

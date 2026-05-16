@@ -1,4 +1,6 @@
 v0.4.0f | 2026-05-16
+* Added diagonal corner preparation shoulders: when both adjacent cardinal shoulders are needed, a corner shoulder is placed at the diagonal position with 3 outer corners at z-2 and the inner corner (facing the farming origin) at z-1
+* Fixed: filling transition could begin before shoulder designations were fully filled; the transition is now deferred until all active shoulder designations are fulfilled
 * Fixed: preparation shoulders were not placed on sides where the terrain drop only crosses the diagonal corner of the designation; the check now samples the center 2×2 tiles of each adjacent 4×4 area instead of the boundary strip
 * Fixed: filling access ramps were placed before rim alignment designations had a chance to be built; the BFS pathability check uses actual terrain, so a pending-but-not-yet-raised rim was invisible to it, causing ramps to be routed in wrong directions (e.g. into the sea)
     - Filling ramp placement is now deferred until the current tick places no new rim alignment designations, giving the rim terrain a chance to reach target height first

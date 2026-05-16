@@ -601,7 +601,22 @@ namespace AutoTerrainDesignations
                     return false;
             }
 
-            return hasReadyOrigin;
+            if (!hasReadyOrigin)
+                return false;
+
+            // All origins are ready; also wait for any shoulder designations to be fulfilled
+            // so they finish holding back dirt before filling (and shoulder removal) begins.
+            if (s_desigManager != null)
+            {
+                foreach (Tile2i shoulderOrigin in session.PreparationShoulderOrigins)
+                {
+                    var designation = s_desigManager.GetDesignationAt(shoulderOrigin);
+                    if (designation.HasValue && !designation.Value.IsFulfilled)
+                        return false;
+                }
+            }
+
+            return true;
         }
 
         private static bool IsFarmingPreparationComplete(FarmingPreparationSession session)

@@ -63,6 +63,13 @@ Reference for general queries regarding e.g. the manifest file, mod structure, a
   ```
 - Use the decompiled source to inspect game logic, entity behavior, and API details when needed. Be mindful that decompiled code may not have original variable names or comments, so it may require some interpretation.
 
+# Build verification
+After every code change, run a Debug build to confirm the project compiles cleanly:
+```powershell
+dotnet build AutoTerrainDesignations.sln -c Debug
+```
+Fix any errors before proceeding. Do not leave a change in a broken build state.
+
 # Logging and Debugging
 - To inspect the latest part of the newest Captain of Industry log, run:
   ```powershell
