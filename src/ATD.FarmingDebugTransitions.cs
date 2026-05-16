@@ -233,35 +233,36 @@ namespace AutoTerrainDesignations
                 yield break;
 
             var terrMgr = s_desigManager.TerrainManager;
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X - 1, origin.Y, 0, 1, preparationHeight))
+            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X - 3, origin.Y + 1, preparationHeight))
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X - 4, origin.Y),
                     FarmingPreparationShoulderSide.West);
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 4, origin.Y, 0, 1, preparationHeight))
+            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 5, origin.Y + 1, preparationHeight))
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X + 4, origin.Y),
                     FarmingPreparationShoulderSide.East);
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X, origin.Y - 1, 1, 0, preparationHeight))
+            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 1, origin.Y - 3, preparationHeight))
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X, origin.Y - 4),
                     FarmingPreparationShoulderSide.North);
-            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X, origin.Y + 4, 1, 0, preparationHeight))
+            if (IsAnyFarmingShoulderEdgeBelowPreparation(terrMgr, origin.X + 1, origin.Y + 5, preparationHeight))
                 yield return new KeyValuePair<Tile2i, FarmingPreparationShoulderSide>(
                     new Tile2i(origin.X, origin.Y + 4),
                     FarmingPreparationShoulderSide.South);
         }
 
+        // Checks the 2×2 block starting at (startX, startY) — the center 4 tiles of the
+        // adjacent 4×4 shoulder designation area.
         private static bool IsAnyFarmingShoulderEdgeBelowPreparation(
             Mafi.Core.Terrain.TerrainManager terrMgr,
             int startX,
             int startY,
-            int stepX,
-            int stepY,
             int preparationHeight)
         {
-            for (int i = 0; i < 4; i++)
+            for (int dy = 0; dy < 2; dy++)
+            for (int dx = 0; dx < 2; dx++)
             {
-                var tile = new Tile2i(startX + stepX * i, startY + stepY * i);
+                var tile = new Tile2i(startX + dx, startY + dy);
                 if (!terrMgr.IsValidCoord(tile))
                     continue;
 

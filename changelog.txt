@@ -1,4 +1,5 @@
 v0.4.0f | 2026-05-16
+* Fixed: preparation shoulders were not placed on sides where the terrain drop only crosses the diagonal corner of the designation; the check now samples the center 2×2 tiles of each adjacent 4×4 area instead of the boundary strip
 * Fixed: filling access ramps were placed before rim alignment designations had a chance to be built; the BFS pathability check uses actual terrain, so a pending-but-not-yet-raised rim was invisible to it, causing ramps to be routed in wrong directions (e.g. into the sea)
     - Filling ramp placement is now deferred until the current tick places no new rim alignment designations, giving the rim terrain a chance to reach target height first
     - Stale filling ramps are now removed as soon as the fill area becomes pathable, rather than waiting until filling fully completes
