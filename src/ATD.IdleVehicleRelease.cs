@@ -307,7 +307,7 @@ namespace AutoTerrainDesignations
                 towerIndex++;
                 bool hasEntityId = TryGetTowerEntityId(tower, out EntityId towerId) && towerId.IsValid;
                 bool releaseEnabled = hasEntityId && IsIdleVehicleReleaseEnabledForId(towerId);
-                List<Vehicle> releasedList = null;
+                List<Vehicle>? releasedList = null;
                 bool isReleased = hasEntityId && s_idleReleasedVehiclesByTower.TryGetValue(towerId, out releasedList);
 
                 Tile2i pos = tower.Position2f.Tile2i;
