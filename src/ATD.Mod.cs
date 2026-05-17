@@ -42,6 +42,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     private IGameLoopEvents? m_gameLoopEvents;
     private ISimLoopEvents? m_simLoopEvents;
     private ISaveManager? m_saveManager;
+    private SimStep m_lastSimTick;
 
     public string Name => "Auto Terrain Designations";
 
@@ -239,6 +240,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             m_saveManager = resolver.Resolve<ISaveManager>();
             m_gameLoopEvents.Terminate.AddNonSaveable(this, onGameTerminated);
             m_simLoopEvents.BeforeSave.AddNonSaveable(this, beforeSave);
+            m_simLoopEvents.Update.AddNonSaveable(this, onSimUpdate);
             m_saveManager.OnSaveDone += onSaveDone;
 
             ITerrainDesignationsManager desigManager = resolver.Resolve<ITerrainDesignationsManager>();
@@ -276,6 +278,22 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         }
     }
 
+    // Runs on the simulation thread — safe to call game simulation APIs.
+    private void onSimUpdate()
+    {
+        if (m_simLoopEvents == null)
+            return;
+        // Run once per game-second (10 sim steps = 1 game-second).
+        SimStep current = m_simLoopEvents.CurrentStep;
+        if (current - m_lastSimTick < Duration.OneSecond)
+            return;
+        m_lastSimTick = current;
+        try { AutoDepthDesignation.TickFarmingPreparationSessions(); }
+        catch (Exception ex) { AutoDepthDesignation.s_log.Exception(ex, "TickFarmingPreparationSessions"); }
+        try { AutoDepthDesignation.TickIdleVehicleRelease(); }
+        catch (Exception ex) { AutoDepthDesignation.s_log.Exception(ex, "TickIdleVehicleRelease"); }
+    }
+
     private void beforeSave()
     {
         AutoDepthDesignation.PurgeTransientNotificationsForSave();
@@ -309,6 +327,8 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         if (m_simLoopEvents != null)
         {
             try { m_simLoopEvents.BeforeSave.RemoveNonSaveable(this, beforeSave); }
+            catch { }
+            try { m_simLoopEvents.Update.RemoveNonSaveable(this, onSimUpdate); }
             catch { }
             m_simLoopEvents = null;
         }
