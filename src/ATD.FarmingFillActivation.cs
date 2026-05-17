@@ -162,6 +162,12 @@ namespace AutoTerrainDesignations
                         // farming origin — it would corrupt that session's origin tracking.
                         if (otherSessionOrigins.Contains(rimOrigin))
                             continue;
+
+                        // Our own rim designation is already in place — re-track it without
+                        // replacing. Calling AddOrReplaceDesignation removes the existing
+                        // designation first, which cancels haul jobs for trucks already en route.
+                        session.RimAlignmentOrigins.Add(rimOrigin);
+                        continue;
                     }
 
                     Tile2i probeOrigin = new Tile2i(rimOrigin.X + dx[d], rimOrigin.Y + dy[d]);
@@ -215,6 +221,11 @@ namespace AutoTerrainDesignations
                             continue;
                         if (otherSessionOrigins.Contains(cornerRim))
                             continue;
+
+                        // Our own corner rim designation is already in place — re-track it
+                        // without replacing, for the same reason as cardinal rims above.
+                        session.RimAlignmentOrigins.Add(cornerRim);
+                        continue;
                     }
 
                     // Both probe tiles (one in the X direction, one in the Y direction from the corner) must pass.

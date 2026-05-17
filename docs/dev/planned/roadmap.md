@@ -1,5 +1,4 @@
 # Roadmap
-Current as of release: 0.4.0k
 
 Planned and candidate improvements for Kayser's Automatic Terrain Designations.
 
@@ -20,3 +19,5 @@ Review ramp building safety margin logic in more depth. Current margin is based 
 ## Make Create Designations consider possible farming work
 
 ## Make corridors go up then down if they are long
+
+## Issue?: Vehichles auto-released can be assigned to the tower again (or to something else)

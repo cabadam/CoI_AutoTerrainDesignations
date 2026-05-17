@@ -61,6 +61,33 @@ namespace AutoTerrainDesignations
         }
 
         /// <summary>
+        /// Returns true if the tower has an active farming session with origins still in the
+        /// ReadyForFilling or Filling phase, meaning fill trucks are needed and should not
+        /// be evicted by the idle-release system.
+        /// </summary>
+        private static bool HasActiveFarmingFillingSession(EntityId towerId)
+        {
+            if (!s_farmingPreparationSessions.TryGetValue(towerId, out FarmingPreparationSession session))
+                return false;
+
+            foreach (FarmingOriginSession origin in session.Origins.Values)
+            {
+                if (origin.Phase == FarmingOriginPhase.ReadyForFilling
+                    || origin.Phase == FarmingOriginPhase.Filling)
+                    return true;
+            }
+
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if the tower has pending excavation work or an active farming fill
+        /// session — either of which means vehicles should be kept assigned.
+        /// </summary>
+        private static bool HasPendingWork(MineTower tower, EntityId towerId)
+            => HasPendingExcavationJobs(tower) || HasActiveFarmingFillingSession(towerId);
+
+        /// <summary>
         /// Main per-tick entry point. Called by the ticker on the same 1-second game-time
         /// interval as farming preparation sessions.
         /// </summary>
@@ -85,7 +112,7 @@ namespace AutoTerrainDesignations
                     continue;
                 }
 
-                bool hasPending = HasPendingExcavationJobs(tower);
+                bool hasPending = HasPendingWork(tower, towerId);
 
                 if (hasPending)
                 {
@@ -163,7 +190,12 @@ namespace AutoTerrainDesignations
             s_idleReleasedVehiclesByTower[towerId] = released;
 
             if (releasedCount > 0 || failedCount > 0)
-                LogDebug($"[IdleRelease] Tower {towerId}: released {releasedCount} vehicle(s) (failed={failedCount}).");
+            {
+                string names = released.Count > 0
+                    ? string.Join(", ", released.Select(v => v == null ? "?" : $"[{v.Id}] {v.GetTitle()}"))
+                    : "none";
+                LogDebug($"[IdleRelease] Tower {towerId}: released {releasedCount} vehicle(s) (failed={failedCount}): {names}");
+            }
             else
                 LogDebug($"[IdleRelease] Tower {towerId}: no pending excavation, no vehicles to release.");
         }
@@ -182,7 +214,7 @@ namespace AutoTerrainDesignations
             foreach (Vehicle v in tower.AllVehicles)
                 snapshot.Add(v);
 
-            int releasedCount = 0;
+            var strays = new List<Vehicle>();
             foreach (Vehicle vehicle in snapshot)
             {
                 if (vehicle == null || vehicle.IsDestroyed)
@@ -194,13 +226,16 @@ namespace AutoTerrainDesignations
                 {
                     tower.UnassignVehicle(vehicle, true);
                     released.Add(vehicle);
-                    releasedCount++;
+                    strays.Add(vehicle);
                 }
                 catch { }
             }
 
-            if (releasedCount > 0)
-                LogDebug($"[IdleRelease] Tower {towerId}: evicted {releasedCount} stray vehicle(s) assigned while idle.");
+            if (strays.Count > 0)
+            {
+                string strayNames = string.Join(", ", strays.Select(v => $"[{v.Id}] {v.GetTitle()}"));
+                LogDebug($"[IdleRelease] Tower {towerId}: evicted {strays.Count} stray vehicle(s) assigned while idle: {strayNames}");
+            }
         }
 
         /// <summary>
@@ -388,7 +423,14 @@ namespace AutoTerrainDesignations
             s_idleReleasedVehiclesByTower.Remove(towerId);
 
             if (restored > 0 || skipped > 0 || failed > 0)
-                LogDebug($"[IdleRelease] Tower {towerId}: restored {restored} vehicle(s) (skipped={skipped}, failed={failed}).");
+            {
+                string names = released
+                    .Where(v => v != null && !v.IsDestroyed)
+                    .Select(v => $"[{v.Id}] {v.GetTitle()}")
+                    .DefaultIfEmpty("none")
+                    .Aggregate((a, b) => $"{a}, {b}");
+                LogDebug($"[IdleRelease] Tower {towerId}: restored {restored} vehicle(s) (skipped={skipped}, failed={failed}): {names}");
+            }
         }
     }
 }

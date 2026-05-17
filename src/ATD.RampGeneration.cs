@@ -279,6 +279,19 @@ namespace AutoTerrainDesignations
             BuildBuildingOccupiedTiles(tower);
             BuildDesignationOriginsInArea(tower);
 
+            // If any non-ore designation already in this area has a surface-pathable tile
+            // reachable from the tower, it is a ramp placed in a prior scan that hasn't been
+            // physically excavated yet.  Placing another ramp in a new direction would be
+            // redundant.  Skip generation so we don't accumulate surplus ramps on re-scans.
+            // This guard only applies to the standard mine-ramp path (useLocalSurfaceReference
+            // is false); farming filling ramps use their own duplicate-prevention mechanism.
+            if (!useLocalSurfaceReference && ExistingPlannedRampProvidesAccess(tower, tileDepths))
+            {
+                LogDebug("Skipping ramp generation: existing planned ramp designation(s) already provide surface access from the tower.");
+                topRowTile = default;
+                return RampPlacementOutcome.Crested;
+            }
+
             int rampWidth = Math.Max(1, Math.Min(5, configuredRampWidth));
             List<RampCandidate> candidates = CollectRampCandidates(tower, tileDepths, rampWidth, reservedRampTiles: reservedRampTiles);
             if (candidates.Count == 0)
@@ -1214,6 +1227,33 @@ namespace AutoTerrainDesignations
             // loops) do not accidentally treat newly placed ramp tiles as free.
             s_designationOriginsInArea.Add(tile);
             placedRampOrigins?.Add(tile);
+        }
+
+        /// <summary>
+        /// Returns true if any designation currently in <see cref="s_designationOriginsInArea"/>
+        /// that is NOT an ore tile (i.e. not present in <paramref name="tileDepths"/>) has at
+        /// least one currently-pathable surface tile in its 4×4 area that is reachable from the
+        /// tower via BFS. Such designations are ramps placed by a prior scan that haven't been
+        /// physically excavated yet; placing another ramp would create a redundant duplicate.
+        /// </summary>
+        private static bool ExistingPlannedRampProvidesAccess(IAreaManagingTower tower, Dict<Tile2i, int> tileDepths)
+        {
+            if (s_vehiclePathFindingManager == null || s_excavatorPathFindingParams == null)
+                return false;
+
+            try { s_vehiclePathFindingManager.PathabilityProvider.UpdateChangedTiles(); }
+            catch { }
+
+            foreach (Tile2i existingOrigin in s_designationOriginsInArea)
+            {
+                if (tileDepths.ContainsKey(existingOrigin))
+                    continue; // Ore tile — not a planned ramp.
+
+                if (IsRampMouthReachableFromTower(tower, existingOrigin))
+                    return true;
+            }
+
+            return false;
         }
 
         private static bool IsFreeRampTile(IAreaManagingTower tower, Tile2i tile, Dict<Tile2i, int> tileDepths, int rampDepth, Tile2i rampDirection, HashSet<Tile2i>? reservedRampTiles)
