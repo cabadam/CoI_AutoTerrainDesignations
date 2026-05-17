@@ -1418,6 +1418,7 @@ namespace AutoTerrainDesignations
                 int restored = 0;
                 int skipped = 0;
                 int failed = 0;
+                int blocked = 0;
                 foreach (Truck truck in session.ReleasedFillingTrucks.ToList())
                 {
                     if (truck == null || truck.IsDestroyed)
@@ -1441,7 +1442,16 @@ namespace AutoTerrainDesignations
                     try
                     {
                         mineTower.AssignVehicle(truck, true);
-                        restored++;
+                        if (mineTower.AllVehicles.Contains(truck))
+                        {
+                            restored++;
+                        }
+                        else
+                        {
+                            // Assignment was silently blocked (e.g. by another mod's Harmony patch).
+                            // Keep in ReleasedFillingTrucks so we retry on the next tick.
+                            blocked++;
+                        }
                     }
                     catch
                     {
@@ -1449,10 +1459,18 @@ namespace AutoTerrainDesignations
                     }
                 }
 
-                session.ReleasedFillingTrucks.Clear();
-                session.FillingTruckAssignmentsReleased = false;
+                // Only clear tracking when no vehicles were blocked; if some were blocked, we keep
+                // the full list so that already-restored trucks are skipped (AllVehicles.Contains)
+                // and blocked ones are retried on the next tick.
+                if (blocked == 0)
+                {
+                    session.ReleasedFillingTrucks.Clear();
+                    session.FillingTruckAssignmentsReleased = false;
+                }
+
+                string blockedStr = blocked > 0 ? $", blocked={blocked}" : "";
                 session.LastTruckAssignmentDetail =
-                    $"Filling truck assignments restored for save: restored={restored}, skipped={skipped}, failed={failed}.";
+                    $"Filling truck assignments restored for save: restored={restored}, skipped={skipped}, failed={failed}{blockedStr}.";
                 LogDebug(session.LastTruckAssignmentDetail);
                 return;
             }

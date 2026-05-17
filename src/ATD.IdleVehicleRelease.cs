@@ -388,6 +388,7 @@ namespace AutoTerrainDesignations
             int restored = 0;
             int skipped = 0;
             int failed = 0;
+            int blocked = 0;
             foreach (Vehicle vehicle in released)
             {
                 if (vehicle == null || vehicle.IsDestroyed)
@@ -412,7 +413,16 @@ namespace AutoTerrainDesignations
                 try
                 {
                     tower.AssignVehicle(vehicle, true);
-                    restored++;
+                    if (tower.AllVehicles.Contains(vehicle))
+                    {
+                        restored++;
+                    }
+                    else
+                    {
+                        // Assignment was silently blocked (e.g. by another mod's Harmony patch).
+                        // Keep tracking so we retry on the next tick.
+                        blocked++;
+                    }
                 }
                 catch
                 {
@@ -420,16 +430,21 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            s_idleReleasedVehiclesByTower.Remove(towerId);
+            // Only clear tracking when no vehicles were blocked; if some were blocked, we keep
+            // the full list so that already-restored vehicles are skipped (AllVehicles.Contains)
+            // and blocked ones are retried on the next tick.
+            if (blocked == 0)
+                s_idleReleasedVehiclesByTower.Remove(towerId);
 
-            if (restored > 0 || skipped > 0 || failed > 0)
+            if (restored > 0 || skipped > 0 || failed > 0 || blocked > 0)
             {
                 string names = released
                     .Where(v => v != null && !v.IsDestroyed)
                     .Select(v => $"[{v.Id}] {v.GetTitle()}")
                     .DefaultIfEmpty("none")
                     .Aggregate((a, b) => $"{a}, {b}");
-                LogDebug($"[IdleRelease] Tower {towerId}: restored {restored} vehicle(s) (skipped={skipped}, failed={failed}): {names}");
+                string blockedStr = blocked > 0 ? $", blocked={blocked}" : "";
+                LogDebug($"[IdleRelease] Tower {towerId}: restored {restored} vehicle(s) (skipped={skipped}, failed={failed}{blockedStr}): {names}");
             }
         }
     }
