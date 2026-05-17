@@ -1,4 +1,7 @@
 v0.4.0m | 2026-05-17 [unreleased]
+* Fixed: rim alignment designations were removed and re-placed on every filling tick via `AddOrReplaceDesignation`, cancelling haul jobs for any trucks already en route to those tiles; the designation is now re-tracked without replacement when it already exists from a previous tick
+* Fixed: `TickIdleVehicleRelease` released all tower vehicles when no mining or leveling work was pending, even during an active farming fill session; vehicles are now kept assigned while any filling origin is in the `ReadyForFilling` or `Filling` phase
+* Fixed: trucks released during the filling phase (to prevent them competing with dump vehicles) were permanently unassigned after filling completed; `RestoreTowerTrucksReleasedForFilling` was called without `reassign: true` on all normal exit paths (filling complete, activation abort, and user-stop), so trucks were cleared from tracking without being re-assigned to the tower
 
 v0.4.0l | 2026-05-17
 * Added **atd_get_assigned_vehicles** console command: lists every mine tower with its assigned vehicles, per-vehicle job state, ATD auto-release setting, and which vehicles ATD has released

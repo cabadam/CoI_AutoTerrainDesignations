@@ -342,7 +342,7 @@ namespace AutoTerrainDesignations
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             RemoveOwnedFarmingAccessRamps(session, isFilling: true);
             RestoreTowerDumpRulesIfOwned(tower, session);
-            RestoreTowerTrucksReleasedForFilling(tower, session);
+            RestoreTowerTrucksReleasedForFilling(tower, session, reassign: true);
             int restored = 0;
             int failed = 0;
             foreach (FarmingOriginSession originState in session.Origins.Values.ToList())
@@ -445,6 +445,7 @@ namespace AutoTerrainDesignations
 
             // Order vehicles out of the fill area BEFORE releasing trucks so that
             // TryEnqueueParkingJobIfNeeded can still target the assigned tower.
+            LogDebug("[ATD Farming] Evacuation requested: initial fill transition.");
             if (TryStartFarmingFillingVehicleClearOut(tower, session, out int vehiclesInside))
             {
                 session.Active = true;
@@ -465,7 +466,7 @@ namespace AutoTerrainDesignations
             if (restored == 0)
             {
                 RestoreTowerDumpRulesIfOwned(tower, session);
-                RestoreTowerTrucksReleasedForFilling(tower, session);
+                RestoreTowerTrucksReleasedForFilling(tower, session, reassign: true);
                 session.LastReport = failed > 0
                     ? FarmingTrFormat(
                         "stage4_failed_restore",
@@ -548,7 +549,7 @@ namespace AutoTerrainDesignations
                     session.Active = false;
                     RemoveOwnedFarmingAccessRamps(session, isFilling: true);
                     RestoreTowerDumpRulesIfOwned(tower, session);
-                    RestoreTowerTrucksReleasedForFilling(tower, session);
+                    RestoreTowerTrucksReleasedForFilling(tower, session, reassign: true);
                     if (IsFarmingPreparationComplete(session))
                         AddFarmingCompleteNotification(tower);
                     continue;
@@ -922,6 +923,7 @@ namespace AutoTerrainDesignations
             bool hasFilling = session.Origins.Values.Any(origin => origin.Phase == FarmingOriginPhase.Filling);
             if (HasQueuedFarmingFillingOrigins(session) && !hasFilling)
             {
+                LogDebug("[ATD Farming] Evacuation requested: safeguard (queued origins, no active filling).");
                 if (TryStartFarmingFillingVehicleClearOut(tower, session, out int vehiclesInside))
                 {
                     session.LastReport = FormatFarmingPreparationSummary(session)
@@ -1232,9 +1234,9 @@ namespace AutoTerrainDesignations
             int inside = 0;
             int enqueued = 0;
             int notEnqueued = 0;
-            int skippedActive = 0;
             int assumedStuck = 0;
             int failed = 0;
+            var skippedActiveVehicles = new System.Collections.Generic.List<string>();
 
             foreach (Vehicle vehicle in s_entitiesManager.GetAllEntitiesOfType<Vehicle>())
             {
@@ -1259,7 +1261,7 @@ namespace AutoTerrainDesignations
                     // Vehicles already working will leave the area naturally when they finish.
                     if (vehicle.HasTrueJob)
                     {
-                        skippedActive++;
+                        skippedActiveVehicles.Add($"[{vehicle.Id}] {vehicle.GetTitle()}");
                         continue;
                     }
 
@@ -1286,8 +1288,11 @@ namespace AutoTerrainDesignations
                 }
             }
 
+            string skippedActiveNames = skippedActiveVehicles.Count > 0
+                ? " Skipped (active job): " + string.Join(", ", skippedActiveVehicles) + "."
+                : string.Empty;
             session.LastVehicleClearOutDetail =
-                $"Filling transition ordered vehicles out of fill and shoulder area: scanned={total}, inside={inside}, enqueued={enqueued}, assumedStuck={assumedStuck}, skippedActive={skippedActive}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.";
+                $"Filling transition ordered vehicles out of fill and shoulder area: scanned={total}, inside={inside}, enqueued={enqueued}, assumedStuck={assumedStuck}, skippedActive={skippedActiveVehicles.Count}, alreadyNearOrSkipped={notEnqueued}, failed={failed}.{skippedActiveNames}";
             LogDebug(session.LastVehicleClearOutDetail);
             return enqueued;
         }
@@ -1456,7 +1461,7 @@ namespace AutoTerrainDesignations
             session.ReleasedFillingTrucks.Clear();
             session.FillingTruckAssignmentsReleased = false;
             session.LastTruckAssignmentDetail =
-                $"Filling truck assignments cleared: released={released} (not reassigned; vehicle release is managed independently).";
+                $"Filling truck assignments cleared without reassign: released={released}.";
             LogDebug(session.LastTruckAssignmentDetail);
         }
 
