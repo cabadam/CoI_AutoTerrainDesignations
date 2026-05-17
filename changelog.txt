@@ -1,4 +1,7 @@
 v0.4.0k | 2026-05-17 [unreleased]
+* Fixed: mine tower trucks were unassigned from the tower before vehicles in the fill area were ordered to evacuate; trucks are now released only after the evacuation order has been issued, so vehicles still assigned to the tower can receive a valid park-and-wait job
+* Fixed: one truck was always kept assigned to the tower during filling due to a leftover guard; all empty assigned trucks are now released when filling begins
+* Fixed: tiles already farmable at analysis time were set directly to the `Done` phase instead of `ReadyForFilling`; because filling only starts when at least one `ReadyForFilling` origin exists, those tiles were stuck hidden permanently with no way to trigger filling; analysis-time farmable tiles now enter `ReadyForFilling` so filling starts normally and the filling pass confirms them as `Done`
 
 v0.4.0j | 2026-05-17 [packaged]
 * Added diagonal corner rim alignment designations: when both adjacent cardinal rim designations are placed and both outward probe tiles pass the height criteria, a corner rim is placed at the diagonal position to close the corner of the fill area

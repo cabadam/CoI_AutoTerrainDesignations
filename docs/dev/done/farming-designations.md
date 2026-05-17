@@ -48,7 +48,7 @@ Persisted in `FarmingOriginSession` across ticks.
 | `Preparing` | Surface was below preparation level or had non-farmable material in the topsoil band; temporary preparation designation placed at `targetHeight − 1`; waiting for excavators |
 | `ReadyForFilling` | Preparation done; level designation hidden (`IsHiddenUntilFilling = true`); queued for tower-level filling |
 | `Filling` | Original fill designation restored at `targetHeight`; waiting for trucks |
-| `Done` | Topsoil band validated as farmable; designation hidden; origin is complete |
+| `Done` | Topsoil band validated as farmable by the filling pass; designation hidden; origin is complete. Only reachable through the filling pass — analysis-time farmable tiles enter `ReadyForFilling` first. |
 | `Blocked` | Progress failed (missing designation manager, placement failed, etc.) |
 
 ---
@@ -123,7 +123,7 @@ When the preparation pass finishes with all origins `ReadyForFilling` or `Done`,
 1. **Capture** (`CaptureCurrentFlatFarmingDesignations`): scans all level designations currently managed by the tower; any not yet tracked are added as new `AnalysisLeveling` origins. Rim alignment designations (`RimAlignmentOrigins`) are explicitly skipped so they are never captured as new work.
 
 2. **Advance** (`AdvanceCapturedFarmingOrigins`): for each origin, runs terrain analysis and advances the phase:
-   - `AnalysisLeveling`: `NeedsLeveling` → stays; `NeedsPreparation` → see below; `Done`/`ReadyForFilling` → designation hidden, origin waits.
+   - `AnalysisLeveling`: `NeedsLeveling` → stays; `NeedsPreparation` → see below; `Done` or `ReadyForFilling` analysis result → both transition to `ReadyForFilling` phase; designation hidden, origin waits for filling. (Analysis-time `Done` is not trusted as final because preparation work on adjacent tiles can cause dirt to fall, so the filling pass must confirm it.)
    - `NeedsPreparation`: original designation replaced with a temporary level designation at `targetHeight − 1`. **Shoulders** placed where adjacent terrain drops below that level. Transitions to `Preparing`.
    - `Preparing`: re-analyzed each tick. When the surface reaches preparation level (`NeedsLeveling` or better) → transitions to `ReadyForFilling`, designation hidden.
 
@@ -156,8 +156,8 @@ Filling begins when every tracked origin is either `ReadyForFilling` or `Done`.
 
 Steps in `BeginFarmingFillingForSession`:
 
-1. Empty trucks are unassigned from the tower so they don't compete with dump vehicles.
-2. Vehicles currently inside the pending fill area are ordered to park outside. The session waits until they leave (or until stuck vehicles are detected and ignored).
+1. Vehicles currently inside the pending fill area are ordered to park outside (while still assigned to the tower, so they can receive a valid park-and-wait job). The session waits until they leave (or until stuck vehicles are detected and ignored).
+2. Empty trucks are unassigned from the tower so they don't compete with dump vehicles.
 3. Tower dump rules are switched to farmable products only (`TrySwitchTowerToFarmableDumpRulesForFilling`). The original rules are snapshotted for later restore.
 4. All queued origins (`ReadyForFilling` and un-activated `Done`) have their original level designation restored at `targetHeight`. Each origin moves to `Filling`.
 5. `ActivateFarmingFillingOrigins` records `IsFillingActivated = true`; `IsHiddenUntilFilling` is cleared.

@@ -443,7 +443,8 @@ namespace AutoTerrainDesignations
                     "[ATD Farming] No origins are ready for filling/restoration. Run preparation first or wait for leveling/preparation to finish.");
             }
 
-            ReleaseEmptyTowerTrucksForFilling(tower, session);
+            // Order vehicles out of the fill area BEFORE releasing trucks so that
+            // TryEnqueueParkingJobIfNeeded can still target the assigned tower.
             if (TryStartFarmingFillingVehicleClearOut(tower, session, out int vehiclesInside))
             {
                 session.Active = true;
@@ -453,6 +454,7 @@ namespace AutoTerrainDesignations
                     vehiclesInside);
                 return session.LastReport;
             }
+            ReleaseEmptyTowerTrucksForFilling(tower, session);
 
             if (!TrySwitchTowerToFarmableDumpRulesForFilling(tower, session, out int farmableProductCount))
                 return session.LastReport;
@@ -1103,11 +1105,10 @@ namespace AutoTerrainDesignations
             switch (row.State)
             {
                 case FarmingAnalysisState.Done:
-                    originState.Phase = FarmingOriginPhase.Done;
-                    MarkPendingFillingAreaDirty(session);
-                    HideFarmingDesignationUntilFilling(originState, "already done; original designation hidden until tower-level filling");
-                    break;
                 case FarmingAnalysisState.ReadyForFilling:
+                    // Treat analysis-time Done the same as ReadyForFilling: preparation on
+                    // adjacent tiles (ramps, dig at z-1) can cause dirt to fall, so the tile
+                    // is not truly finished yet. The filling pass will confirm Done afterwards.
                     originState.Phase = FarmingOriginPhase.ReadyForFilling;
                     MarkPendingFillingAreaDirty(session);
                     HideFarmingDesignationUntilFilling(originState, "ready for filling; original designation hidden until tower-level filling");
@@ -1347,16 +1348,9 @@ namespace AutoTerrainDesignations
             int released = 0;
             int loaded = 0;
             int failed = 0;
-            int assignedTrucks = 0;
             var assignedVehicles = new List<Vehicle>();
             foreach (Vehicle vehicle in mineTower.AllVehicles)
                 assignedVehicles.Add(vehicle);
-
-            foreach (Vehicle vehicle in assignedVehicles)
-            {
-                if (vehicle is Truck truck && !truck.IsDestroyed)
-                    assignedTrucks++;
-            }
 
             foreach (Vehicle vehicle in assignedVehicles)
             {
@@ -1375,14 +1369,10 @@ namespace AutoTerrainDesignations
                 if (session.ReleasedFillingTrucks.Contains(truck))
                     continue;
 
-                if (assignedTrucks <= 1)
-                    continue;
-
                 session.ReleasedFillingTrucks.Add(truck);
                 try
                 {
                     mineTower.UnassignVehicle(truck, true);
-                    assignedTrucks--;
                     released++;
                 }
                 catch
