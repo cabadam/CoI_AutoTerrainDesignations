@@ -1,4 +1,4 @@
-v0.4.0n | 2026-05-18 [unreleased]
+v0.4.0n | 2026-05-18
 * Fixed: trucks were unconditionally released from the tower at the start of every filling tick, so when a rim alignment designation contained debris (terrain above target height) the dispatched excavators had no trucks to haul the material away; trucks are now kept assigned (or restored) for any tick where at least one rim designation has pending excavation work (`IsMiningNotFulfilled`), and released again once all rim tiles are clear
 * Changed: rim alignment placement criteria no longer examines a probe tile one step further out from the rim; instead the rim tile itself must pass: for cardinal rims the 2 far corners (the edge furthest from the farming area) must be above `targetHeight − 0.1`; for diagonal corner rims the 3 far corners must be above that threshold; height tolerance changed from 0.2 to 0.1
 
