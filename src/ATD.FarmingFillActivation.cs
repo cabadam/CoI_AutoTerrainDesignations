@@ -18,7 +18,7 @@ namespace AutoTerrainDesignations
 {
     public static partial class AutoDepthDesignation
     {
-        private const float FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE = 0.2f;
+        private const float FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE = 0.1f;
 
         private static bool HasQueuedFarmingFillingOrigins(FarmingPreparationSession session)
         {
@@ -86,13 +86,6 @@ namespace AutoTerrainDesignations
             return activated;
         }
 
-        /// <summary>
-        /// After committing fill designations, inspects each rim tile (one designation step outward
-        /// from the boundary of the filled area). If the probe tile one further step out has a surface
-        /// height within <see cref="FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE"/> of the adjacent origin's
-        /// target height, a flat fill designation is placed on the rim tile to repair ramps or other
-        /// disturbances left by the preparation phase.
-        /// </summary>
         private static void RemoveFarmingRimAlignmentDesignations(FarmingPreparationSession session)
         {
             if (s_desigManager == null || session.RimAlignmentOrigins.Count == 0)
@@ -109,6 +102,14 @@ namespace AutoTerrainDesignations
             MarkPendingFillingAreaDirty(session);
         }
 
+        /// <summary>
+        /// After committing fill designations, inspects each rim tile (one designation step outward
+        /// from the boundary of the filled area). A flat leveling designation is placed when the
+        /// rim tile's far corners are all above
+        /// <paramref name="targetHeight"/> - <see cref="FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE"/>:
+        /// the far 2 corners for cardinal rims, or the far 3 corners for diagonal corner rims.
+        /// These designations repair terrain disturbances left by the preparation phase.
+        /// </summary>
         private static int PlaceFarmingRimAlignmentDesignations(
             FarmingPreparationSession session,
             TerrainManager terrMgr)
@@ -170,8 +171,7 @@ namespace AutoTerrainDesignations
                         continue;
                     }
 
-                    Tile2i probeOrigin = new Tile2i(rimOrigin.X + dx[d], rimOrigin.Y + dy[d]);
-                    if (!ProbePassesRimCriteria(probeOrigin, d, targetHeight, terrMgr))
+                    if (!RimPassesFarCornerCriteria(rimOrigin, d, targetHeight, terrMgr))
                         continue;
 
                     DesignationData rimData = BuildFlatLevelDesignationData(rimOrigin, targetHeight);
@@ -186,7 +186,7 @@ namespace AutoTerrainDesignations
 
             // Corner rim placement: diagonal tiles where two cardinal rims meet.
             // A corner rim is placed only when both adjacent cardinal rims were placed and
-            // both probe tiles in the X and Y directions from the corner pass the probe criteria.
+            // the corner rim tile's far 3 corners pass the far-corner height criteria.
             // xi indexes dx for the X component, yi indexes dy for the Y component.
             int[,] cornerDirPairs = { { 0, 2 }, { 1, 2 }, { 0, 3 }, { 1, 3 } };
             foreach (KeyValuePair<Tile2i, FarmingOriginSession> kvp in session.Origins)
@@ -228,12 +228,7 @@ namespace AutoTerrainDesignations
                         continue;
                     }
 
-                    // Both probe tiles (one in the X direction, one in the Y direction from the corner) must pass.
-                    Tile2i probeX = new Tile2i(cornerRim.X + dxc, cornerRim.Y);
-                    Tile2i probeY = new Tile2i(cornerRim.X, cornerRim.Y + dyc);
-                    if (!ProbePassesRimCriteria(probeX, xi, targetHeight, terrMgr))
-                        continue;
-                    if (!ProbePassesRimCriteria(probeY, yi, targetHeight, terrMgr))
+                    if (!CornerRimPassesFarCornerCriteria(cornerRim, xi, yi, targetHeight, terrMgr))
                         continue;
 
                     DesignationData cornerData = BuildFlatLevelDesignationData(cornerRim, targetHeight);
@@ -250,66 +245,77 @@ namespace AutoTerrainDesignations
         }
 
         /// <summary>
-        /// Returns true if the probe tile at <paramref name="probeOrigin"/> passes the rim
-        /// placement criteria in direction <paramref name="probeDir"/>: either its designation
-        /// corners facing the rim are at <paramref name="targetHeight"/>, or its average terrain
-        /// height is within <see cref="FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE"/>.
+        /// Returns true if any rim alignment designation currently has pending excavation work
+        /// (i.e. terrain above its target height). When this is true, trucks must remain
+        /// assigned to the tower so they can haul debris away from those leveling sites.
         /// </summary>
-        private static bool ProbePassesRimCriteria(Tile2i probeOrigin, int probeDir, int targetHeight, TerrainManager terrMgr)
+        private static bool HasRimExcavationWork(FarmingPreparationSession session)
         {
-            if (s_desigManager == null)
+            if (s_desigManager == null || session.RimAlignmentOrigins.Count == 0)
                 return false;
-
-            var existing = s_desigManager.GetDesignationAt(probeOrigin);
-            if (existing.HasValue)
+            foreach (Tile2i rimOrigin in session.RimAlignmentOrigins)
             {
-                // When the probe tile has a designation, check that both corners on its edge
-                // facing the rim tile are at the target height — terrain may not reflect the
-                // designation target yet (work in progress).
-                return ProbeEdgeFacingRimIsAtTargetHeight(existing.Value.Data, probeDir, targetHeight);
+                var desig = s_desigManager.GetDesignationAt(rimOrigin);
+                if (desig.HasValue && desig.Value.IsMiningNotFulfilled)
+                    return true;
             }
-
-            float heightSum = 0f;
-            int cellCount = 0;
-            try
-            {
-                foreach (Tile2i cell in EnumerateDesignatableTileCells(probeOrigin))
-                {
-                    heightSum += terrMgr.GetHeight(cell).Value.ToFloat();
-                    cellCount++;
-                }
-            }
-            catch
-            {
-                return false;  // probe tile out of bounds or otherwise inaccessible
-            }
-
-            if (cellCount == 0)
-                return false;
-
-            return Math.Abs(heightSum / cellCount - targetHeight) <= FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE;
+            return false;
         }
 
         /// <summary>
-        /// Returns true if the two corners on the edge of <paramref name="data"/> that face back
-        /// toward the rim tile (i.e. the edge opposite to the direction traveled) are both equal to
-        /// <paramref name="targetHeight"/>.
-        /// Direction mapping (dx/dy arrays, index → movement direction):
-        ///   0 = -X (probe is West  of rim) → probe's East  edge: PlusX,   PlusXy
-        ///   1 = +X (probe is East  of rim) → probe's West  edge: Origin,   PlusY
-        ///   2 = -Y (probe is South of rim) → probe's North edge: Origin,   PlusX
-        ///   3 = +Y (probe is North of rim) → probe's South edge: PlusY,    PlusXy
+        /// Returns true if the far 2 corners of <paramref name="rimOrigin"/> (the edge furthest
+        /// from the farming area in direction <paramref name="dir"/>) each have terrain height
+        /// above <paramref name="targetHeight"/> - <see cref="FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE"/>.
+        /// Cardinal direction index matches the dx/dy arrays: 0=-X, 1=+X, 2=-Y, 3=+Y.
         /// </summary>
-        private static bool ProbeEdgeFacingRimIsAtTargetHeight(DesignationData data, int dir, int targetHeight)
+        private static bool RimPassesFarCornerCriteria(Tile2i rimOrigin, int dir, int targetHeight, TerrainManager terrMgr)
         {
-            switch (dir)
+            float threshold = targetHeight - FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE;
+            try
             {
-                case 0: return data.PlusXTargetHeight.Value  == targetHeight && data.PlusXyTargetHeight.Value == targetHeight;
-                case 1: return data.OriginTargetHeight.Value == targetHeight && data.PlusYTargetHeight.Value  == targetHeight;
-                case 2: return data.OriginTargetHeight.Value == targetHeight && data.PlusXTargetHeight.Value  == targetHeight;
-                case 3: return data.PlusYTargetHeight.Value  == targetHeight && data.PlusXyTargetHeight.Value == targetHeight;
-                default: return false;
+                switch (dir)
+                {
+                    case 0: // West rim: far edge = West → Origin(NW), PlusY(SW)
+                        return terrMgr.GetHeight(rimOrigin).Value.ToFloat()          > threshold
+                            && terrMgr.GetHeight(rimOrigin.AddY(4)).Value.ToFloat()  > threshold;
+                    case 1: // East rim: far edge = East → PlusX(NE), PlusXy(SE)
+                        return terrMgr.GetHeight(rimOrigin.AddX(4)).Value.ToFloat()  > threshold
+                            && terrMgr.GetHeight(rimOrigin.AddXy(4)).Value.ToFloat() > threshold;
+                    case 2: // North rim: far edge = North → Origin(NW), PlusX(NE)
+                        return terrMgr.GetHeight(rimOrigin).Value.ToFloat()          > threshold
+                            && terrMgr.GetHeight(rimOrigin.AddX(4)).Value.ToFloat()  > threshold;
+                    case 3: // South rim: far edge = South → PlusY(SW), PlusXy(SE)
+                        return terrMgr.GetHeight(rimOrigin.AddY(4)).Value.ToFloat()  > threshold
+                            && terrMgr.GetHeight(rimOrigin.AddXy(4)).Value.ToFloat() > threshold;
+                    default: return false;
+                }
             }
+            catch { return false; }
+        }
+
+        /// <summary>
+        /// Returns true if the far 3 corners of <paramref name="cornerRim"/> (all corners except
+        /// the one facing back toward the farming area) each have terrain height above
+        /// <paramref name="targetHeight"/> - <see cref="FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE"/>.
+        /// <paramref name="xi"/> and <paramref name="yi"/> are the direction indices into dx/dy.
+        /// </summary>
+        private static bool CornerRimPassesFarCornerCriteria(Tile2i cornerRim, int xi, int yi, int targetHeight, TerrainManager terrMgr)
+        {
+            float threshold = targetHeight - FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE;
+            try
+            {
+                float nw = terrMgr.GetHeight(cornerRim).Value.ToFloat();
+                float ne = terrMgr.GetHeight(cornerRim.AddX(4)).Value.ToFloat();
+                float se = terrMgr.GetHeight(cornerRim.AddXy(4)).Value.ToFloat();
+                float sw = terrMgr.GetHeight(cornerRim.AddY(4)).Value.ToFloat();
+                // Exclude the single inner corner facing the farming area; the other 3 must pass.
+                if (xi == 0 && yi == 2) return nw > threshold && ne > threshold && sw > threshold; // NW rim: inner=SE
+                if (xi == 1 && yi == 2) return nw > threshold && ne > threshold && se > threshold; // NE rim: inner=SW
+                if (xi == 0 && yi == 3) return nw > threshold && se > threshold && sw > threshold; // SW rim: inner=NE
+                if (xi == 1 && yi == 3) return ne > threshold && se > threshold && sw > threshold; // SE rim: inner=NW
+                return false;
+            }
+            catch { return false; }
         }
     }
 }

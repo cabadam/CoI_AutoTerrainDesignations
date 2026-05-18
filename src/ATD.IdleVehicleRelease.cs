@@ -61,31 +61,15 @@ namespace AutoTerrainDesignations
         }
 
         /// <summary>
-        /// Returns true if the tower has an active farming session with origins still in the
-        /// ReadyForFilling or Filling phase, meaning fill trucks are needed and should not
-        /// be evicted by the idle-release system.
-        /// </summary>
-        private static bool HasActiveFarmingFillingSession(EntityId towerId)
-        {
-            if (!s_farmingPreparationSessions.TryGetValue(towerId, out FarmingPreparationSession session))
-                return false;
-
-            foreach (FarmingOriginSession origin in session.Origins.Values)
-            {
-                if (origin.Phase == FarmingOriginPhase.ReadyForFilling
-                    || origin.Phase == FarmingOriginPhase.Filling)
-                    return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Returns true if the tower has pending excavation work or an active farming fill
-        /// session — either of which means vehicles should be kept assigned.
+        /// Returns true if the tower has pending excavation work — meaning vehicles should
+        /// be kept assigned.
+        /// NOTE: Farming fill sessions are intentionally NOT checked here. Fill trucks are
+        /// unassigned from the tower by the fill session before filling starts, so they are
+        /// absent from AllVehicles during filling and will not be evicted as strays.
+        /// Excavators have no role in filling and should be released once excavation is done.
         /// </summary>
         private static bool HasPendingWork(MineTower tower, EntityId towerId)
-            => HasPendingExcavationJobs(tower) || HasActiveFarmingFillingSession(towerId);
+            => HasPendingExcavationJobs(tower);
 
         /// <summary>
         /// Main per-tick entry point. Called by the ticker on the same 1-second game-time
@@ -419,8 +403,14 @@ namespace AutoTerrainDesignations
                     }
                     else
                     {
-                        // Assignment was silently blocked (e.g. by another mod's Harmony patch).
-                        // Keep tracking so we retry on the next tick.
+                        // WORKAROUND (gameplay-plus-plus): ParkingHQMineTowerBlockPatch has a
+                        // Harmony Prefix on MineTower.AssignVehicle that returns false (skips
+                        // the original) when a truck is committed to Parking HQ. Because
+                        // AssignVehicle is void, ATD gets no signal the assignment was blocked.
+                        // We detect this by checking AllVehicles after the call; if the vehicle
+                        // is still absent we count it as blocked and keep it in tracking so the
+                        // assignment is retried on the next tick (it succeeds once the truck
+                        // parks and IsTruckCommittedToHq returns false).
                         blocked++;
                     }
                 }
@@ -430,9 +420,9 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            // Only clear tracking when no vehicles were blocked; if some were blocked, we keep
-            // the full list so that already-restored vehicles are skipped (AllVehicles.Contains)
-            // and blocked ones are retried on the next tick.
+            // WORKAROUND (gameplay-plus-plus): only clear tracking when no vehicles were
+            // blocked; if some were blocked, keep the full list so already-restored vehicles
+            // are skipped via AllVehicles.Contains and blocked ones are retried next tick.
             if (blocked == 0)
                 s_idleReleasedVehiclesByTower.Remove(towerId);
 

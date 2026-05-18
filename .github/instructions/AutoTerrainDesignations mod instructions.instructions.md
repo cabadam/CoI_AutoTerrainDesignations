@@ -1,6 +1,6 @@
 ---
-description: Describe when these instructions should be loaded by the agent based on task context
-# applyTo: 'Describe when these instructions should be loaded by the agent based on task context' # when provided, instructions will automatically be added to the request context when the pattern matches an attached file
+description: Load when working on AutoTerrainDesignations mod code, making changes, or investigating bugs.
+applyTo: 'src/**/*.cs'
 ---
 
 <!-- Tip: Use /create-instructions in chat to generate content with agent assistance -->

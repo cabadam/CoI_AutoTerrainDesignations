@@ -859,13 +859,18 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            ReleaseEmptyTowerTrucksForFilling(tower, session);
-
             // Clean up preparation-phase artifacts and place rim alignment designations before
             // the access-ramp check so the ramp avoids tiles already covered by a rim designation.
             RemoveOwnedFarmingPreparationShoulders(session);
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             PlaceFarmingRimAlignmentDesignations(session, terrMgr);
+
+            // Only release trucks when no rim designation has pending excavation work. If the
+            // rim contains debris the trucks must be assigned so they can haul material away.
+            if (HasRimExcavationWork(session))
+                RestoreTowerTrucksReleasedForFilling(tower, session, reassign: true);
+            else
+                ReleaseEmptyTowerTrucksForFilling(tower, session);
 
             EnsureFarmingAccessForCurrentPhase(tower, session, isFilling: true);
             var droppedOrigins = new List<Tile2i>();
@@ -1448,8 +1453,10 @@ namespace AutoTerrainDesignations
                         }
                         else
                         {
-                            // Assignment was silently blocked (e.g. by another mod's Harmony patch).
-                            // Keep in ReleasedFillingTrucks so we retry on the next tick.
+                            // WORKAROUND (gameplay-plus-plus): see ATD.IdleVehicleRelease.cs
+                            // for full explanation. ParkingHQMineTowerBlockPatch silently skips
+                            // AssignVehicle for committed trucks; we detect it via AllVehicles
+                            // and retry on the next tick.
                             blocked++;
                         }
                     }
@@ -1459,9 +1466,9 @@ namespace AutoTerrainDesignations
                     }
                 }
 
-                // Only clear tracking when no vehicles were blocked; if some were blocked, we keep
-                // the full list so that already-restored trucks are skipped (AllVehicles.Contains)
-                // and blocked ones are retried on the next tick.
+                // WORKAROUND (gameplay-plus-plus): only clear tracking when no trucks were
+                // blocked; if some were blocked, keep the full list so already-restored trucks
+                // are skipped via AllVehicles.Contains and blocked ones are retried next tick.
                 if (blocked == 0)
                 {
                     session.ReleasedFillingTrucks.Clear();
