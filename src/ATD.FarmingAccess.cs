@@ -162,6 +162,40 @@ namespace AutoTerrainDesignations
 
             foreach (List<TerrainDesignation> cluster in clusters)
             {
+                Tile2i anchor = cluster[0].OriginTileCoord;
+
+                // If a previous-tick owned ramp is still present adjacent to this cluster and
+                // snapped toward it (non-red edge), skip placing a new ramp — the existing one
+                // just hasn't been excavated yet; adding another would cause ramps to accumulate.
+                bool clusterAlreadyHasRamp = false;
+                {
+                    foreach (TerrainDesignation d in cluster)
+                    {
+                        Tile2i o = d.OriginTileCoord;
+                        foreach (NeighborCoord dir in NeighborCoord.All4Neighbors)
+                        {
+                            Tile2i neighbor = o + new RelTile2i(dir.Dx * 4, dir.Dy * 4);
+                            if (!ownedRamps.Contains(neighbor))
+                                continue;
+                            Option<TerrainDesignation> existing = s_desigManager.GetDesignationAt(neighbor);
+                            if (existing.HasValue && existing.Value.Prototype == rampProto
+                                && d.IsSnappedTowards(dir))
+                            {
+                                clusterAlreadyHasRamp = true;
+                                break;
+                            }
+                        }
+                        if (clusterAlreadyHasRamp)
+                            break;
+                    }
+                }
+
+                if (clusterAlreadyHasRamp)
+                {
+                    clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: existing ramp pending");
+                    continue;
+                }
+
                 var tileDepths = new Dict<Tile2i, int>();
                 var cornerHeights = new Dict<Tile2i, int>();
                 foreach (TerrainDesignation designation in cluster)
@@ -201,7 +235,6 @@ namespace AutoTerrainDesignations
                     reservedRampTiles.Add(origin);
                 }
 
-                Tile2i anchor = cluster[0].OriginTileCoord;
                 if (outcome == RampPlacementOutcome.Failed)
                 {
                     clustersFailed++;
@@ -422,7 +455,7 @@ namespace AutoTerrainDesignations
                 ownedRamps.Remove(origin);
             }
 
-            if (removed > 0 || ownedRamps.Count == 0)
+            if (removed > 0)
                 session.LastAccessRampRequestKey = string.Empty;
 
             ClearFarmingAccessCache(session);
@@ -468,6 +501,7 @@ namespace AutoTerrainDesignations
 
             var targetTilesByOrigin = new Dictionary<Tile2i, HashSet<Tile2i>>();
             var originsByTargetTile = new Dictionary<Tile2i, List<Tile2i>>();
+            var designationsByOrigin = new Dictionary<Tile2i, TerrainDesignation>(designations.Count);
             foreach (TerrainDesignation designation in designations)
             {
                 if (!IsFarmingDesignationReadyForVehicleWork(designation, isFilling))
@@ -482,6 +516,7 @@ namespace AutoTerrainDesignations
                 else
                 {
                     targetTilesByOrigin[designation.OriginTileCoord] = targets;
+                    designationsByOrigin[designation.OriginTileCoord] = designation;
                     foreach (Tile2i target in targets)
                     {
                         if (!originsByTargetTile.TryGetValue(target, out List<Tile2i> origins))
@@ -543,6 +578,51 @@ namespace AutoTerrainDesignations
                     visited.Add(next);
                     queue.Enqueue(next);
                 }
+            }
+
+            // Propagate reachability through designation-adjacency with matching target heights
+            // ("non-red" edges). If designation A is BFS-reachable and shares a compatible edge
+            // with neighbouring farming designation B, B is also reachable — a vehicle working
+            // on A can cross the matching-height edge into B once A is fulfilled.
+            var spreadQueue = new Queue<TerrainDesignation>();
+            foreach (TerrainDesignation d in designationsByOrigin.Values)
+                if (reachableOrigins.Contains(d.OriginTileCoord))
+                    spreadQueue.Enqueue(d);
+
+            while (spreadQueue.Count > 0)
+            {
+                TerrainDesignation curr = spreadQueue.Dequeue();
+                DesignationData cd = curr.Data;
+                Tile2i o = curr.OriginTileCoord;
+                TerrainDesignation nbr;
+
+                // East (+4, 0): curr.PlusX == nbr.Origin AND curr.PlusXy == nbr.PlusY
+                if (designationsByOrigin.TryGetValue(o + new RelTile2i(4, 0), out nbr)
+                    && !reachableOrigins.Contains(nbr.OriginTileCoord)
+                    && cd.PlusXTargetHeight == nbr.Data.OriginTargetHeight
+                    && cd.PlusXyTargetHeight == nbr.Data.PlusYTargetHeight)
+                { reachableOrigins.Add(nbr.OriginTileCoord); spreadQueue.Enqueue(nbr); }
+
+                // West (-4, 0): curr.Origin == nbr.PlusX AND curr.PlusY == nbr.PlusXy
+                if (designationsByOrigin.TryGetValue(o + new RelTile2i(-4, 0), out nbr)
+                    && !reachableOrigins.Contains(nbr.OriginTileCoord)
+                    && cd.OriginTargetHeight == nbr.Data.PlusXTargetHeight
+                    && cd.PlusYTargetHeight == nbr.Data.PlusXyTargetHeight)
+                { reachableOrigins.Add(nbr.OriginTileCoord); spreadQueue.Enqueue(nbr); }
+
+                // PlusY (+4, 0): curr.PlusY == nbr.Origin AND curr.PlusXy == nbr.PlusX
+                if (designationsByOrigin.TryGetValue(o + new RelTile2i(0, 4), out nbr)
+                    && !reachableOrigins.Contains(nbr.OriginTileCoord)
+                    && cd.PlusYTargetHeight == nbr.Data.OriginTargetHeight
+                    && cd.PlusXyTargetHeight == nbr.Data.PlusXTargetHeight)
+                { reachableOrigins.Add(nbr.OriginTileCoord); spreadQueue.Enqueue(nbr); }
+
+                // MinusY (0, -4): curr.Origin == nbr.PlusY AND curr.PlusX == nbr.PlusXy
+                if (designationsByOrigin.TryGetValue(o + new RelTile2i(0, -4), out nbr)
+                    && !reachableOrigins.Contains(nbr.OriginTileCoord)
+                    && cd.OriginTargetHeight == nbr.Data.PlusYTargetHeight
+                    && cd.PlusXTargetHeight == nbr.Data.PlusXyTargetHeight)
+                { reachableOrigins.Add(nbr.OriginTileCoord); spreadQueue.Enqueue(nbr); }
             }
 
             foreach (TerrainDesignation designation in designations)
