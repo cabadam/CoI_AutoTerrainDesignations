@@ -252,6 +252,7 @@ namespace AutoTerrainDesignations
                 placedRampOrigins,
                 reservedRampTiles,
                 useLocalSurfaceReference: false,
+                allowExistingPlannedRampShortcut: true,
                 out topRowTile);
         }
 
@@ -265,6 +266,7 @@ namespace AutoTerrainDesignations
             List<Tile2i>? placedRampOrigins,
             HashSet<Tile2i>? reservedRampTiles,
             bool useLocalSurfaceReference,
+            bool allowExistingPlannedRampShortcut,
             out Tile2i topRowTile)
         {
             topRowTile = default;
@@ -285,7 +287,9 @@ namespace AutoTerrainDesignations
             // redundant.  Skip generation so we don't accumulate surplus ramps on re-scans.
             // This guard only applies to the standard mine-ramp path (useLocalSurfaceReference
             // is false); farming filling ramps use their own duplicate-prevention mechanism.
-            if (!useLocalSurfaceReference && ExistingPlannedRampProvidesAccess(tower, tileDepths))
+            if (allowExistingPlannedRampShortcut
+                && !useLocalSurfaceReference
+                && ExistingPlannedRampProvidesAccess(tower, tileDepths))
             {
                 LogDebug("Skipping ramp generation: existing planned ramp designation(s) already provide surface access from the tower.");
                 topRowTile = default;

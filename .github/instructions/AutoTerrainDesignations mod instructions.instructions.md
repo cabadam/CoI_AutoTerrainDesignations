@@ -63,6 +63,13 @@ Reference for general queries regarding e.g. the manifest file, mod structure, a
   ```
 - Use the decompiled source to inspect game logic, entity behavior, and API details when needed. Be mindful that decompiled code may not have original variable names or comments, so it may require some interpretation.
 
+# CoI game update — refresh decompiled source
+Whenever there is a new Captain of Industry release, run the decompile script from the mod root before making any code changes:
+```powershell
+.\tools\decompile-coi.ps1
+```
+This regenerates the decompiled source under `%APPDATA%\Captain of Industry\Mafi` so that all API references and game logic inspections reflect the latest game version.
+
 # Build verification
 After every code change, run a Debug build to confirm the project compiles cleanly:
 ```powershell

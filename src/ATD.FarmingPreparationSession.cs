@@ -97,6 +97,9 @@ namespace AutoTerrainDesignations
             public HashSet<Tile2i> PreparationAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> FillingAccessRampOrigins { get; } = new HashSet<Tile2i>();
             public HashSet<Tile2i> RimAlignmentOrigins { get; } = new HashSet<Tile2i>();
+            public HashSet<Tile2i> FutureRimDebrisCleanupOrigins { get; } = new HashSet<Tile2i>();
+            public bool FutureRimDebrisCleanupInitialized { get; set; }
+            public string LastFutureRimDebrisCleanupDetail { get; set; } = string.Empty;
             public HashSet<Tile2i> CachedPendingFillingArea { get; } = new HashSet<Tile2i>();
             public bool PendingFillingAreaDirty { get; set; } = true;
             public int LastFarmingPerfLogTick { get; set; } = int.MinValue;
@@ -339,6 +342,7 @@ namespace AutoTerrainDesignations
             ClearFarmingFillingVehicleClearOut(session);
             ClearFarmingFillingActivation(session);
             RemoveOwnedFarmingPreparationShoulders(session);
+            RemoveOwnedFarmingFutureRimDebrisCleanup(session);
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             RemoveOwnedFarmingAccessRamps(session, isFilling: true);
             RestoreTowerDumpRulesIfOwned(tower, session);
@@ -724,12 +728,19 @@ namespace AutoTerrainDesignations
             long accessMs = phaseSw.ElapsedMilliseconds;
 
             phaseSw.Restart();
+            EnsureFutureRimDebrisCleanupForPreparation(tower, session, terrMgr);
+            PruneFulfilledFutureRimDebrisCleanup(session);
+            bool hasRimCleanupWork = HasFutureRimDebrisCleanupWork(session);
+            phaseSw.Stop();
+            long rimCleanupMs = phaseSw.ElapsedMilliseconds;
+
+            phaseSw.Restart();
             session.LastReport = FormatFarmingPreparationSummary(session);
             phaseSw.Stop();
             long summaryMs = phaseSw.ElapsedMilliseconds;
 
             phaseSw.Restart();
-            bool keepPreparing = !accessReady || session.Origins.Values.Any(origin =>
+            bool keepPreparing = hasRimCleanupWork || !accessReady || session.Origins.Values.Any(origin =>
                 origin.Phase == FarmingOriginPhase.AnalysisLeveling ||
                 origin.Phase == FarmingOriginPhase.Preparing);
             phaseSw.Stop();
@@ -741,8 +752,8 @@ namespace AutoTerrainDesignations
                 tower,
                 "preparation breakdown",
                 sw.ElapsedMilliseconds,
-                $"capture={captureMs}ms, advance={advanceMs}ms, access={accessMs}ms, summary={summaryMs}ms, stateScan={stateScanMs}ms, captured={captured}, inspected={advanceStats.Inspected}, analyzed={advanceStats.Analyzed}, hiddenSkipped={advanceStats.HiddenSkipped}, dropped={advanceStats.Dropped}, accessReady={accessReady}, keepPreparing={keepPreparing}");
-            LogFarmingPerfIfSlow(session, tower, "preparation pass", sw.ElapsedMilliseconds, $"accessReady={accessReady}, keepPreparing={keepPreparing}");
+                $"capture={captureMs}ms, advance={advanceMs}ms, access={accessMs}ms, rimCleanup={rimCleanupMs}ms, summary={summaryMs}ms, stateScan={stateScanMs}ms, captured={captured}, inspected={advanceStats.Inspected}, analyzed={advanceStats.Analyzed}, hiddenSkipped={advanceStats.HiddenSkipped}, dropped={advanceStats.Dropped}, accessReady={accessReady}, rimCleanupWork={hasRimCleanupWork}, keepPreparing={keepPreparing}");
+            LogFarmingPerfIfSlow(session, tower, "preparation pass", sw.ElapsedMilliseconds, $"rimCleanupWork={hasRimCleanupWork}, accessReady={accessReady}, keepPreparing={keepPreparing}");
             return keepPreparing;
         }
 
@@ -774,6 +785,8 @@ namespace AutoTerrainDesignations
                     RemoveOwnedFarmingAccessRamps(session, isFilling: false);
                     RemoveOwnedFarmingAccessRamps(session, isFilling: true);
                     RemoveOwnedFarmingPreparationShoulders(session);
+                    RemoveOwnedFarmingFutureRimDebrisCleanup(session);
+                    session.FutureRimDebrisCleanupInitialized = false;
                     RestoreTowerDumpRulesIfOwned(tower, session);
                     RestoreTowerTrucksReleasedForFilling(tower, session, reassign: true);
                 }
@@ -862,6 +875,7 @@ namespace AutoTerrainDesignations
             // Clean up preparation-phase artifacts and place rim alignment designations before
             // the access-ramp check so the ramp avoids tiles already covered by a rim designation.
             RemoveOwnedFarmingPreparationShoulders(session);
+            RemoveOwnedFarmingFutureRimDebrisCleanup(session);
             RemoveOwnedFarmingAccessRamps(session, isFilling: false);
             PlaceFarmingRimAlignmentDesignations(session, terrMgr);
 
@@ -1617,6 +1631,8 @@ namespace AutoTerrainDesignations
                 sb.AppendLine("  " + session.LastVehicleClearOutDetail);
             if (!string.IsNullOrEmpty(session.LastTruckAssignmentDetail))
                 sb.AppendLine("  " + session.LastTruckAssignmentDetail);
+            if (!string.IsNullOrEmpty(session.LastFutureRimDebrisCleanupDetail))
+                sb.AppendLine("  " + session.LastFutureRimDebrisCleanupDetail);
             if (!string.IsNullOrEmpty(session.LastDroppedOriginDetail))
                 sb.AppendLine("  " + session.LastDroppedOriginDetail);
             if (!string.IsNullOrEmpty(session.LastAccessRampDetail))
@@ -1660,6 +1676,8 @@ namespace AutoTerrainDesignations
                 sb.AppendLine("  " + session.LastVehicleClearOutDetail);
             if (!string.IsNullOrEmpty(session.LastTruckAssignmentDetail))
                 sb.AppendLine("  " + session.LastTruckAssignmentDetail);
+            if (!string.IsNullOrEmpty(session.LastFutureRimDebrisCleanupDetail))
+                sb.AppendLine("  " + session.LastFutureRimDebrisCleanupDetail);
             if (!string.IsNullOrEmpty(session.LastDroppedOriginDetail))
                 sb.AppendLine("  " + session.LastDroppedOriginDetail);
             if (!string.IsNullOrEmpty(session.LastAccessRampDetail))

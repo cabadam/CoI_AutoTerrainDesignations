@@ -138,6 +138,8 @@ namespace AutoTerrainDesignations
                     .Select(kvp => kvp.Key));
             foreach (Tile2i rimOrigin in session.RimAlignmentOrigins)
                 reservedRampTiles.Add(rimOrigin);
+            foreach (Tile2i cleanupOrigin in session.FutureRimDebrisCleanupOrigins)
+                reservedRampTiles.Add(cleanupOrigin);
             foreach (FarmingPreparationSession otherSession in s_farmingPreparationSessions.Values)
             {
                 if (otherSession == session)
@@ -190,6 +192,7 @@ namespace AutoTerrainDesignations
                     placedRampOrigins,
                     reservedRampTiles,
                     useLocalSurfaceReference: isFilling,
+                    allowExistingPlannedRampShortcut: false,
                     out Tile2i rampTopTile);
 
                 foreach (Tile2i origin in placedRampOrigins)

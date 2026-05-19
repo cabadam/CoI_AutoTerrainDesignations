@@ -1,4 +1,6 @@
-v0.4.0o | 2026-05-18 [unreleased]
+v0.4.0o | 2026-05-19 [unreleased]
+* Preparation pass now evaluates the access ramp before the future rim debris cleanup step; the ramp gets priority on tile positioning because a ramp designation already excavates any debris on those tiles, so the rim cleanup naturally defers by skipping tiles already occupied by the ramp
+* Fixed: rim alignment placement height criteria was one-sided; far-corner height was only checked against a lower bound (`targetHeight − 0.1`); each far corner is now required to be within ±0.1 tiles of `targetHeight`, preventing rim designations from being placed where terrain is significantly above the target and would require unnecessary excavation at the boundary
 
 v0.4.0n | 2026-05-18
 * Fixed: trucks were unconditionally released from the tower at the start of every filling tick, so when a rim alignment designation contained debris (terrain above target height) the dispatched excavators had no trucks to haul the material away; trucks are now kept assigned (or restored) for any tick where at least one rim designation has pending excavation work (`IsMiningNotFulfilled`), and released again once all rim tiles are clear
