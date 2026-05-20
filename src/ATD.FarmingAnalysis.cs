@@ -316,12 +316,15 @@ namespace AutoTerrainDesignations
             TerrainManager terrMgr)
         {
             FarmingAnalysisRow row = AnalyzeFarmingDesignation(liveDesignation.OriginTileCoord, targetHeight, terrMgr);
-            if (row.State != FarmingAnalysisState.Done || liveDesignation.IsFulfilled)
+            bool designationFulfilled = IsDumpingDesignation(liveDesignation)
+                ? liveDesignation.IsDumpingFulfilled
+                : liveDesignation.IsFulfilled;
+            if (row.State != FarmingAnalysisState.Done || designationFulfilled)
                 return row;
 
-            string detail = liveDesignation.IsDumpingFulfilled
-                ? "farmable top band appears complete, but vanilla level designation is not fulfilled yet"
-                : "farmable top band appears complete, but vanilla dump fulfillment still needs work";
+            string detail = IsDumpingDesignation(liveDesignation)
+                ? "farmable top band appears complete, but vanilla dump fulfillment still needs work"
+                : "farmable top band appears complete, but vanilla level designation is not fulfilled yet";
             return new FarmingAnalysisRow(
                 row.Origin,
                 FarmingAnalysisState.ReadyForFilling,
@@ -338,6 +341,13 @@ namespace AutoTerrainDesignations
             if (s_levelingProto != null && designation.Prototype == s_levelingProto)
                 return true;
             return designation.Prototype.Id.Value == "LevelDesignator";
+        }
+
+        private static bool IsDumpingDesignation(TerrainDesignation designation)
+        {
+            if (s_dumpingProto != null && designation.Prototype == s_dumpingProto)
+                return true;
+            return designation.Prototype.Id.Value == "DumpingDesignator";
         }
 
         private static bool TryGetFlatTargetHeight(DesignationData data, out int targetHeight)

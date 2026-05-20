@@ -428,8 +428,8 @@ namespace AutoTerrainDesignations
             if (s_desigManager == null)
                 return FarmingTr("stage4_designation_manager_unavailable", "[ATD Farming] Stage 4 blocked: designation manager unavailable.");
 
-            if (s_levelingProto == null)
-                return FarmingTr("stage4_leveling_proto_unavailable", "[ATD Farming] Stage 4 blocked: leveling prototype unavailable.");
+            if (s_dumpingProto == null)
+                return FarmingTr("stage4_dumping_proto_unavailable", "[ATD Farming] Stage 4 blocked: dumping prototype unavailable.");
 
             if (!CanStartTowerLevelFilling(session))
             {
@@ -555,7 +555,10 @@ namespace AutoTerrainDesignations
                     RestoreTowerDumpRulesIfOwned(tower, session);
                     RestoreTowerTrucksReleasedForFilling(tower, session, reassign: true);
                     if (IsFarmingPreparationComplete(session))
+                    {
                         AddFarmingCompleteNotification(tower);
+                        RemoveCompletedFarmingOriginDesignations(session);
+                    }
                     continue;
                 }
 
@@ -702,6 +705,40 @@ namespace AutoTerrainDesignations
                 && session.Origins.Values.All(origin => origin.Phase == FarmingOriginPhase.Done);
         }
 
+        private static int RemoveCompletedFarmingOriginDesignations(FarmingPreparationSession session)
+        {
+            if (s_desigManager == null)
+                return 0;
+
+            int removed = 0;
+            foreach (FarmingOriginSession originState in session.Origins.Values)
+            {
+                if (originState.Phase != FarmingOriginPhase.Done)
+                    continue;
+
+                var currentDesignation = s_desigManager.GetDesignationAt(originState.Origin);
+                if (!currentDesignation.HasValue)
+                    continue;
+
+                if (!IsDumpingDesignation(currentDesignation.Value) && !IsLevelingDesignation(currentDesignation.Value))
+                    continue;
+
+                s_desigManager.RemoveDesignation(originState.Origin);
+                removed++;
+                originState.IsHiddenUntilFilling = false;
+                originState.IsFillingActivated = false;
+                originState.Detail = "complete; final designation removed after completion notification";
+            }
+
+            if (removed > 0)
+            {
+                MarkPendingFillingAreaDirty(session);
+                LogDebug($"[ATD Farming] Removed {removed} completed final farming designation(s) after completion notification.");
+            }
+
+            return removed;
+        }
+
         private static bool RunFarmingPreparationPass(IAreaManagingTower tower, FarmingPreparationSession session)
         {
             Stopwatch sw = Stopwatch.StartNew();
@@ -728,9 +765,10 @@ namespace AutoTerrainDesignations
             long accessMs = phaseSw.ElapsedMilliseconds;
 
             phaseSw.Restart();
-            EnsureFutureRimDebrisCleanupForPreparation(tower, session, terrMgr);
-            PruneFulfilledFutureRimDebrisCleanup(session);
-            bool hasRimCleanupWork = HasFutureRimDebrisCleanupWork(session);
+            // Temporarily disabled: do not place preparation-start rim debris cleanup mining
+            // orders. Existing cleanup removal paths are left intact for sessions that already
+            // own such designations.
+            bool hasRimCleanupWork = false;
             phaseSw.Stop();
             long rimCleanupMs = phaseSw.ElapsedMilliseconds;
 
@@ -904,10 +942,10 @@ namespace AutoTerrainDesignations
                     continue;
                 }
 
-                if (!IsLevelingDesignation(currentDesignation.Value))
+                if (!IsDumpingDesignation(currentDesignation.Value))
                 {
                     droppedOrigins.Add(originState.Origin);
-                    session.LastDroppedOriginDetail = $"Dropped ({originState.Origin.X},{originState.Origin.Y}): filling designation was replaced with a non-leveling designation.";
+                    session.LastDroppedOriginDetail = $"Dropped ({originState.Origin.X},{originState.Origin.Y}): filling designation was replaced with a non-dumping designation.";
                     continue;
                 }
 
@@ -1015,7 +1053,7 @@ namespace AutoTerrainDesignations
                 if (session.Origins.ContainsKey(origin))
                     continue;
 
-                // Rim alignment designations are flat leveling designations placed just outside
+                // Rim alignment designations are flat dumping designations placed just outside
                 // the farmed area during filling. Skip them so they are not captured as new work.
                 if (session.RimAlignmentOrigins.Contains(origin))
                     continue;

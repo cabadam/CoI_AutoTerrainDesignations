@@ -422,7 +422,7 @@ namespace AutoTerrainDesignations
             if (!isFilling)
                 return IsLevelingDesignation(designation);
 
-            return IsLevelingDesignation(designation);
+            return IsDumpingDesignation(designation);
         }
 
         private static HashSet<Tile2i> GetOwnedFarmingAccessRamps(FarmingPreparationSession session, bool isFilling)

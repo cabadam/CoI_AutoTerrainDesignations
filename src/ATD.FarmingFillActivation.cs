@@ -47,7 +47,7 @@ namespace AutoTerrainDesignations
             out int failed)
         {
             failed = 0;
-            if (s_desigManager == null || s_levelingProto == null)
+            if (s_desigManager == null || s_dumpingProto == null)
                 return 0;
 
             List<FarmingOriginSession> queued = session.Origins.Values
@@ -64,14 +64,14 @@ namespace AutoTerrainDesignations
             int activated = 0;
             foreach (FarmingOriginSession originState in queued)
             {
-                if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, originState.OriginalData))
+                if (s_desigManager.AddOrReplaceDesignation(s_dumpingProto, originState.OriginalData))
                 {
                     activated++;
                     originState.IsHiddenUntilFilling = false;
                     originState.IsFillingActivated = true;
                     originState.Phase = FarmingOriginPhase.Filling;
                     MarkPendingFillingAreaDirty(session);
-                    originState.Detail = "activated final fill designation";
+                    originState.Detail = "activated final dump designation";
                     s_farmingDebugStoredDesignations.Remove(originState.Origin);
                 }
                 else
@@ -79,7 +79,7 @@ namespace AutoTerrainDesignations
                     failed++;
                     originState.Phase = FarmingOriginPhase.Blocked;
                     MarkPendingFillingAreaDirty(session);
-                    originState.Detail = "failed to restore original level designation for filling";
+                    originState.Detail = "failed to activate final dump designation for filling";
                 }
             }
 
@@ -108,7 +108,7 @@ namespace AutoTerrainDesignations
             Dictionary<Tile2i, int> futureRimTargets = CollectFarmingRimAlignmentCandidates(
                 session,
                 terrMgr,
-                includeExistingLevelingDesignations: false,
+                includeExistingDumpingDesignations: false,
                 requireHeightCriteria: false);
             if (futureRimTargets.Count == 0)
                 return;
@@ -232,7 +232,7 @@ namespace AutoTerrainDesignations
             foreach (Tile2i origin in new List<Tile2i>(session.RimAlignmentOrigins))
             {
                 var current = s_desigManager.GetDesignationAt(origin);
-                if (current.HasValue && s_levelingProto != null && current.Value.Prototype == s_levelingProto)
+                if (current.HasValue && IsDumpingDesignation(current.Value))
                     s_desigManager.RemoveDesignation(origin);
             }
 
@@ -242,7 +242,7 @@ namespace AutoTerrainDesignations
 
         /// <summary>
         /// After committing fill designations, inspects each rim tile (one designation step outward
-        /// from the boundary of the filled area). A flat leveling designation is placed when the
+        /// from the boundary of the filled area). A flat dumping designation is placed when the
         /// rim tile's far corners are all above
         /// <paramref name="targetHeight"/> - <see cref="FARMING_RIM_ALIGNMENT_HEIGHT_TOLERANCE"/>:
         /// the far 2 corners for cardinal rims, or the far 3 corners for diagonal corner rims.
@@ -252,14 +252,14 @@ namespace AutoTerrainDesignations
             FarmingPreparationSession session,
             TerrainManager terrMgr)
         {
-            if (s_desigManager == null || s_levelingProto == null)
+            if (s_desigManager == null || s_dumpingProto == null)
                 return 0;
 
             session.RimAlignmentOrigins.Clear();
             Dictionary<Tile2i, int> rimTargets = CollectFarmingRimAlignmentCandidates(
                 session,
                 terrMgr,
-                includeExistingLevelingDesignations: true,
+                includeExistingDumpingDesignations: true,
                 requireHeightCriteria: true);
 
             int placed = 0;
@@ -267,14 +267,14 @@ namespace AutoTerrainDesignations
             {
                 Tile2i rimOrigin = rim.Key;
                 var existingAtRim = s_desigManager.GetDesignationAt(rimOrigin);
-                if (existingAtRim.HasValue && existingAtRim.Value.Prototype == s_levelingProto)
+                if (existingAtRim.HasValue && IsDumpingDesignation(existingAtRim.Value))
                 {
                     session.RimAlignmentOrigins.Add(rimOrigin);
                     continue;
                 }
 
                 DesignationData rimData = BuildFlatLevelDesignationData(rimOrigin, rim.Value);
-                if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, rimData))
+                if (s_desigManager.AddOrReplaceDesignation(s_dumpingProto, rimData))
                 {
                     placed++;
                     session.RimAlignmentOrigins.Add(rimOrigin);
@@ -288,7 +288,7 @@ namespace AutoTerrainDesignations
         private static Dictionary<Tile2i, int> CollectFarmingRimAlignmentCandidates(
             FarmingPreparationSession session,
             TerrainManager terrMgr,
-            bool includeExistingLevelingDesignations,
+            bool includeExistingDumpingDesignations,
             bool requireHeightCriteria)
         {
             var rimTargets = new Dictionary<Tile2i, int>();
@@ -320,14 +320,14 @@ namespace AutoTerrainDesignations
                     if (originSet.Contains(rimOrigin) || !rimSeen.Add(rimOrigin))
                         continue;
 
-                    if (!ShouldIncludeFarmingRimCandidate(rimOrigin, terrMgr, includeExistingLevelingDesignations))
+                    if (!ShouldIncludeFarmingRimCandidate(rimOrigin, terrMgr, includeExistingDumpingDesignations))
                         continue;
 
                     if (otherSessionOrigins.Contains(rimOrigin))
                         continue;
 
                     if (!requireHeightCriteria
-                        || IsExistingFarmingRimLevelingCandidate(rimOrigin, includeExistingLevelingDesignations)
+                        || IsExistingFarmingRimDumpingCandidate(rimOrigin, includeExistingDumpingDesignations)
                         || RimPassesFarCornerCriteria(rimOrigin, d, targetHeight, terrMgr))
                         rimTargets[rimOrigin] = targetHeight;
                 }
@@ -354,14 +354,14 @@ namespace AutoTerrainDesignations
                     if (!rimTargets.ContainsKey(cardinalX) || !rimTargets.ContainsKey(cardinalY))
                         continue;
 
-                    if (!ShouldIncludeFarmingRimCandidate(cornerRim, terrMgr, includeExistingLevelingDesignations))
+                    if (!ShouldIncludeFarmingRimCandidate(cornerRim, terrMgr, includeExistingDumpingDesignations))
                         continue;
 
                     if (otherSessionOrigins.Contains(cornerRim))
                         continue;
 
                     if (!requireHeightCriteria
-                        || IsExistingFarmingRimLevelingCandidate(cornerRim, includeExistingLevelingDesignations)
+                        || IsExistingFarmingRimDumpingCandidate(cornerRim, includeExistingDumpingDesignations)
                         || CornerRimPassesFarCornerCriteria(cornerRim, xi, yi, targetHeight, terrMgr))
                         rimTargets[cornerRim] = targetHeight;
                 }
@@ -373,7 +373,7 @@ namespace AutoTerrainDesignations
         private static bool ShouldIncludeFarmingRimCandidate(
             Tile2i rimOrigin,
             TerrainManager terrMgr,
-            bool includeExistingLevelingDesignations)
+            bool includeExistingDumpingDesignations)
         {
             if (!IsFarmingDesignationOriginValid(terrMgr, rimOrigin))
                 return false;
@@ -382,21 +382,21 @@ namespace AutoTerrainDesignations
             if (!existing.HasValue)
                 return true;
 
-            if (!includeExistingLevelingDesignations || s_levelingProto == null)
+            if (!includeExistingDumpingDesignations || s_dumpingProto == null)
                 return false;
 
-            return existing.Value.Prototype == s_levelingProto;
+            return IsDumpingDesignation(existing.Value);
         }
 
-        private static bool IsExistingFarmingRimLevelingCandidate(
+        private static bool IsExistingFarmingRimDumpingCandidate(
             Tile2i rimOrigin,
-            bool includeExistingLevelingDesignations)
+            bool includeExistingDumpingDesignations)
         {
-            if (!includeExistingLevelingDesignations || s_desigManager == null || s_levelingProto == null)
+            if (!includeExistingDumpingDesignations || s_desigManager == null || s_dumpingProto == null)
                 return false;
 
             var existing = s_desigManager.GetDesignationAt(rimOrigin);
-            return existing.HasValue && existing.Value.Prototype == s_levelingProto;
+            return existing.HasValue && IsDumpingDesignation(existing.Value);
         }
 
         /// <summary>

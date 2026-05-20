@@ -68,7 +68,7 @@ Whenever there is a new Captain of Industry release, run the decompile script fr
 ```powershell
 .\tools\decompile-coi.ps1
 ```
-This regenerates the decompiled source under `%APPDATA%\Captain of Industry\Mafi` so that all API references and game logic inspections reflect the latest game version.
+This regenerates the decompiled source under `%APPDATA%\Captain of Industry\Mafi` so that all API references and game logic inspections reflect the latest game version. The script also reads the game version from `Mafi.dll` and automatically updates `max_verified_game_version` in `manifest.json` if the version has changed.
 
 # Build verification
 After every code change, run a Debug build to confirm the project compiles cleanly:

@@ -108,3 +108,30 @@ if ($decompiled.Count -gt 0) {
 if ($skipped.Count -gt 0) {
     Write-Host "Up to date : $($skipped -join ', ')  (use -Force to re-decompile)"
 }
+
+# ---------------------------------------------------------------------------
+# 6. Sync max_verified_game_version in manifest.json
+# ---------------------------------------------------------------------------
+$mafiDll = Join-Path $managedPath 'Mafi.dll'
+if (Test-Path -LiteralPath $mafiDll) {
+    $vi     = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($mafiDll)
+    $priv   = $vi.FilePrivatePart
+    $letter = if ($priv -gt 0) { [char](96 + $priv) } else { '' }
+    $gameVersion = "$($vi.FileMajorPart).$($vi.FileMinorPart).$($vi.FileBuildPart)$letter"
+
+    $manifestPath = Join-Path $PSScriptRoot '..\manifest.json'
+    if (Test-Path -LiteralPath $manifestPath) {
+        $manifestContent = Get-Content -LiteralPath $manifestPath -Raw
+        $current = if ($manifestContent -match '"max_verified_game_version"\s*:\s*"([^"]*)"') { $Matches[1] } else { $null }
+
+        if ($current -ne $gameVersion) {
+            $updated = $manifestContent -replace '("max_verified_game_version"\s*:\s*")[^"]*"', "`${1}$gameVersion`""
+            Set-Content -LiteralPath $manifestPath -Value $updated -NoNewline
+            Write-Host ''
+            Write-Host "manifest.json: max_verified_game_version  $current  ->  $gameVersion"
+        } else {
+            Write-Host ''
+            Write-Host "manifest.json: max_verified_game_version already $gameVersion"
+        }
+    }
+}
