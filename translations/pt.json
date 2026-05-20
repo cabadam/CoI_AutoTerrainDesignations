@@ -1,0 +1,186 @@
+[
+  [
+    "notification.ramp_access_failed",
+    "[ATD] {entity} não pôde iniciar uma rampa de acesso"
+  ],
+  [
+    "notification.ramp_access_truncated",
+    "[ATD] {entity} não pôde encaixar uma rampa de acesso completa"
+  ],
+  [
+    "notification.ramp_access_not_accessible",
+    "[ATD] {entity} não pôde traçar caminho até a rampa"
+  ],
+  [
+    "notification.farming_complete",
+    "[ATD] {entity} preparação agrícola e preenchimento concluídos"
+  ],
+  [
+    "notification.excavator_completed",
+    "[ATD] {entity} concluiu uma escavadeira"
+  ],
+  [
+    "common.level.off",
+    "Desligado"
+  ],
+  [
+    "common.level.low",
+    "Baixo"
+  ],
+  [
+    "common.level.med",
+    "Médio"
+  ],
+  [
+    "common.level.high",
+    "Alto"
+  ],
+  [
+    "common.level.max",
+    "Máx"
+  ],
+  [
+    "panel.designations.title",
+    "Designações de Terreno"
+  ],
+  [
+    "panel.designations.description",
+    "Criar designações automáticas de terreno para esta torre."
+  ],
+  [
+    "panel.designations.create_button",
+    "Criar Designações"
+  ],
+  [
+    "panel.designations.create_tooltip",
+    "Escaneie e coloque designações de mineração na área desta torre."
+  ],
+  [
+    "panel.designations.debris_tooltip",
+    "Designar todos os detritos na área para mineração/remoção. Substitui quaisquer designações florestais."
+  ],
+  [
+    "panel.designations.clear_tooltip",
+    "Limpar todas as designações de mineração na área desta torre."
+  ],
+  [
+    "panel.designations.ore_filter.auto",
+    "Auto (úteis -> detritos -> terra)"
+  ],
+  [
+    "panel.designations.ramp_width.label",
+    "Largura da rampa"
+  ],
+  [
+    "panel.designations.ramp_width.tooltip",
+    "Largura das rampas de acesso geradas (0 = desativar rampa)."
+  ],
+  [
+    "panel.designations.max_layers.label",
+    "Máx. de camadas para escavar"
+  ],
+  [
+    "panel.designations.max_layers.tooltip",
+    "Máximo de camadas para escavar a partir da superfície. (∞ = sem limite.)"
+  ],
+  [
+    "panel.designations.elevation_limit.label",
+    "Limite de elevação"
+  ],
+  [
+    "panel.designations.elevation_limit.tooltip",
+    "Profundidade máxima (absoluta) de escavação (-∞ = sem limite.)"
+  ],
+  [
+    "panel.designations.ore_purity.label",
+    "Pureza do minério"
+  ],
+  [
+    "panel.designations.ore_purity.tooltip",
+    "O quão rigorosamente o scan filtra a qualidade do minério.\nDesligado: incluir todos os tiles, escavar até a profundidade total.\nBaixo: excluir tiles muito esparsos, aparar minério fino no fundo.\nMédio: qualidade moderada — pular tiles com muita sobrecarga ou pouco minério.\nAlto: apenas tiles ricos com uma coluna de minério limpa.\nMáx: minério quase puro — rigoroso com sobrecarga, profundidade e densidade do minério."
+  ],
+  [
+    "panel.designations.corridor_clearance.label",
+    "Folga do corredor"
+  ],
+  [
+    "panel.designations.corridor_clearance.tooltip",
+    "Largura mínima do corredor para conectar regiões de minério e garantir transitabilidade.\n0 = desativado (regiões separadas, sem corredores ou preenchimento de buracos).\n1 = corredores de 1 tile (veículos pequenos e médios).\n2 = corredores de 2 tiles (megaveículos).\n"
+  ],
+  [
+    "panel.designations.scanning_filter.label",
+    "Filtro de scan:"
+  ],
+  [
+    "panel.designations.scanning_filter.tooltip",
+    "Forçar o scan a mirar um produto específico. Nenhum = produtos úteis primeiro, depois detritos, depois terra."
+  ],
+  [
+    "panel.designations.ramp_warning.failed",
+    "Falha na geração da rampa — nenhum caminho válido encontrado."
+  ],
+  [
+    "panel.designations.ramp_warning.truncated",
+    "Rampa colocada mas não atingiu a superfície — escavadeiras podem não conseguir escavar."
+  ],
+  [
+    "panel.designations.ramp_warning.not_accessible",
+    "Não foi possível encontrar um caminho válido da torre até a rampa gerada. Verifique problemas de acesso."
+  ],
+  [
+    "toolbox.corner_outer.tooltip",
+    "Quina (externa): colocar rampas de quina convexas."
+  ],
+  [
+    "toolbox.corner_inner.tooltip",
+    "Quina (interna): colocar rampas de quina côncavas."
+  ],
+  [
+    "panel.farming.title",
+    "Preparação de Terra Agrícola"
+  ],
+  [
+    "panel.farming.description",
+    "Automatiza a preparação e o preenchimento final de designações de nível plano para que sua camada superior se torne cultivável."
+  ],
+  [
+    "panel.farming.automation_toggle.label",
+    "Automação de Preparação de Terra Agrícola"
+  ],
+  [
+    "panel.farming.automation_toggle.tooltip",
+    "Preparar designações de nível plano para terra agrícola limpando material superficial inadequado e restaurando as ordens finais de preenchimento."
+  ],
+  [
+    "panel.ore.title",
+    "Composição do Minério"
+  ],
+  [
+    "panel.ore.description",
+    "Recursos de minério dentro das designações de mineração atuais desta torre. (Não considera deslizamentos potenciais.)"
+  ],
+  [
+    "panel.ore.prompt_scan",
+    "Pressione ↺ para escanear a composição do minério."
+  ],
+  [
+    "panel.ore.scan_tooltip",
+    "Escanear composição do minério"
+  ],
+  [
+    "panel.ore.no_tower",
+    "Nenhuma torre selecionada."
+  ],
+  [
+    "panel.ore.no_minable_designations",
+    "Nenhuma designação minerável encontrada."
+  ],
+  [
+    "panel.ore.priority_selected_tooltip",
+    "Escavadeiras configuradas para priorizar {0}. Clique para desmarcar."
+  ],
+  [
+    "panel.ore.priority_set_tooltip",
+    "Definir todas as escavadeiras para priorizar {0}."
+  ]
+]
