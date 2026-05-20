@@ -56,7 +56,7 @@ These methods exist so external mods can embed ATD's UI inside their own inspect
 ```csharp
 PanelWithHeader BuildDesignationPanel(Func<IAreaManagingTower?> getTower, object key)
 ```
-Builds the **Terrain Designations** panel.
+Builds the **Mining designations** panel.
 
 ```csharp
 void RefreshDesignationPanel(object key)
@@ -66,7 +66,7 @@ Refreshes the designation panel when an inspector switches to a different tower.
 ```csharp
 PanelWithHeader BuildOreCompositionPanel(Func<IAreaManagingTower?> getTower, object key)
 ```
-Builds the **Ore Composition** panel.
+Builds the **Ore composition** panel.
 
 Pass the same `key` to all panel-builder and refresh calls. The same key is also used internally so the ore composition panel can refresh after ATD creates designations.
 

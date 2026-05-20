@@ -17,7 +17,7 @@ The core workflow has five parts:
 ## How to use it
 
 1. Select a mine tower.
-2. Open the **Terrain Designations** panel in the inspector.
+2. Open the **Mining designations** panel in the inspector.
 3. Adjust the per-tower settings if needed.
 4. Choose a **Scanning filter** if you want to force one product, or leave it on Auto.
 5. Click **Create Designations**.
@@ -57,7 +57,7 @@ Sets an absolute minimum elevation that ATD is allowed to dig to.
 - `-∞` means no limit.
 - Use this when you want to avoid digging below a known floor level.
 
-### `Ore purity`
+### `Ore quality`
 
 Controls how aggressively the scan rejects poor or contaminated ore.
 
@@ -81,9 +81,9 @@ Forces the scan to target one specific product.
 
 When left on Auto, ATD prefers useful ore products first, then falls back to debris cleanup, then dirt-like cleanup when appropriate.
 
-## Ore Composition panel
+## Ore composition panel
 
-The **Ore Composition** panel analyzes the tower's current managed designations and estimates how much material is inside them.
+The **Ore composition** panel analyzes the tower's current managed designations and estimates how much material is inside them.
 
 Use it to:
 
@@ -134,4 +134,4 @@ Useful console commands:
 - ATD only clears mining designations that it recognizes as mining work. It does not bulk-remove unrelated designation types when using the clear action.
 - Placing new mining designations can still overwrite other designation types if they occupy the same origin tile.
 - Ramp generation tries to avoid buildings, but steep terrain or poor access can still require manual adjustment.
-- Ore Composition is an estimate of material inside the current designations and does not account for landslides. Landslides usually cause ore quality to degrade, as more rock and dirt are mixed in.
+- Ore composition is an estimate of material inside the current designations and does not account for landslides. Landslides usually cause ore quality to degrade, as more rock and dirt are mixed in.

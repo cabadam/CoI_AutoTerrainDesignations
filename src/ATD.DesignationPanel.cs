@@ -6,7 +6,7 @@
 // related trademarks, code, and assets belong to MaFi Games. This repository is
 // intended to contain only original mod code/configuration; if MaFi Games material
 // is included by mistake, I intend to correct it promptly upon discovery or notice.
-// Auto Terrain Designations - Terrain Designation Panel
+// Auto Terrain Designations - Mining Designation Panel
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -25,7 +25,7 @@ using UnityEngine;
 namespace AutoTerrainDesignations
 {
     /// <summary>
-    /// Builds the "Terrain Designations" inspector panel independently of any specific
+    /// Builds the "Mining designations" inspector panel independently of any specific
     /// inspector type. Call <see cref="Build"/> and insert the returned panel wherever
     /// needed. Can be used by external mods via <see cref="AutoTerrainDesignationsApi"/>.
     /// </summary>
@@ -87,7 +87,7 @@ namespace AutoTerrainDesignations
         }
 
         /// <summary>
-        /// Builds the full "Terrain Designations" panel and returns it. Insert the result
+        /// Builds the full "Mining designations" panel and returns it. Insert the result
         /// at any position in any inspector's <c>Column</c>.
         /// </summary>
         /// <param name="getTower">
@@ -98,7 +98,7 @@ namespace AutoTerrainDesignations
         /// Opaque key (typically the inspector instance) used to route
         /// <see cref="RefreshDisplays"/> calls back to this panel. Pass the same key to
         /// <see cref="AutoDepthDesignation.CreateDesignationsForTower(IAreaManagingTower, object?)"/>
-        /// so the Ore Composition panel auto-refreshes after a scan.
+        /// so the Ore composition panel auto-refreshes after a scan.
         /// </param>
         internal static PanelWithHeader Build(Func<IAreaManagingTower?> getTower, object key)
         {
@@ -299,7 +299,7 @@ namespace AutoTerrainDesignations
                     minElevDisplay.SetValue(new LocStrFormatted(MinElevText(AutoDepthDesignation.GetTowerMaxDepthToDigTo(tower))));
                 }));
 
-            // --- Ore purity ---
+            // --- Ore quality ---
             int initPurity = initialTower != null
                 ? AutoDepthDesignation.GetTowerOrePurityLevel(initialTower)
                 : AutoTerrainDesignationsMod.OrePurityLevel;

@@ -73,7 +73,7 @@ namespace AutoTerrainDesignations
                 .SetType(NotificationType.Continuous)
                 .SetStyle(NotificationStyle.Warning)
                 .MuteAudio()
-                .AddIcon("Assets/Unity/UserInterface/General/Warning128.png")
+                .AddIcon("Assets/Unity/UserInterface/EntityIcons/Designation.png")
                 .AddEntityIcon("Assets/Unity/UserInterface/EntityIcons/Warning.png")
                 .BuildAndAdd();
         }

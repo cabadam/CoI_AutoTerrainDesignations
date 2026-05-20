@@ -41,7 +41,7 @@
   ],
   [
     "panel.designations.title",
-    "Разметка рельефа"
+    "Разметка добычи"
   ],
   [
     "panel.designations.description",
@@ -93,7 +93,7 @@
   ],
   [
     "panel.designations.ore_purity.label",
-    "Чистота руды"
+    "Качество руды"
   ],
   [
     "panel.designations.ore_purity.tooltip",

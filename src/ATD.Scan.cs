@@ -456,7 +456,7 @@ namespace AutoTerrainDesignations
 
         /// <summary>
         /// Same as <see cref="CreateDesignationsForTower(IAreaManagingTower)"/> but passes
-        /// <paramref name="panelKey"/> to the coroutine so that the Ore Composition panel
+        /// <paramref name="panelKey"/> to the coroutine so that the Ore composition panel
         /// registered under that key auto-refreshes when the scan completes.
         /// </summary>
         internal static void CreateDesignationsForTower(IAreaManagingTower tower, object? panelKey)

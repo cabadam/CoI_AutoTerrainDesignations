@@ -41,7 +41,7 @@
   ],
   [
     "panel.designations.title",
-    "Terränganvisningar"
+    "Gruvanvisningar"
   ],
   [
     "panel.designations.description",
@@ -93,7 +93,7 @@
   ],
   [
     "panel.designations.ore_purity.label",
-    "Malmhalt"
+    "Malmkvalitet"
   ],
   [
     "panel.designations.ore_purity.tooltip",

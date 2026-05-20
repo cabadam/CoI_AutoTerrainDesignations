@@ -112,7 +112,7 @@ public sealed class AtdConsoleCommands
         return $"[ATD] MinCorridorClearance set to {AutoTerrainDesignationsMod.MinCorridorClearance}.";
     }
 
-    [ConsoleCommand(false, false, "Sets whether the Terrain Designations panel starts collapsed by default (true/false, on/off, 1/0).", null)]
+    [ConsoleCommand(false, false, "Sets whether the Mining designations panel starts collapsed by default (true/false, on/off, 1/0).", null)]
     private string atdSetTerrainDesignationsPanelCollapsed(string value)
     {
         if (!TryParseConsoleBool(value, out bool parsed))
@@ -122,7 +122,7 @@ public sealed class AtdConsoleCommands
         return $"[ATD] TerrainDesignationsPanelCollapsed set to {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}.";
     }
 
-    [ConsoleCommand(false, false, "Sets whether the Ore Composition panel starts collapsed by default (true/false, on/off, 1/0).", null)]
+    [ConsoleCommand(false, false, "Sets whether the Ore composition panel starts collapsed by default (true/false, on/off, 1/0).", null)]
     private string atdSetOreCompositionPanelCollapsed(string value)
     {
         if (!TryParseConsoleBool(value, out bool parsed))

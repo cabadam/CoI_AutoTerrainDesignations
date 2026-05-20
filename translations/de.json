@@ -41,7 +41,7 @@
   ],
   [
     "panel.designations.title",
-    "Geländegebiete"
+    "Bergbaugebiete"
   ],
   [
     "panel.designations.description",
@@ -93,7 +93,7 @@
   ],
   [
     "panel.designations.ore_purity.label",
-    "Erzgehalt"
+    "Erzqualität"
   ],
   [
     "panel.designations.ore_purity.tooltip",

@@ -41,7 +41,7 @@
   ],
   [
     "panel.designations.title",
-    "Designaciones de terreno"
+    "Designaciones mineras"
   ],
   [
     "panel.designations.description",
@@ -93,7 +93,7 @@
   ],
   [
     "panel.designations.ore_purity.label",
-    "Pureza del mineral"
+    "Calidad del mineral"
   ],
   [
     "panel.designations.ore_purity.tooltip",

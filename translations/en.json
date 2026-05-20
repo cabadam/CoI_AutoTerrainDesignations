@@ -41,7 +41,7 @@
   ],
   [
     "panel.designations.title",
-    "Terrain Designations"
+    "Mining designations"
   ],
   [
     "panel.designations.description",
@@ -93,7 +93,7 @@
   ],
   [
     "panel.designations.ore_purity.label",
-    "Ore purity"
+    "Ore quality"
   ],
   [
     "panel.designations.ore_purity.tooltip",
@@ -137,7 +137,7 @@
   ],
   [
     "panel.farming.title",
-    "Farmland Preparation"
+    "Farmland preparation"
   ],
   [
     "panel.farming.description",
@@ -145,7 +145,7 @@
   ],
   [
     "panel.farming.automation_toggle.label",
-    "Farmland Preparation Automation"
+    "Farmland preparation automation"
   ],
   [
     "panel.farming.automation_toggle.tooltip",
@@ -153,7 +153,7 @@
   ],
   [
     "panel.ore.title",
-    "Ore Composition"
+    "Ore composition"
   ],
   [
     "panel.ore.description",

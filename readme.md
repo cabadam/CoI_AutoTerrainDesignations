@@ -8,11 +8,11 @@ Kayser’s Automatic Terrain Designations is a quality-of-life mod for Captain o
 - **Create Designations** — Instantly designate all mineable ore within a mine tower's area
 - **Generate Ramps** — Generate access ramps to connect new dig areas to the surface
 - **Clear Designations** — Easily clear ATD mining designations within a tower's area
-- See **Ore Composition** of the designation
+- See **Ore composition** of the designation
 - Set **Mining Priority** on tower level
 - **Settings** to fine tune the designations
 - **Corner Designations** for manual placement
-- **Farmland Preparation** for preparing flat level designations into farmable ground
+- **Farmland preparation** for preparing flat level designations into farmable ground
 
 ## :zap: Quick Start Guide
 1. Select a mine tower
@@ -30,7 +30,7 @@ Leave a :heart: if you found this mod useful.
 ### Player guides
 - [Corner Designations](docs/player/corner-designations.md)
 - [Mining Designations](docs/player/mining-designations.md)
-- [Farmland Preparation](docs/player/farming-designations.md)
+- [Farmland preparation](docs/player/farming-designations.md)
 
 ### Modder/API docs
 - [Mining Designations API](docs/api/mining-designations.md)
@@ -39,7 +39,7 @@ Leave a :heart: if you found this mod useful.
 ### Developer notes
 - [Mining Designations Architecture](docs/dev/done/mining-designations.md)
 - [Corner Designations Architecture](docs/dev/done/corner-designations.md)
-- [Farmland Preparation Architecture](docs/dev/done/farming-designations.md)
+- [Farmland preparation architecture](docs/dev/done/farming-designations.md)
 - [Runtime State and Save-Detached Attachments](docs/dev/done/runtime-state.md)
 
 ## Installation

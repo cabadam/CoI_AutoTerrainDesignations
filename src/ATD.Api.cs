@@ -162,11 +162,11 @@ namespace AutoTerrainDesignations
         // Panel builders
         // External mods can call these to embed ATD panels in their own inspectors.
         // Use the same key for both panels and for CreateDesignationsForTower so that
-        // the Ore Composition panel auto-refreshes when a scan completes.
+        // the Ore composition panel auto-refreshes when a scan completes.
         // -----------------------------------------------------------------------
 
         /// <summary>
-        /// Builds the "Terrain Designations" panel and returns it. Insert the result at any
+        /// Builds the "Mining designations" panel and returns it. Insert the result at any
         /// position in your inspector's Column layout.
         /// </summary>
         /// <param name="getTower">
@@ -182,14 +182,14 @@ namespace AutoTerrainDesignations
             => DesignationPanel.Build(getTower, key);
 
         /// <summary>
-        /// Refreshes the display values of a previously built Terrain Designations panel.
+        /// Refreshes the display values of a previously built Mining designations panel.
         /// Call this when your inspector activates / switches to a different tower.
         /// </summary>
         public static void RefreshDesignationPanel(object key)
             => DesignationPanel.RefreshDisplays(key);
 
         /// <summary>
-        /// Builds the "Ore Composition" panel and returns it. Insert the result at any position
+        /// Builds the "Ore composition" panel and returns it. Insert the result at any position
         /// in your inspector's Column layout. The panel auto-refreshes after a scan when you pass
         /// the same key to <see cref="BuildDesignationPanel"/> (the dig button triggers the refresh).
         /// </summary>

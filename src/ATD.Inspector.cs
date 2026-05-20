@@ -48,7 +48,7 @@ namespace AutoTerrainDesignations
                 }
 
                 // Patch OnActivated() on MineTowerInspector (DeclaredOnly — safe, does not affect
-                // other inspector types). Only resets the Ore Composition panel to its prompt;
+                // other inspector types). Only resets the Ore composition panel to its prompt;
                 // no scan is triggered so there are no timing issues.
                 try
                 {
@@ -127,7 +127,7 @@ namespace AutoTerrainDesignations
                         OreCompositionPanel.Inject(mainBody, entityProp, inspector);
                         FarmingAnalysisPanel.Inject(mainBody, entityProp, inspector);
                         mainBody.Show();
-                        LogDebug("[AutoDepth] ATD, Ore Composition, and Farming Analysis panels inserted");
+                        LogDebug("[AutoDepth] ATD, Ore composition, and farming analysis panels inserted");
                     }
                     else
                     {

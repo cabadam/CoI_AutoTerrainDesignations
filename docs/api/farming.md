@@ -56,7 +56,7 @@ All setters clamp to the same valid range used by the inspector. Changing a sett
 | `GetRampWidth` / `SetRampWidth` | 0–5 | Access ramp width; 0 disables ramps |
 | `GetMaxLayersToExcavate` / `SetMaxLayersToExcavate` | ≥0 | Layers from surface; 0 = no limit |
 | `GetMaxDepthToDigTo` / `SetMaxDepthToDigTo` | `int?` | Absolute minimum elevation; `null` = no limit |
-| `GetOrePurityLevel` / `SetOrePurityLevel` | 0–4 | Ore purity threshold (0 = Off, 4 = Max) |
+| `GetOrePurityLevel` / `SetOrePurityLevel` | 0–4 | Ore quality threshold (0 = Off, 4 = Max) |
 | `GetCorridorClearance` / `SetCorridorClearance` | 0–2 | Vehicle corridor clearance |
 
 ---
@@ -68,7 +68,7 @@ Use these to embed ATD panels inside a custom inspector's `Column` layout.
 ```csharp
 PanelWithHeader BuildDesignationPanel(Func<IAreaManagingTower?> getTower, object key)
 ```
-Builds the Terrain Designations panel. Pass an opaque `key` (typically your inspector instance) that links this panel to `RefreshDesignationPanel`.
+Builds the Mining designations panel. Pass an opaque `key` (typically your inspector instance) that links this panel to `RefreshDesignationPanel`.
 
 ```csharp
 void RefreshDesignationPanel(object key)
@@ -78,7 +78,7 @@ Refreshes display values when the inspector activates or switches tower.
 ```csharp
 PanelWithHeader BuildOreCompositionPanel(Func<IAreaManagingTower?> getTower, object key)
 ```
-Builds the Ore Composition panel. Pass the same `key` as `BuildDesignationPanel` so the composition display auto-refreshes after a scan.
+Builds the Ore composition panel. Pass the same `key` as `BuildDesignationPanel` so the composition display auto-refreshes after a scan.
 
 ---
 

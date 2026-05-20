@@ -36,7 +36,7 @@ namespace AutoTerrainDesignations
         // Terrain designation panel
         // ------------------------------------------------------------------ //
         public static LocStr DesigTitle =
-            Loc.Str("panel.designations.title", "Terrain Designations", "Title of the terrain designations inspector panel.");
+            Loc.Str("panel.designations.title", "Mining designations", "Title of the mining designations inspector panel.");
         public static LocStr DesigDescription =
             Loc.Str("panel.designations.description", "Create automatic terrain designations for this tower.", "Tooltip on the terrain designations panel title.");
         public static LocStr DesigCreateBtn =
@@ -62,7 +62,7 @@ namespace AutoTerrainDesignations
         public static LocStr DesigElevLimitTip =
             Loc.Str("panel.designations.elevation_limit.tooltip", "Maximum (absolute) excavation depth (-\u221e = no limit.)", "Tooltip for the elevation limit setting.");
         public static LocStr DesigOrePurityLabel =
-            Loc.Str("panel.designations.ore_purity.label", "Ore purity", "Label for the ore purity setting row.");
+            Loc.Str("panel.designations.ore_purity.label", "Ore quality", "Label for the ore quality setting row.");
         public static LocStr DesigOrePurityTip =
             Loc.Str("panel.designations.ore_purity.tooltip",
                 "How strictly the scan filters for ore quality.\n" +
@@ -90,7 +90,7 @@ namespace AutoTerrainDesignations
         // Ore composition panel
         // ------------------------------------------------------------------ //
         public static LocStr OreTitle =
-            Loc.Str("panel.ore.title", "Ore Composition", "Title of the ore composition inspector panel.");
+            Loc.Str("panel.ore.title", "Ore composition", "Title of the ore composition inspector panel.");
         public static LocStr OreDescription =
             Loc.Str("panel.ore.description", "Ore resources within this tower's current mining designations. (Does not account for potential landslides.)", "Tooltip on the ore composition panel title.");
         public static LocStr OrePromptScan =
@@ -110,11 +110,11 @@ namespace AutoTerrainDesignations
         // Farming analysis panel
         // ------------------------------------------------------------------ //
         public static LocStr FarmingTitle =
-            Loc.Str("panel.farming.title", "Farmland Preparation", "Title of the farmland preparation inspector panel.");
+            Loc.Str("panel.farming.title", "Farmland preparation", "Title of the farmland preparation inspector panel.");
         public static LocStr FarmingDescription =
             Loc.Str("panel.farming.description", "Automates the preparation and final filling of flat level designations so their top layer becomes farmable.", "Tooltip on the farmland preparation panel title.");
         public static LocStr FarmingToggleLabel =
-            Loc.Str("panel.farming.automation_toggle.label", "Farmland Preparation Automation", "Label on the farming automation toggle.");
+            Loc.Str("panel.farming.automation_toggle.label", "Farmland preparation automation", "Label on the farming automation toggle.");
         public static LocStr FarmingToggleTip =
             Loc.Str("panel.farming.automation_toggle.tooltip", "Prepare flat level designations for farmland by clearing unsuitable top material, then restoring the final fill orders.", "Tooltip on the farming automation toggle.");
         public static LocStr FarmingIdleReleaseLabel =

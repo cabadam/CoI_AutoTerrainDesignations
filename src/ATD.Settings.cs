@@ -698,10 +698,10 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_minCorridorClearance\": \"Global default corridor clearance used when connecting separated ore components and enforcing passability. Each mine tower can override this individually via the inspector. 0 = disabled \u2014 components are left separate, no corridors or hole-filling (for vehicle-less excavation mods); 1 = 1-tile corridors (small and medium vehicles); 2 = 2-tile corridors (mega vehicles). Default: 2.\",");
             sb.AppendLine($"  \"minCorridorClearance\": {AutoTerrainDesignationsMod.MinCorridorClearance},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_terrainDesignationsPanelCollapsed\": \"Default collapsed state for the Terrain Designations panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: false.\",");
+            sb.AppendLine("  \"_comment_terrainDesignationsPanelCollapsed\": \"Default collapsed state for the Mining designations panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: false.\",");
             sb.AppendLine($"  \"terrainDesignationsPanelCollapsed\": {BoolToJsonStr(AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed)},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_oreCompositionPanelCollapsed\": \"Default collapsed state for the Ore Composition panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: false.\",");
+            sb.AppendLine("  \"_comment_oreCompositionPanelCollapsed\": \"Default collapsed state for the Ore composition panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: false.\",");
             sb.AppendLine($"  \"oreCompositionPanelCollapsed\": {BoolToJsonStr(AutoTerrainDesignationsMod.OreCompositionPanelCollapsed)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_reEnableFarmingOnLoad\": \"Whether ATD re-enables farming automation after loading a save for mine towers whose managed designations appear to be farmland work: non-empty, all flat level designations. This can also be changed at runtime with atd_set_re_enable_farming_on_load. Default: true.\",");

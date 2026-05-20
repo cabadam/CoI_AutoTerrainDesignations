@@ -93,7 +93,7 @@ namespace AutoTerrainDesignations
         // ------------------------------------------------------------------
 
         /// <summary>
-        /// Creates an "Ore Composition" collapsible panel and inserts it into
+        /// Creates an "Ore composition" collapsible panel and inserts it into
         /// mainBody at position 1 (below the ATD panel). The Refresh button reads
         /// live ManagedDesignations, so the panel works independently of ATD scans.
         /// </summary>
@@ -146,7 +146,7 @@ namespace AutoTerrainDesignations
         }
 
         /// <summary>
-        /// Builds an "Ore Composition" panel and returns it. Insert the result at any position
+        /// Builds an "Ore composition" panel and returns it. Insert the result at any position
         /// in any inspector's Column. Use the same <paramref name="key"/> for both this panel and
         /// <see cref="AutoDepthDesignation.CreateDesignationsForTower(IAreaManagingTower, object?)"/>
         /// so the panel auto-refreshes after a scan completes.

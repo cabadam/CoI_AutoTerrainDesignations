@@ -1,3 +1,0 @@
-- Rename Ore Purity to Ore Quality
-- Uncapitalize panel headings
-- Rename Terrain Designations panel to Mining Designations

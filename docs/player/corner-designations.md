@@ -72,11 +72,11 @@ Corner mode is useful after ATD has already created automatic mining designation
 
 ## Things to know
 
-- Corner Designations are a manual shaping tool. They are separate from ATD's automatic mining scan and from Farmland Preparation automation.
+- Corner Designations are a manual shaping tool. They are separate from ATD's automatic mining scan and from farmland preparation automation.
 - Vanilla designations can snap to existing corner designations, and corner designations snap to neighboring terrain/designations when possible.
 - Because corner mode lives inside the normal terrain designation tools, it follows the behavior of the active tool type.
 
 ## Related guides
 
 - [Mining Designations](mining-designations.md)
-- [Farmland Preparation](farming-designations.md)
+- [Farmland preparation](farming-designations.md)
