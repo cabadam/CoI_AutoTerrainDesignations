@@ -663,6 +663,7 @@ namespace AutoTerrainDesignations
             var targetTilesByOrigin = new Dictionary<Tile2i, HashSet<Tile2i>>();
             var originsByTargetTile = new Dictionary<Tile2i, List<Tile2i>>();
             var designationsByOrigin = new Dictionary<Tile2i, TerrainDesignation>(designations.Count);
+            bool anyReadyDesignation = false;
             foreach (TerrainDesignation designation in designations)
             {
                 if (!IsFarmingDesignationReadyForVehicleWork(designation, isFilling))
@@ -671,6 +672,7 @@ namespace AutoTerrainDesignations
                     continue;
                 }
 
+                anyReadyDesignation = true;
                 HashSet<Tile2i> targets = BuildFarmingAccessTargetTiles(designation.OriginTileCoord, pathabilityProvider, pfParams);
                 if (targets.Count > 0)
                 {
@@ -691,6 +693,39 @@ namespace AutoTerrainDesignations
                 {
                     LogDebug($"[ATD Farming Access] origin=({designation.OriginTileCoord.X},{designation.OriginTileCoord.Y}) has no adjacent pathable target tiles.");
                 }
+            }
+
+            if (targetTilesByOrigin.Count == 0 && !anyReadyDesignation)
+            {
+                // No designation is currently ready for vehicle work. Instead of immediately
+                // concluding the cluster is inaccessible, perform a physical accessibility
+                // check by collecting perimeter target tiles for ALL designations (ignoring
+                // readiness state). This distinguishes two situations:
+                //   - Cluster at surface level (perimeter tiles ARE pathable) → the BFS will
+                //     find them reachable from the tower → no ramp generated.
+                //   - Elevated pad with steep/unpathable perimeter tiles → no target tiles
+                //     survive → cluster correctly marked as inaccessible → ramp generated.
+                foreach (TerrainDesignation designation in designations)
+                {
+                    HashSet<Tile2i> physTargets = BuildFarmingAccessTargetTiles(
+                        designation.OriginTileCoord, pathabilityProvider, pfParams);
+                    if (physTargets.Count == 0)
+                        continue;
+
+                    targetTilesByOrigin[designation.OriginTileCoord] = physTargets;
+                    designationsByOrigin[designation.OriginTileCoord] = designation;
+                    foreach (Tile2i target in physTargets)
+                    {
+                        if (!originsByTargetTile.TryGetValue(target, out List<Tile2i> physOrigins))
+                        {
+                            physOrigins = new List<Tile2i>();
+                            originsByTargetTile[target] = physOrigins;
+                        }
+                        physOrigins.Add(designation.OriginTileCoord);
+                    }
+                }
+
+                LogDebug($"[ATD Farming Access] no designations ready; physical fallback found {targetTilesByOrigin.Count} target origin(s) for accessibility check.");
             }
 
             if (targetTilesByOrigin.Count == 0)
