@@ -10,6 +10,7 @@
 using System.Text;
 using Mafi;
 using Mafi.Core.Console;
+using UnityEngine;
 
 namespace AutoTerrainDesignations;
 
@@ -39,6 +40,7 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  ExcavatorCompleteNtf  = {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}");
         sb.AppendLine($"  RampNotifications     = {AutoTerrainDesignationsMod.RampNotificationsEnabled}");
         sb.AppendLine($"  AutoReleaseWhenIdle   = {AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle}");
+        sb.AppendLine($"  CornerDesignationKey  = {AutoTerrainDesignationsMod.CornerDesignationKey}");
         sb.Append(AutoDepthDesignation.FormatPurityArrays());
         return sb.ToString();
     }
@@ -186,6 +188,16 @@ public sealed class AtdConsoleCommands
 
         AutoTerrainDesignationsMod.SetAutoReleaseVehiclesWhenIdle(parsed);
         return $"[ATD] AutoReleaseVehiclesWhenIdle set to {AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets the key used to enter corner designation mode (Unity KeyCode name, e.g. K, Alpha1, F1).", null)]
+    private string atdSetCornerDesignationKey(string value)
+    {
+        if (!System.Enum.TryParse<KeyCode>(value, true, out KeyCode parsed))
+            return $"[ATD] Unknown key '{value}'. Use a valid Unity KeyCode name (e.g. K, Alpha1, F1).";
+
+        AutoTerrainDesignationsMod.SetCornerDesignationKey(parsed);
+        return $"[ATD] CornerDesignationKey set to {AutoTerrainDesignationsMod.CornerDesignationKey}.";
     }
 
     [ConsoleCommand(false, false, "Sets minBottomOreDensity for a purity level (0-4), clamped 0-1. Minimum ore/(ore+waste) ratio a zone must have to be included. E.g. atd_set_min_bottom_ore_density 2 0.25", null)]

@@ -106,6 +106,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetExcavatorCompletionNotificationsEnabled(true);
         SetRampNotificationsEnabled(true);
         SetAutoReleaseVehiclesWhenIdle(false);
+        SetCornerDesignationKey(KeyCode.K);
     }
 
     public static void SetMaxHeightDiff(int value)
@@ -223,6 +224,14 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     public static void SetAutoReleaseVehiclesWhenIdle(bool value)
     {
         AutoReleaseVehiclesWhenIdle = value;
+    }
+
+    /// <summary>Key used to enter and toggle corner designation mode. Default: K.</summary>
+    public static KeyCode CornerDesignationKey { get; private set; } = KeyCode.K;
+
+    public static void SetCornerDesignationKey(KeyCode value)
+    {
+        CornerDesignationKey = value;
     }
 
     public void Initialize(DependencyResolver resolver, bool gameWasLoaded)

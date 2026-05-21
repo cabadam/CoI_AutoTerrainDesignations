@@ -427,6 +427,12 @@ namespace AutoTerrainDesignations
                 bool? autoReleaseVehiclesWhenIdle = ParseBool(json, "autoReleaseVehiclesWhenIdle");
                 if (autoReleaseVehiclesWhenIdle.HasValue && ShouldPreserveBool(autoReleaseVehiclesWhenIdle.Value, migrateGeneratedDefaults, false))
                     AutoTerrainDesignationsMod.SetAutoReleaseVehiclesWhenIdle(autoReleaseVehiclesWhenIdle.Value);
+
+                string? cornerKeyStr = ParseString(json, "cornerDesignationKey");
+                if (!string.IsNullOrWhiteSpace(cornerKeyStr)
+                    && System.Enum.TryParse<UnityEngine.KeyCode>(cornerKeyStr, true, out var cornerKey)
+                    && ShouldPreserveString(cornerKeyStr, migrateGeneratedDefaults, "K"))
+                    AutoTerrainDesignationsMod.SetCornerDesignationKey(cornerKey);
             }
             catch (Exception ex)
             {
@@ -442,6 +448,9 @@ namespace AutoTerrainDesignations
             => !migrateGeneratedDefaults || Array.IndexOf(knownDefaults, value) < 0;
 
         private static bool ShouldPreserveBool(bool value, bool migrateGeneratedDefaults, params bool[] knownDefaults)
+            => !migrateGeneratedDefaults || Array.IndexOf(knownDefaults, value) < 0;
+
+        private static bool ShouldPreserveString(string? value, bool migrateGeneratedDefaults, params string?[] knownDefaults)
             => !migrateGeneratedDefaults || Array.IndexOf(knownDefaults, value) < 0;
 
         private static bool ShouldPreserveFloatArray(float[] value, bool migrateGeneratedDefaults, params float[][] knownDefaults)
@@ -718,6 +727,9 @@ namespace AutoTerrainDesignations
             sb.AppendLine();
             sb.AppendLine("  \"_comment_autoReleaseVehiclesWhenIdle\": \"Default starting value for the Auto-release when idle toggle on each mine tower. When enabled, ATD automatically unassigns all excavators and trucks from the tower once no managed designation has pending excavation work (no mining or leveling tile above its target height). Vehicles are tracked and re-assigned when excavation work returns. Can be toggled per tower in-game. Default: false.\",");
             sb.AppendLine($"  \"autoReleaseVehiclesWhenIdle\": {BoolToJsonStr(AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_cornerDesignationKey\": \"Key used to enter and toggle corner designation mode. Use a Unity KeyCode name (e.g. K, Alpha1, F1). Default: K.\",");
+            sb.AppendLine($"  \"cornerDesignationKey\": \"{AutoTerrainDesignationsMod.CornerDesignationKey}\",");
             sb.AppendLine();
             sb.AppendLine("  \"purityLevels\": {");
             sb.AppendLine("    \"_comment\": \"Thresholds applied at each Ore Purity Level. Arrays have 5 entries: [Off, Low, Med, High, Max]. Off (index 0) should always be 0 / no filtering. These define what each level means \u2014 edit if you want to retune the purity steps.\",");
