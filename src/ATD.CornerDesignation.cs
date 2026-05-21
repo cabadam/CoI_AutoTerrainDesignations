@@ -80,6 +80,8 @@ namespace AutoTerrainDesignations
 
         // Custom cursor shown while a valid corner preview is displayed.
         private static Cursoor? s_cornerCursor;
+        // Shortcut manager used to respect the player's remapped rotation key.
+        private static ShortcutsManager? s_shortcutsManager;
 
         // Toolbar buttons injected into the game's designation toolboxes (one per ToolType).
         private static ToolboxItem? s_cornerModeButtonOuter; // ExpandScreen as-is
@@ -102,10 +104,11 @@ namespace AutoTerrainDesignations
         // our calls from the game's own preview calls (which we suppress in corner mode).
         private static bool s_atdPreviewActive;
 
-        internal static void InitializeCornerMode(TerrainCursor? terrainCursor, TerrainDesignationsRenderer? renderer, CursorManager? cursorManager)
+        internal static void InitializeCornerMode(TerrainCursor? terrainCursor, TerrainDesignationsRenderer? renderer, CursorManager? cursorManager, ShortcutsManager? shortcutsManager)
         {
             s_terrainCursor = terrainCursor;
             s_desigRenderer = renderer;
+            s_shortcutsManager = shortcutsManager;
             s_cornerModeActive = false;
             s_activeCornerVariant = CornerVariant.OriginHigh;
             if (cursorManager != null)
@@ -143,8 +146,10 @@ namespace AutoTerrainDesignations
                 return;
             }
 
-            // R: rotate among the 4 orientations within the current type.
-            if (Input.GetKeyDown(KeyCode.R))
+            // R (or remapped rotate key): rotate among the 4 orientations within the current type.
+            if (s_shortcutsManager != null
+                    ? s_shortcutsManager.IsDown(s_shortcutsManager.Rotate)
+                    : Input.GetKeyDown(KeyCode.R))
             {
                 s_activeCornerVariant = RotateCornerVariant(s_activeCornerVariant);
                 return;

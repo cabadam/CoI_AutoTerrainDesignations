@@ -261,13 +261,16 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             TerrainCursor? terrainCursor = null;
             TerrainDesignationsRenderer? desigRenderer = null;
             CursorManager? cursorManager = null;
+            ShortcutsManager? shortcutsManager = null;
             try { terrainCursor = resolver.Resolve<TerrainCursor>(); }
             catch (Exception ex2) { AutoDepthDesignation.s_log.Warning("TerrainCursor not available: " + ex2.Message); }
             try { desigRenderer = resolver.Resolve<TerrainDesignationsRenderer>(); }
             catch (Exception ex3) { AutoDepthDesignation.s_log.Warning("TerrainDesignationsRenderer not available: " + ex3.Message); }
             try { cursorManager = resolver.Resolve<CursorManager>(); }
             catch (Exception ex4) { AutoDepthDesignation.s_log.Warning("CursorManager not available: " + ex4.Message); }
-            AutoDepthDesignation.InitializeCornerMode(terrainCursor, desigRenderer, cursorManager);
+            try { shortcutsManager = resolver.Resolve<ShortcutsManager>(); }
+            catch (Exception ex5) { AutoDepthDesignation.s_log.Warning("ShortcutsManager not available: " + ex5.Message); }
+            AutoDepthDesignation.InitializeCornerMode(terrainCursor, desigRenderer, cursorManager, shortcutsManager);
         }
         catch (Exception ex)
         {
