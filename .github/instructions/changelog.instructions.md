@@ -17,7 +17,7 @@ Both files use the same format and content rules below. When making changes to t
 - `changelog.txt` in the workspace root: public releases only (plain text, required by the Mafi mod portal). Never contains alpha-suffixed version entries.
 
 ## Entry suffix states
-Each version header carries a suffix indicating its current state:
+Entry suffix tags apply **only to `changelog.md`** — never to `changelog.txt`.
 
 | Suffix | Meaning |
 |---|---|
@@ -26,7 +26,8 @@ Each version header carries a suffix indicating its current state:
 | *(no suffix)* | Released on the CoI mod portal |
 
 ## Format rules
-- Each release starts with `v<semver> | <YYYY-MM-DD>` followed by the appropriate suffix (e.g. `v0.2.6 | 2026-05-08 [unreleased]`)
+- Each release in `changelog.md` starts with `v<semver> | <YYYY-MM-DD>` followed by the appropriate suffix (e.g. `v0.2.6 | 2026-05-08 [unreleased]`)
+- Each release in `changelog.txt` starts with `v<semver> | <YYYY-MM-DD>` with **no suffix tag**
 - Top-level bullet entries use `*`.
 - Sub-bullets use 4 spaces followed by `-`.
 - New changes are **added to the current top entry in `changelog.md`** (the one matching `manifest.json`). Do not create a new version entry for code changes alone.
@@ -60,7 +61,7 @@ Each version header carries a suffix indicating its current state:
 ### Public release package
 1. **Commit and push** any uncommitted changes first.
 2. **Replace `[unreleased]`** with `[packaged]` on the current top entry in **`changelog.md`** only.
-3. **Add a new collated entry** to the top of **`changelog.txt`** with the public version number (no letter suffix), the current date, and `[packaged]`. Collate the notable changes from all alpha entries since the last public release into a single clean list.
+3. **Add a new collated entry** to the top of **`changelog.txt`** with the public version number (no letter suffix) and the current date — no suffix tag. Collate the notable changes from all alpha entries since the last public release into a single clean list.
 4. **Run the package build** (`build.ps1 -Configuration Release -Package`). The ZIP produced will carry the version in `manifest.json` at build time.
 5. **Commit and push** the changelog changes with a message like `chore: package <version>`.
 
