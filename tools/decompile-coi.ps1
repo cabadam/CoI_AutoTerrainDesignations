@@ -50,7 +50,7 @@ if (-not (Test-Path -LiteralPath $managedPath)) {
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
 # ---------------------------------------------------------------------------
-# 2.5. Read game version from DLL
+# 2.5. Read game version from DLL and build number from decompiled source
 # ---------------------------------------------------------------------------
 $gameVersion = $null
 $mafiDllPath = Join-Path $managedPath 'Mafi.dll'
@@ -59,6 +59,14 @@ if (Test-Path -LiteralPath $mafiDllPath) {
     $priv   = $vi.FilePrivatePart
     $letter = if ($priv -gt 0) { [char](96 + $priv) } else { '' }
     $gameVersion = "$($vi.FileMajorPart).$($vi.FileMinorPart).$($vi.FileBuildPart)$letter"
+}
+
+# Build number is a uint literal in GameVersion.cs: string.Format("... (b{2})", ..., NNNu).AsLoc()
+$buildNumber  = $null
+$gameVersionCsPath = Join-Path $outputRoot 'Mafi\Mafi\GameVersion.cs'
+if (Test-Path -LiteralPath $gameVersionCsPath) {
+    $gvContent = Get-Content -LiteralPath $gameVersionCsPath -Raw
+    if ($gvContent -match ',\s*(\d+)u\)\.AsLoc\(\)') { $buildNumber = $Matches[1] }
 }
 
 # ---------------------------------------------------------------------------
@@ -71,7 +79,8 @@ if ($useGit) {
     if ($dirty) {
         Write-Host '[git] Committing current decompiled state before update...'
         git add -A | Out-Null
-        $snapMsg = if ($gameVersion) { "pre-update before $gameVersion" } else { 'snapshot' }
+        $snapLabel = if ($buildNumber) { "$gameVersion-b$buildNumber" } elseif ($gameVersion) { $gameVersion } else { 'unknown' }
+        $snapMsg = "CoI $snapLabel"
         git commit -m $snapMsg --quiet
     }
     Pop-Location
@@ -142,15 +151,21 @@ if ($skipped.Count -gt 0) {
 # ---------------------------------------------------------------------------
 if ($useGit -and $decompiled.Count -gt 0) {
     Push-Location $outputRoot
+    # Re-read build number from the freshly decompiled GameVersion.cs
+    if (Test-Path -LiteralPath $gameVersionCsPath) {
+        $gvContent = Get-Content -LiteralPath $gameVersionCsPath -Raw
+        if ($gvContent -match ',\s*(\d+)u\)\.AsLoc\(\)') { $buildNumber = $Matches[1] }
+    }
+    $versionLabel = if ($gameVersion -and $buildNumber) { "$gameVersion-b$buildNumber" } elseif ($gameVersion) { $gameVersion } else { $null }
     git add -A | Out-Null
     git diff --cached --quiet 2>$null
     if ($LASTEXITCODE -ne 0) {
-        $commitMsg = if ($gameVersion) { "CoI $gameVersion" } else { 'decompiled update' }
+        $commitMsg = if ($versionLabel) { "CoI $versionLabel" } else { 'decompiled update' }
         git commit -m $commitMsg --quiet
-        if ($gameVersion) { git tag "v$gameVersion" 2>$null }
+        if ($versionLabel) { git tag "v$versionLabel" 2>$null }
         $commitCount = [int](git rev-list --count HEAD 2>$null)
         Write-Host ''
-        Write-Host "[git] Committed: $commitMsg"
+        Write-Host "[git] Committed: $commitMsg  (tag: v$versionLabel)"
         if ($commitCount -gt 1) {
             Write-Host ''
             git diff HEAD~1 --stat
