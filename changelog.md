@@ -1,4 +1,4 @@
-v0.4.1 | 2026-05-22 [unreleased]
+v0.4.1 | 2026-05-22 [packaged]
 * Fixed: corner designation rotation now responds to the player's mapped rotate key instead of always responding to R
 * Added **cornerDesignationKey** global setting: the key used to enter and toggle corner designation mode; configurable via **ATDsettings.json** (default: `K`) or the new **atdSetCornerDesignationKey** console command (accepts any Unity KeyCode name, e.g. `Alpha1`, `F1`)
 * Fixed: a farming preparation origin backed by a dumping designation was dropped from session tracking on the tick after it reached `ReadyForFilling`; the drop left any shoulder designations in `PreparationShoulderOrigins` permanently blocking `CanStartTowerLevelFilling`, so the session never entered the filling phase; this occurred consistently when shoulder designations were present
