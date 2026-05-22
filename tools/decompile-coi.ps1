@@ -50,6 +50,34 @@ if (-not (Test-Path -LiteralPath $managedPath)) {
 New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 
 # ---------------------------------------------------------------------------
+# 2.5. Read game version from DLL
+# ---------------------------------------------------------------------------
+$gameVersion = $null
+$mafiDllPath = Join-Path $managedPath 'Mafi.dll'
+if (Test-Path -LiteralPath $mafiDllPath) {
+    $vi     = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($mafiDllPath)
+    $priv   = $vi.FilePrivatePart
+    $letter = if ($priv -gt 0) { [char](96 + $priv) } else { '' }
+    $gameVersion = "$($vi.FileMajorPart).$($vi.FileMinorPart).$($vi.FileBuildPart)$letter"
+}
+
+# ---------------------------------------------------------------------------
+# 2.6. Git pre-snapshot — commit current state before wiping
+# ---------------------------------------------------------------------------
+$useGit = Test-Path -LiteralPath (Join-Path $outputRoot '.git')
+if ($useGit) {
+    Push-Location $outputRoot
+    $dirty = git status --porcelain 2>&1
+    if ($dirty) {
+        Write-Host '[git] Committing current decompiled state before update...'
+        git add -A | Out-Null
+        $snapMsg = if ($gameVersion) { "pre-update before $gameVersion" } else { 'snapshot' }
+        git commit -m $snapMsg --quiet
+    }
+    Pop-Location
+}
+
+# ---------------------------------------------------------------------------
 # 3. DLL list
 # ---------------------------------------------------------------------------
 $dlls = @('Mafi', 'Mafi.Core', 'Mafi.Base', 'Mafi.Unity')
@@ -110,15 +138,34 @@ if ($skipped.Count -gt 0) {
 }
 
 # ---------------------------------------------------------------------------
+# 5.5. Git commit — record new decompiled state and show diff
+# ---------------------------------------------------------------------------
+if ($useGit -and $decompiled.Count -gt 0) {
+    Push-Location $outputRoot
+    git add -A | Out-Null
+    git diff --cached --quiet 2>$null
+    if ($LASTEXITCODE -ne 0) {
+        $commitMsg = if ($gameVersion) { "CoI $gameVersion" } else { 'decompiled update' }
+        git commit -m $commitMsg --quiet
+        if ($gameVersion) { git tag "v$gameVersion" 2>$null }
+        $commitCount = [int](git rev-list --count HEAD 2>$null)
+        Write-Host ''
+        Write-Host "[git] Committed: $commitMsg"
+        if ($commitCount -gt 1) {
+            Write-Host ''
+            git diff HEAD~1 --stat
+        }
+    } else {
+        Write-Host ''
+        Write-Host '[git] Decompiled output unchanged from last commit.'
+    }
+    Pop-Location
+}
+
+# ---------------------------------------------------------------------------
 # 6. Sync max_verified_game_version in manifest.json
 # ---------------------------------------------------------------------------
-$mafiDll = Join-Path $managedPath 'Mafi.dll'
-if (Test-Path -LiteralPath $mafiDll) {
-    $vi     = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($mafiDll)
-    $priv   = $vi.FilePrivatePart
-    $letter = if ($priv -gt 0) { [char](96 + $priv) } else { '' }
-    $gameVersion = "$($vi.FileMajorPart).$($vi.FileMinorPart).$($vi.FileBuildPart)$letter"
-
+if ($null -ne $gameVersion) {
     $manifestPath = Join-Path $PSScriptRoot '..\manifest.json'
     if (Test-Path -LiteralPath $manifestPath) {
         $manifestContent = Get-Content -LiteralPath $manifestPath -Raw
