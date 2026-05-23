@@ -1,0 +1,186 @@
+[
+  [
+    "notification.ramp_access_failed",
+    "[ATD] {entity} non è riuscita ad avviare una rampa di accesso"
+  ],
+  [
+    "notification.ramp_access_truncated",
+    "[ATD] {entity} non è riuscita a inserirsi in una rampa di accesso completa"
+  ],
+  [
+    "notification.ramp_access_not_accessible",
+    "[ATD] {entity} non è riuscita a raggiungere la rampa"
+  ],
+  [
+    "notification.farming_complete",
+    "[ATD] Preparazione e riempimento di {entity} completati"
+  ],
+  [
+    "notification.excavator_completed",
+    "[ATD] {entity} ha completato un escavatore"
+  ],
+  [
+    "common.level.off",
+    "Spento"
+  ],
+  [
+    "common.level.low",
+    "Basso"
+  ],
+  [
+    "common.level.med",
+    "Medio"
+  ],
+  [
+    "common.level.high",
+    "Alto"
+  ],
+  [
+    "common.level.max",
+    "Massimo"
+  ],
+  [
+    "panel.designations.title",
+    "Designazioni minerarie"
+  ],
+  [
+    "panel.designations.description",
+    "Crea le designazioni automatiche del terreno per questa torre."
+  ],
+  [
+    "panel.designations.create_button",
+    "Crea designazioni"
+  ],
+  [
+    "panel.designations.create_tooltip",
+    "Esegui una scansione e posiziona i contrassegni di estrazione nell'area di questa torre."
+  ],
+  [
+    "panel.designations.debris_tooltip",
+    "Indicare tutti i detriti presenti nell'area da sottoporre a estrazione/rimozione. Questa indicazione prevale su qualsiasi altra designazione forestale."
+  ],
+  [
+    "panel.designations.clear_tooltip",
+    "Elimina tutte le indicazioni relative all'estrazione nell'area di questa torre."
+  ],
+  [
+    "panel.designations.ore_filter.auto",
+    "Auto (utile -> detriti -> terra)"
+  ],
+  [
+    "panel.designations.ramp_width.label",
+    "Larghezza della rampa"
+  ],
+  [
+    "panel.designations.ramp_width.tooltip",
+    "Larghezza delle rampe di accesso generate (0 = disattiva rampa)."
+  ],
+  [
+    "panel.designations.max_layers.label",
+    "Numero massimo di strati da scavare"
+  ],
+  [
+    "panel.designations.max_layers.tooltip",
+    "Numero massimo di strati da scavare dalla superficie. (∞ = nessun limite.)"
+  ],
+  [
+    "panel.designations.elevation_limit.label",
+    "Limite di quota"
+  ],
+  [
+    "panel.designations.elevation_limit.tooltip",
+    "Profondità massima (assoluta) di scavo (-∞ = senza limiti)"
+  ],
+  [
+    "panel.designations.ore_purity.label",
+    "Qualità del minerale"
+  ],
+  [
+    "panel.designations.ore_purity.tooltip",
+    "Livello di rigore dei filtri di scansione per la qualità del minerale.\nOff: include tutte le caselle, scava fino alla profondità massima.\nBasso: esclude le caselle molto rade, elimina le sottili strisce di minerale sul fondo.\nMedio: qualità moderata — salta le caselle con molto materiale di copertura o poco minerale.\nAlto: solo caselle ricche con una colonna di minerale pulita.\nMassimo: solo minerale quasi puro — rigoroso su materiale di copertura, profondità e densità del minerale."
+  ],
+  [
+    "panel.designations.corridor_clearance.label",
+    "Spazio libero nel corridoio"
+  ],
+  [
+    "panel.designations.corridor_clearance.tooltip",
+    "Larghezza minima dei corridoi per collegare le regioni minerarie e garantire la percorribilità.\n0 = disabilitato (le regioni rimangono separate, nessun corridoio né riempimento degli spazi vuoti).\n1 = corridoi di 1 casella (veicoli di piccole e medie dimensioni).\n2 = corridoi di 2 caselle (veicoli di grandi dimensioni).\n"
+  ],
+  [
+    "panel.designations.scanning_filter.label",
+    "Filtro di scansione:"
+  ],
+  [
+    "panel.designations.scanning_filter.tooltip",
+    "Forza la scansione su un prodotto specifico. Nessuno = prima i prodotti utili, poi i detriti, infine la terra."
+  ],
+  [
+    "panel.designations.ramp_warning.failed",
+    "Impossibile generare la rampa: nessun percorso valido trovato."
+  ],
+  [
+    "panel.designations.ramp_warning.truncated",
+    "La rampa è stata posizionata ma non ha raggiunto la superficie: gli escavatori potrebbero non essere in grado di scavare."
+  ],
+  [
+    "panel.designations.ramp_warning.not_accessible",
+    "Impossibile individuare un percorso valido dalla torre alla rampa generata. Verificare la presenza di eventuali problemi di accesso."
+  ],
+  [
+    "toolbox.corner_outer.tooltip",
+    "Angolo (esterno): posizionare delle rampe angolari convesse."
+  ],
+  [
+    "toolbox.corner_inner.tooltip",
+    "Angolo (interno): posizionare rampe angolari concave."
+  ],
+  [
+    "panel.farming.title",
+    "Preparazione dei terreni agricoli"
+  ],
+  [
+    "panel.farming.description",
+    "Automatizza la preparazione e il riempimento finale delle aree pianeggianti in modo che il loro strato superiore diventi coltivabile."
+  ],
+  [
+    "panel.farming.automation_toggle.label",
+    "Automazione della preparazione dei terreni agricoli"
+  ],
+  [
+    "panel.farming.automation_toggle.tooltip",
+    "Preparare le piane di livellamento dei terreni agricoli rimuovendo il materiale di copertura non idoneo, quindi ripristinare gli strati di riempimento finali."
+  ],
+  [
+    "panel.ore.title",
+    "Composizione del minerale"
+  ],
+  [
+    "panel.ore.description",
+    "Risorse minerarie comprese nelle attuali aree di estrazione di questa torre. (Non tiene conto di potenziali frane.)"
+  ],
+  [
+    "panel.ore.prompt_scan",
+    "Premi ↺ per analizzare la composizione del minerale."
+  ],
+  [
+    "panel.ore.scan_tooltip",
+    "Analisi della composizione del minerale"
+  ],
+  [
+    "panel.ore.no_tower",
+    "Nessuna torre selezionata."
+  ],
+  [
+    "panel.ore.no_minable_designations",
+    "Non sono state trovate designazioni estraibili."
+  ],
+  [
+    "panel.ore.priority_selected_tooltip",
+    "Gli escavatori sono impostati per dare priorità a {0}. Clicca per deselezionare."
+  ],
+  [
+    "panel.ore.priority_set_tooltip",
+    "Imposta tutti gli escavatori in modo che diano priorità a {0}."
+  ],
+]
