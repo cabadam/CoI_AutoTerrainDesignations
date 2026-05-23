@@ -116,18 +116,6 @@
     "Tvinga skanningen att rikta in sig på en specifik produkt. Ingen = nyttiga produkter först, sedan skräp och jord."
   ],
   [
-    "panel.designations.ramp_warning.failed",
-    "Rampgenerering misslyckades — ingen giltig väg hittades."
-  ],
-  [
-    "panel.designations.ramp_warning.truncated",
-    "Rampen placerades men nådde inte ytan — grävmaskiner kanske inte kan gräva."
-  ],
-  [
-    "panel.designations.ramp_warning.not_accessible",
-    "Kunde inte hitta en giltig väg från tornet till den genererade rampen. Kontrollera åtkomstproblem."
-  ],
-  [
     "toolbox.corner_outer.tooltip",
     "Hörn (yttre): placera konvexa hörnramper."
   ],
@@ -150,6 +138,14 @@
   [
     "panel.farming.automation_toggle.tooltip",
     "Förbered plana utjämningsanvisningar för odlingsmark genom att rensa olämpligt ytmaterial och sedan återställa de slutliga fyllningsanvisningarna."
+  ],
+  [
+    "panel.farming.idle_release.label",
+    "Släpp tillfälligt vid inaktivitet"
+  ],
+  [
+    "panel.farming.idle_release.tooltip",
+    "Släpp tillfälligt alla grävmaskiner och lastbilar från detta torn när ingen anvisning har väntande grävarbete.\nFordon spåras och tilldelas igen när grävarbetet återkommer."
   ],
   [
     "panel.ore.title",

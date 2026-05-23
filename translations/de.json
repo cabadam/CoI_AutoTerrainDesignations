@@ -116,18 +116,6 @@
     "Erzwingt, dass der Scan ein bestimmtes Produkt sucht. Keine = zuerst nützliche Produkte, dann Schutt, dann Erde."
   ],
   [
-    "panel.designations.ramp_warning.failed",
-    "Rampenerzeugung fehlgeschlagen — kein gültiger Weg gefunden."
-  ],
-  [
-    "panel.designations.ramp_warning.truncated",
-    "Rampe platziert, erreicht aber nicht die Oberfläche — Bagger können möglicherweise nicht graben."
-  ],
-  [
-    "panel.designations.ramp_warning.not_accessible",
-    "Es wurde kein gültiger Weg vom Turm zur erzeugten Rampe gefunden. Prüfe auf Zugangsprobleme."
-  ],
-  [
     "toolbox.corner_outer.tooltip",
     "Ecke (außen): konvexe Eckrampen platzieren."
   ],
@@ -150,6 +138,14 @@
   [
     "panel.farming.automation_toggle.tooltip",
     "Bereitet flache Planierungsgebiete für Felder vor, indem ungeeignetes Oberflächenmaterial entfernt und anschließend die endgültigen Auffüllgebiete wiederhergestellt werden."
+  ],
+  [
+    "panel.farming.idle_release.label",
+    "Automatisch freigeben bei Leerlauf"
+  ],
+  [
+    "panel.farming.idle_release.tooltip",
+    "Hebt automatisch die Zuweisung aller Bagger und LKWs von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat.\nFahrzeuge werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
   ],
   [
     "panel.ore.title",

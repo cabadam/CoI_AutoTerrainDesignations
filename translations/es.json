@@ -116,18 +116,6 @@
     "Fuerza el escaneo a buscar un producto específico. Ninguno = productos útiles primero, luego escombros y después tierra."
   ],
   [
-    "panel.designations.ramp_warning.failed",
-    "Falló la generación de la rampa — no se encontró una ruta válida."
-  ],
-  [
-    "panel.designations.ramp_warning.truncated",
-    "La rampa se colocó, pero no alcanzó la superficie — puede que las excavadoras no puedan excavar."
-  ],
-  [
-    "panel.designations.ramp_warning.not_accessible",
-    "No se pudo encontrar una ruta válida desde la torre hasta la rampa generada. Comprueba si hay problemas de acceso."
-  ],
-  [
     "toolbox.corner_outer.tooltip",
     "Esquina (exterior): coloca rampas de esquina convexas."
   ],
@@ -150,6 +138,14 @@
   [
     "panel.farming.automation_toggle.tooltip",
     "Prepara designaciones planas para tierra de cultivo retirando el material superior no apto y restaurando después las órdenes finales de rellenado."
+  ],
+  [
+    "panel.farming.idle_release.label",
+    "Liberar automáticamente al estar inactivo"
+  ],
+  [
+    "panel.farming.idle_release.tooltip",
+    "Desasigna automáticamente todas las excavadoras y camiones de esta torre cuando ninguna designación tiene trabajos de excavación pendientes.\nLos vehículos se registran y se reasignan cuando vuelve a haber trabajos de excavación."
   ],
   [
     "panel.ore.title",

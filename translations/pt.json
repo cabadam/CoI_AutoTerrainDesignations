@@ -116,18 +116,6 @@
     "Forçar o scan a mirar um produto específico. Nenhum = produtos úteis primeiro, depois detritos, depois terra."
   ],
   [
-    "panel.designations.ramp_warning.failed",
-    "Falha na geração da rampa — nenhum caminho válido encontrado."
-  ],
-  [
-    "panel.designations.ramp_warning.truncated",
-    "Rampa colocada mas não atingiu a superfície — escavadeiras podem não conseguir escavar."
-  ],
-  [
-    "panel.designations.ramp_warning.not_accessible",
-    "Não foi possível encontrar um caminho válido da torre até a rampa gerada. Verifique problemas de acesso."
-  ],
-  [
     "toolbox.corner_outer.tooltip",
     "Quina (externa): colocar rampas de quina convexas."
   ],
@@ -150,6 +138,14 @@
   [
     "panel.farming.automation_toggle.tooltip",
     "Preparar designações de nível plano para terra agrícola limpando material superficial inadequado e restaurando as ordens finais de preenchimento."
+  ],
+  [
+    "panel.farming.idle_release.label",
+    "Liberar automaticamente quando ocioso"
+  ],
+  [
+    "panel.farming.idle_release.tooltip",
+    "Remove automaticamente a atribuição de todos os escavadores e caminhões desta torre quando nenhuma designação tiver trabalho de escavação pendente.\nOs veículos são rastreados e reatribuídos quando o trabalho de escavação retornar."
   ],
   [
     "panel.ore.title",

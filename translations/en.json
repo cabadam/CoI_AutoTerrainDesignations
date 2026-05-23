@@ -116,18 +116,6 @@
     "Force the scan to target a specific product. None = useful products first, then debris, then dirt."
   ],
   [
-    "panel.designations.ramp_warning.failed",
-    "Ramp generation failed — no valid path found."
-  ],
-  [
-    "panel.designations.ramp_warning.truncated",
-    "Ramp placed but did not reach the surface — excavators may not be able to excavate."
-  ],
-  [
-    "panel.designations.ramp_warning.not_accessible",
-    "Couldn't find a valid path from the tower to the generated ramp. Check for access problems."
-  ],
-  [
     "toolbox.corner_outer.tooltip",
     "Corner (outer): place convex corner ramps."
   ],
@@ -150,6 +138,14 @@
   [
     "panel.farming.automation_toggle.tooltip",
     "Prepare flat level designations for farmland by clearing unsuitable top material, then restoring the final fill orders."
+  ],
+  [
+    "panel.farming.idle_release.label",
+    "Auto-release when idle"
+  ],
+  [
+    "panel.farming.idle_release.tooltip",
+    "Automatically unassign all excavators and trucks from this tower when no designation has pending excavation work.\nVehicles are tracked and re-assigned when excavation work returns."
   ],
   [
     "panel.ore.title",
@@ -182,5 +178,5 @@
   [
     "panel.ore.priority_set_tooltip",
     "Set all excavators to prioritize {0}."
-  ],
+  ]
 ]

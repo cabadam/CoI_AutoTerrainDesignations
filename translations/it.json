@@ -116,18 +116,6 @@
     "Forza la scansione su un prodotto specifico. Nessuno = prima i prodotti utili, poi i detriti, infine la terra."
   ],
   [
-    "panel.designations.ramp_warning.failed",
-    "Impossibile generare la rampa: nessun percorso valido trovato."
-  ],
-  [
-    "panel.designations.ramp_warning.truncated",
-    "La rampa è stata posizionata ma non ha raggiunto la superficie: gli escavatori potrebbero non essere in grado di scavare."
-  ],
-  [
-    "panel.designations.ramp_warning.not_accessible",
-    "Impossibile individuare un percorso valido dalla torre alla rampa generata. Verificare la presenza di eventuali problemi di accesso."
-  ],
-  [
     "toolbox.corner_outer.tooltip",
     "Angolo (esterno): posizionare delle rampe angolari convesse."
   ],
@@ -150,6 +138,14 @@
   [
     "panel.farming.automation_toggle.tooltip",
     "Preparare le piane di livellamento dei terreni agricoli rimuovendo il materiale di copertura non idoneo, quindi ripristinare gli strati di riempimento finali."
+  ],
+  [
+    "panel.farming.idle_release.label",
+    "Rilascio automatico quando inattivo"
+  ],
+  [
+    "panel.farming.idle_release.tooltip",
+    "Annulla automaticamente l'assegnazione di tutti gli escavatori e camion da questa torre quando nessuna designazione ha lavori di scavo in sospeso.\nI veicoli vengono tracciati e riassegnati quando riprendono i lavori di scavo."
   ],
   [
     "panel.ore.title",
@@ -182,5 +178,5 @@
   [
     "panel.ore.priority_set_tooltip",
     "Imposta tutti gli escavatori in modo che diano priorità a {0}."
-  ],
+  ]
 ]
