@@ -6,6 +6,7 @@
 // related trademarks, code, and assets belong to MaFi Games. This repository is
 // intended to contain only original mod code/modification; if MaFi Games material
 // is included by mistake, I intend to correct it promptly upon discovery or notice.
+using Mafi;
 using UnityEngine;
 
 namespace AutoTerrainDesignations;
@@ -74,8 +75,30 @@ public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
             return;
     }
 
+    internal static bool ShowCursorOverlay;
+
+    private GUIStyle? _tileOverlayStyle;
+
     private void OnGUI()
     {
+        if (!ShowCursorOverlay)
+            return;
+        if (!_active || !AutoDepthDesignation.IsWorldGenerationActive(_worldGeneration))
+            return;
+        if (!AutoDepthDesignation.TryGetCursorTile(out Tile3f pos))
+            return;
+
+        _tileOverlayStyle ??= new GUIStyle(GUI.skin.box)
+        {
+            alignment = TextAnchor.MiddleLeft,
+            fontSize = 13,
+            normal = { textColor = Color.white },
+        };
+
+        Tile2i xy = pos.Xy.Tile2i;
+        int z = pos.Z.ToIntRounded();
+        GUI.Box(new Rect(10f, Screen.height - 36f, 190f, 26f),
+            $"  ({xy.X}, {xy.Y}, {z})", _tileOverlayStyle);
     }
 
     private void OnDestroy()

@@ -170,7 +170,14 @@ namespace AutoTerrainDesignations
             }
         }
 
-        // Called every frame from AutoTerrainDesignationsTicker.OnGUI() — draws the mode status bar.
+        // Called every frame from AutoTerrainDesignationsTicker.OnGUI() — returns current cursor tile.
+        internal static bool TryGetCursorTile(out Tile3f tile)
+        {
+            tile = default;
+            if (s_terrainCursor == null) return false;
+            return s_terrainCursor.TryComputeTerrainPosition(Input.mousePosition, out tile);
+        }
+
         // -- Harmony patch handlers --
 
         // Postfix on TerrainDesignationController.Activate — sets s_miningToolActive when the

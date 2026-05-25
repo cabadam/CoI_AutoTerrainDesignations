@@ -269,6 +269,18 @@ public sealed class AtdConsoleCommands
         return AutoDepthDesignation.FormatAssignedVehiclesDump();
     }
 
+    [ConsoleCommand(false, false, "Toggles the cursor tile-position overlay (bottom-left corner). Optionally pass 'on' or 'off'.", null)]
+    private string atdCursorOverlay(string value = "")
+    {
+        bool current = AutoTerrainDesignationsTicker.ShowCursorOverlay;
+        if (!TryParseConsoleBool(value, out bool parsed))
+            parsed = !current;
+        AutoTerrainDesignationsTicker.ShowCursorOverlay = parsed;
+        return parsed
+            ? "[ATD] Cursor overlay ON."
+            : "[ATD] Cursor overlay OFF.";
+    }
+
     private static bool TryParseConsoleBool(string value, out bool parsed)
     {
         switch ((value ?? string.Empty).Trim().ToLowerInvariant())
