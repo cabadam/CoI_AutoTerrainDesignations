@@ -272,10 +272,10 @@ public sealed class AtdConsoleCommands
     [ConsoleCommand(false, false, "Toggles the cursor tile-position overlay (bottom-left corner). Optionally pass 'on' or 'off'.", null)]
     private string atdCursorOverlay(string value = "")
     {
-        bool current = AutoTerrainDesignationsTicker.ShowCursorOverlay;
+        bool current = AutoDepthDesignation.ShowCursorOverlay;
         if (!TryParseConsoleBool(value, out bool parsed))
             parsed = !current;
-        AutoTerrainDesignationsTicker.ShowCursorOverlay = parsed;
+        AutoDepthDesignation.ShowCursorOverlay = parsed;
         return parsed
             ? "[ATD] Cursor overlay ON."
             : "[ATD] Cursor overlay OFF.";
