@@ -37,6 +37,7 @@ namespace AutoTerrainDesignations
         private sealed class Bindings
         {
             public Func<IAreaManagingTower?> GetTower { get; }
+            public PanelWithHeader Panel { get; }
             public Mafi.Unity.Ui.Library.Display RampWidthDisplay { get; }
             public Mafi.Unity.Ui.Library.Display MaxLayersDisplay { get; }
             public Mafi.Unity.Ui.Library.Display MinElevDisplay { get; }
@@ -45,6 +46,7 @@ namespace AutoTerrainDesignations
 
             public Bindings(
                 Func<IAreaManagingTower?> getTower,
+                PanelWithHeader panel,
                 Mafi.Unity.Ui.Library.Display rampWidthDisplay,
                 Mafi.Unity.Ui.Library.Display maxLayersDisplay,
                 Mafi.Unity.Ui.Library.Display minElevDisplay,
@@ -52,6 +54,7 @@ namespace AutoTerrainDesignations
                 Mafi.Unity.Ui.Library.Display clearanceDisplay)
             {
                 GetTower = getTower;
+                Panel = panel;
                 RampWidthDisplay = rampWidthDisplay;
                 MaxLayersDisplay = maxLayersDisplay;
                 MinElevDisplay = minElevDisplay;
@@ -79,6 +82,7 @@ namespace AutoTerrainDesignations
             if (!s_bindings.TryGetValue(key, out var b)) return;
             var tower = b.GetTower();
             if (tower == null) return;
+            b.Panel.Collapsed(AutoDepthDesignation.GetTowerTerrainPanelCollapsed(tower));
             b.RampWidthDisplay.SetValue(new LocStrFormatted(RampWidthText(AutoDepthDesignation.GetTowerRampWidth(tower))));
             b.MaxLayersDisplay.SetValue(new LocStrFormatted(MaxLayersText(AutoDepthDesignation.GetTowerMaxLayersToExcavate(tower))));
             b.MinElevDisplay.SetValue(new LocStrFormatted(MinElevText(AutoDepthDesignation.GetTowerMaxDepthToDigTo(tower))));
@@ -217,7 +221,15 @@ namespace AutoTerrainDesignations
             var panel = new PanelWithHeader()
                 .Title(AtdLocalization.DesigTitle,
                        AtdLocalization.Tip(AtdLocalization.DesigDescription));
-            panel.Collapsed(AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed);
+            panel.Collapsed(initialTower != null
+                ? AutoDepthDesignation.GetTowerTerrainPanelCollapsed(initialTower)
+                : AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed);
+            panel.Header.OnClick((Action)delegate
+            {
+                panel.Collapsed(!panel.IsCollapsed);
+                var t = getTower();
+                if (t != null) AutoDepthDesignation.SetTowerTerrainPanelCollapsed(t, panel.IsCollapsed);
+            });
             panel.BodyAdd(contentRow);
 
             // --- Ramp width ---
@@ -356,7 +368,7 @@ namespace AutoTerrainDesignations
                 panel.BodyAdd(oreRow);
             }
 
-            s_bindings[key] = new Bindings(getTower, rampWidthDisplay, maxLayersDisplay, minElevDisplay, orePurityDisplay, clearanceDisplay);
+            s_bindings[key] = new Bindings(getTower, panel, rampWidthDisplay, maxLayersDisplay, minElevDisplay, orePurityDisplay, clearanceDisplay);
             return panel;
         }
 

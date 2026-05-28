@@ -602,6 +602,19 @@ namespace AutoTerrainDesignations
             }
         }
 
+        /// <summary>
+        /// On game load, infers whether farming automation should be active for a tower by examining
+        /// whether its designations look like farmland work (<see cref="LooksLikeLoadedFarmingTower"/>).
+        /// Skips any tower already present in <c>s_farmingAutomationDisabledTowerIds</c> or
+        /// <c>s_farmingPreparationSessions</c> (i.e. towers whose state was restored from the
+        /// persistence blob).
+        /// <para>
+        /// This is a fallback for saves that predate persistence (v0.4.2). Once old saves without
+        /// the <c>atdTowerSettingsStateJson</c> blob are no longer in circulation, this method and
+        /// its supporting state (<c>s_farmingReEnableOnLoadPending</c>, <c>ReEnableFarmingOnLoad</c>,
+        /// <c>RequestFarmingReEnableOnLoad</c>) can be removed.
+        /// </para>
+        /// </summary>
         private static void ReEnableFarmingAutomationForLoadedFarmingTowers()
         {
             if (!s_farmingReEnableOnLoadPending)

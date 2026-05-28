@@ -106,23 +106,35 @@ namespace AutoTerrainDesignations
                     .Color(Theme.InactiveColor);
                 contentCol.Add(promptLabel);
 
+                var orePanel = new PanelWithHeader()
+                    .Title(AtdLocalization.OreTitle,
+                           AtdLocalization.Tip(AtdLocalization.OreDescription));
+                var oreInitTower = entityProp.GetValue(inspector) as IAreaManagingTower;
+                orePanel.Collapsed(oreInitTower != null
+                    ? AutoDepthDesignation.GetTowerOreCompositionPanelCollapsed(oreInitTower)
+                    : AutoTerrainDesignationsMod.OreCompositionPanelCollapsed);
+                orePanel.Header.OnClick((Action)delegate
+                {
+                    orePanel.Collapsed(!orePanel.IsCollapsed);
+                    var t = entityProp.GetValue(inspector) as IAreaManagingTower;
+                    if (t != null) AutoDepthDesignation.SetTowerOreCompositionPanelCollapsed(t, orePanel.IsCollapsed);
+                });
+
                 s_resetContentCallbacks[inspector] = (Action)delegate
                 {
                     // After creating designations, re-populate the composition instead of just clearing
                     var t = entityProp.GetValue(inspector) as IAreaManagingTower;
                     if (t != null)
+                    {
+                        orePanel.Collapsed(AutoDepthDesignation.GetTowerOreCompositionPanelCollapsed(t));
                         PopulateContent(contentCol, t);
+                    }
                     else
                     {
                         contentCol.Clear();
                         contentCol.Add(promptLabel);
                     }
                 };
-
-                var orePanel = new PanelWithHeader()
-                    .Title(AtdLocalization.OreTitle,
-                           AtdLocalization.Tip(AtdLocalization.OreDescription));
-                orePanel.Collapsed(AutoTerrainDesignationsMod.OreCompositionPanelCollapsed);
 
                 orePanel.Header.Add(new ButtonIcon(Button.General,
                     "Assets/Unity/UserInterface/General/Repeat.svg",
@@ -173,7 +185,16 @@ namespace AutoTerrainDesignations
             var orePanel = new PanelWithHeader()
                 .Title(AtdLocalization.OreTitle,
                        AtdLocalization.Tip(AtdLocalization.OreDescription));
-            orePanel.Collapsed(AutoTerrainDesignationsMod.OreCompositionPanelCollapsed);
+            var oreInitTower = getTower();
+            orePanel.Collapsed(oreInitTower != null
+                ? AutoDepthDesignation.GetTowerOreCompositionPanelCollapsed(oreInitTower)
+                : AutoTerrainDesignationsMod.OreCompositionPanelCollapsed);
+            orePanel.Header.OnClick((Action)delegate
+            {
+                orePanel.Collapsed(!orePanel.IsCollapsed);
+                var t = getTower();
+                if (t != null) AutoDepthDesignation.SetTowerOreCompositionPanelCollapsed(t, orePanel.IsCollapsed);
+            });
 
             orePanel.Header.Add(new ButtonIcon(Button.General,
                 "Assets/Unity/UserInterface/General/Repeat.svg",

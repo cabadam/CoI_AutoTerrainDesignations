@@ -84,6 +84,12 @@ namespace AutoTerrainDesignations
         /// On game start/load, infer a tower-level ATD priority from existing excavator priorities.
         /// If more than half of assigned excavators prioritize the same specific product, seed that
         /// product as the tower priority so new excavators inherit it via the regular ticker flow.
+        /// <para>
+        /// This is a fallback for saves that predate persistence (v0.4.2). Once old saves without
+        /// the <c>atdTowerSettingsStateJson</c> blob are no longer in circulation, this method and
+        /// its supporting state (<c>s_startupTowerPrioritySyncCompleted</c>,
+        /// <c>s_startupTowerPrioritySyncAttempts</c>) can be removed.
+        /// </para>
         /// </summary>
         private static void TryBootstrapTowerPrioritiesFromAssignedExcavators()
         {

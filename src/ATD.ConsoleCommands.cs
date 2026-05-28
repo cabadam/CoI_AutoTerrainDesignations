@@ -45,6 +45,34 @@ public sealed class AtdConsoleCommands
         return sb.ToString();
     }
 
+    [ConsoleCommand(false, false, "Prints the JSON that would be written to the save file if saved now.", null)]
+    private string atdDumpPendingSaveJson()
+    {
+        string json = AutoDepthDesignation.BuildTowerSettingsStateJsonForConfig();
+        AutoDepthDesignation.s_log.Info($"Pending tower settings JSON:\n{json}");
+        return $"[ATD] Pending tower settings JSON logged ({json.Length} chars).";
+    }
+
+    [ConsoleCommand(false, false, "Prints the JSON that was loaded from the save file on the last load.", null)]
+    private string atdDumpLastLoadedJson()
+    {
+        string? json = AutoDepthDesignation.GetLastLoadedTowerSettingsJson();
+        if (json == null)
+        {
+            return "[ATD] No tower settings JSON was loaded (no prior load or blob was empty).";
+        }
+        AutoDepthDesignation.s_log.Info($"Last loaded tower settings JSON:\n{json}");
+        return $"[ATD] Last loaded tower settings JSON logged ({json.Length} chars).";
+    }
+
+    [ConsoleCommand(false, false, "Dumps the in-memory panel collapsed state for all towers (for debugging).", null)]
+    private string atdDumpPanelState()
+    {
+        string report = AutoDepthDesignation.FormatPanelStateDebug();
+        AutoDepthDesignation.s_log.Info(report);
+        return report;
+    }
+
     [ConsoleCommand(false, false, "Sets the global default max height diff (1-3).", null)]
     private string atdSetMaxHeightDiff(int value)
     {

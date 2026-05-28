@@ -101,6 +101,17 @@ namespace AutoTerrainDesignations
             public void SetCorridorClearance(int value) => CorridorClearance = Math.Max(0, Math.Min(2, value));
 
             public void SetAutoReleaseWhenIdle(bool value) => AutoReleaseVehiclesWhenIdle = value;
+
+            public bool MatchesGlobalDefaults()
+            {
+                return MaxHeightDiff == AutoTerrainDesignationsMod.MaxHeightDiff
+                    && RampWidth == AutoTerrainDesignationsMod.RampWidth
+                    && MaxLayersToExcavate == AutoTerrainDesignationsMod.MaxLayersToExcavate
+                    && MaxDepthToDigTo == AutoTerrainDesignationsMod.MaxDepthToDigTo
+                    && OrePurityLevel == AutoTerrainDesignationsMod.OrePurityLevel
+                    && CorridorClearance == AutoTerrainDesignationsMod.MinCorridorClearance
+                    && AutoReleaseVehiclesWhenIdle == AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle;
+            }
         }
 
         private static readonly Tile2i[] s_cardinalDirections =
@@ -111,13 +122,20 @@ namespace AutoTerrainDesignations
             new Tile2i(0, -4),
         };
 
-        // Per-tower ore selection: tower -> selected ore (null = "Auto" = all ores)
-        private static readonly Dictionary<IAreaManagingTower, ProductProto?> s_selectedOrePerTower = 
-            new Dictionary<IAreaManagingTower, ProductProto?>();
+        // Per-tower ore selection: entityId -> selected ore (null = "Auto" = all ores)
+        private static readonly Dictionary<EntityId, ProductProto?> s_selectedOrePerTower =
+            new Dictionary<EntityId, ProductProto?>();
         private static readonly Dictionary<EntityId, ATDTowerSettings> s_towerSettingsByEntityId =
             new Dictionary<EntityId, ATDTowerSettings>();
         private static readonly Dictionary<EntityId, LooseProductProto> s_excavatorPriorityByTowerEntityId =
             new Dictionary<EntityId, LooseProductProto>();
+        // Per-tower panel collapsed states
+        private static readonly Dictionary<EntityId, bool> s_terrainPanelCollapsedByEntityId =
+            new Dictionary<EntityId, bool>();
+        private static readonly Dictionary<EntityId, bool> s_orePanelCollapsedByEntityId =
+            new Dictionary<EntityId, bool>();
+        private static readonly Dictionary<EntityId, bool> s_farmingPanelCollapsedByEntityId =
+            new Dictionary<EntityId, bool>();
         private static bool s_startupTowerPrioritySyncCompleted;
         private static int s_startupTowerPrioritySyncAttempts;
 
@@ -130,16 +148,18 @@ namespace AutoTerrainDesignations
         internal static ProductProto? GetSelectedOre(IAreaManagingTower tower)
         {
             if (tower == null) return null;
-            return s_selectedOrePerTower.TryGetValue(tower, out var ore) ? ore : null;
+            if (!TryGetTowerEntityId(tower, out EntityId entityId)) return null;
+            return s_selectedOrePerTower.TryGetValue(entityId, out var ore) ? ore : null;
         }
 
         internal static void SetSelectedOre(IAreaManagingTower tower, ProductProto? ore)
         {
             if (tower == null) return;
+            if (!TryGetTowerEntityId(tower, out EntityId entityId)) return;
             if (ore == null)
-                s_selectedOrePerTower.Remove(tower);
+                s_selectedOrePerTower.Remove(entityId);
             else
-                s_selectedOrePerTower[tower] = ore;
+                s_selectedOrePerTower[entityId] = ore;
         }
 
         private static bool TryGetTowerEntityId(IAreaManagingTower tower, out EntityId entityId)
@@ -218,6 +238,68 @@ namespace AutoTerrainDesignations
             ClearTowerRampWarningNotification(tower);
         }
 
+        internal static bool GetTowerTerrainPanelCollapsed(IAreaManagingTower tower)
+        {
+            if (TryGetTowerEntityId(tower, out EntityId id) && s_terrainPanelCollapsedByEntityId.TryGetValue(id, out bool v)) return v;
+            return AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed;
+        }
+
+        internal static void SetTowerTerrainPanelCollapsed(IAreaManagingTower tower, bool collapsed)
+        {
+            if (TryGetTowerEntityId(tower, out EntityId id))
+                s_terrainPanelCollapsedByEntityId[id] = collapsed;
+        }
+
+        internal static bool GetTowerOreCompositionPanelCollapsed(IAreaManagingTower tower)
+        {
+            if (TryGetTowerEntityId(tower, out EntityId id) && s_orePanelCollapsedByEntityId.TryGetValue(id, out bool v)) return v;
+            return AutoTerrainDesignationsMod.OreCompositionPanelCollapsed;
+        }
+
+        internal static void SetTowerOreCompositionPanelCollapsed(IAreaManagingTower tower, bool collapsed)
+        {
+            if (TryGetTowerEntityId(tower, out EntityId id))
+                s_orePanelCollapsedByEntityId[id] = collapsed;
+        }
+
+        internal static bool GetTowerFarmingPanelCollapsed(IAreaManagingTower tower)
+        {
+            if (TryGetTowerEntityId(tower, out EntityId id) && s_farmingPanelCollapsedByEntityId.TryGetValue(id, out bool v)) return v;
+            return AutoTerrainDesignationsMod.FarmingPanelCollapsed;
+        }
+
+        internal static void SetTowerFarmingPanelCollapsed(IAreaManagingTower tower, bool collapsed)
+        {
+            if (TryGetTowerEntityId(tower, out EntityId id))
+                s_farmingPanelCollapsedByEntityId[id] = collapsed;
+        }
+
+        internal static string FormatPanelStateDebug()
+        {
+            var sb = new System.Text.StringBuilder();
+            sb.AppendLine("[ATD] Panel collapsed dict contents:");
+            sb.AppendLine($"  Globals: terrain={AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}, ore={AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}, farming={AutoTerrainDesignationsMod.FarmingPanelCollapsed}");
+            var allIds = new System.Collections.Generic.HashSet<EntityId>();
+            foreach (var p in s_terrainPanelCollapsedByEntityId) allIds.Add(p.Key);
+            foreach (var p in s_orePanelCollapsedByEntityId) allIds.Add(p.Key);
+            foreach (var p in s_farmingPanelCollapsedByEntityId) allIds.Add(p.Key);
+            if (allIds.Count == 0)
+            {
+                sb.Append("  (no per-tower panel state stored)");
+            }
+            else
+            {
+                foreach (EntityId id in allIds)
+                {
+                    string t = s_terrainPanelCollapsedByEntityId.TryGetValue(id, out bool tv) ? tv.ToString() : "-";
+                    string o = s_orePanelCollapsedByEntityId.TryGetValue(id, out bool ov) ? ov.ToString() : "-";
+                    string f = s_farmingPanelCollapsedByEntityId.TryGetValue(id, out bool fv) ? fv.ToString() : "-";
+                    sb.AppendLine($"  entityId={id.Value}: terrain={t}, ore={o}, farming={f}");
+                }
+            }
+            return sb.ToString();
+        }
+
         internal static int CurrentWorldGeneration => s_worldGeneration;
 
         internal static bool IsWorldGenerationActive(int worldGeneration)
@@ -247,6 +329,9 @@ namespace AutoTerrainDesignations
             s_selectedOrePerTower.Clear();
             s_towerSettingsByEntityId.Clear();
             s_excavatorPriorityByTowerEntityId.Clear();
+            s_terrainPanelCollapsedByEntityId.Clear();
+            s_orePanelCollapsedByEntityId.Clear();
+            s_farmingPanelCollapsedByEntityId.Clear();
             s_startupTowerPrioritySyncCompleted = false;
             s_startupTowerPrioritySyncAttempts = 0;
 

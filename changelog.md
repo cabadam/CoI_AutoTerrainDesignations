@@ -1,3 +1,11 @@
+v0.4.2 | 2026-05-28 [unreleased]
+* Added: per-tower settings (max height diff, ramp width, max layers, max depth, ore quality, corridor clearance, auto-release, and ore filter) are now persisted into the vanilla save file via a `config.json` state blob; settings survive save/load cycles without any custom save format
+* Changed: ore filter selection is now keyed by entity ID instead of object reference, so it round-trips correctly through save/load
+* Changed: `CoI.AutoHelpers` Runtime, VanillaAttachments, and Persistence source modules are now compiled into ATD (previously only Localization and Logging were included)
+* Added: collapsed state of each tower's **Mining designations**, **Ore composition**, and **Farmland preparation** panels is now persisted per tower in the save blob and restored on load
+* Fixed: all three ATD panels opened in the global default collapsed state after load instead of the saved per-tower state; the entity is null during inspector construction so the per-tower state is now applied on inspector activation when the entity is bound
+* Added three debug console commands: **atd_dump_pending_save_json** (prints the JSON that would be written on save), **atd_dump_last_loaded_json** (prints the JSON from the last load), **atd_dump_panel_state** (prints per-tower panel collapsed state from memory)
+
 v0.4.1 | 2026-05-22
 * Fixed: corner designation rotation now responds to the player's mapped rotate key instead of always responding to R
 * Added **cornerDesignationKey** global setting: the key used to enter and toggle corner designation mode; configurable via **ATDsettings.json** (default: `K`) or the new **atdSetCornerDesignationKey** console command (accepts any Unity KeyCode name, e.g. `Alpha1`, `F1`)

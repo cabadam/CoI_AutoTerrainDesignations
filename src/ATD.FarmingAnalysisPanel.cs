@@ -73,23 +73,32 @@ namespace AutoTerrainDesignations
 
                 contentCol.Add(idleReleaseToggle);
 
-                s_resetContentCallbacks[inspector] = (Action)delegate
-                {
-                    AutoDepthDesignation.EnsureFarmingAutomationDefaultEnabledForTower(
-                        entityProp.GetValue(inspector) as IAreaManagingTower);
-                    automationToggle.Value(AutoDepthDesignation.IsFarmingAutomationEnabledForTower(
-                        entityProp.GetValue(inspector) as IAreaManagingTower));
-                    var tower = entityProp.GetValue(inspector) as IAreaManagingTower;
-                    idleReleaseToggle.Value(tower == null
-                        ? AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle
-                        : AutoDepthDesignation.GetTowerAutoReleaseWhenIdle(tower));
-                };
-
+                var farmingInitTower = entityProp.GetValue(inspector) as IAreaManagingTower;
                 var panel = new PanelWithHeader()
                     .Title(
                         AtdLocalization.FarmingTitle,
                         AtdLocalization.Tip(AtdLocalization.FarmingDescription));
-                panel.Collapsed(AutoTerrainDesignationsMod.FarmingPanelCollapsed);
+                panel.Collapsed(farmingInitTower != null
+                    ? AutoDepthDesignation.GetTowerFarmingPanelCollapsed(farmingInitTower)
+                    : AutoTerrainDesignationsMod.FarmingPanelCollapsed);
+                panel.Header.OnClick((Action)delegate
+                {
+                    panel.Collapsed(!panel.IsCollapsed);
+                    var t = entityProp.GetValue(inspector) as IAreaManagingTower;
+                    if (t != null) AutoDepthDesignation.SetTowerFarmingPanelCollapsed(t, panel.IsCollapsed);
+                });
+
+                s_resetContentCallbacks[inspector] = (Action)delegate
+                {
+                    var tower = entityProp.GetValue(inspector) as IAreaManagingTower;
+                    AutoDepthDesignation.EnsureFarmingAutomationDefaultEnabledForTower(tower);
+                    automationToggle.Value(AutoDepthDesignation.IsFarmingAutomationEnabledForTower(tower));
+                    idleReleaseToggle.Value(tower == null
+                        ? AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle
+                        : AutoDepthDesignation.GetTowerAutoReleaseWhenIdle(tower));
+                    if (tower != null)
+                        panel.Collapsed(AutoDepthDesignation.GetTowerFarmingPanelCollapsed(tower));
+                };
 
                 panel.BodyAdd(contentCol);
                 mainBody.InsertAt(2, panel);

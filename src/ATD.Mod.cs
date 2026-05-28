@@ -33,6 +33,7 @@ using Mafi.Unity.UiStatic.Cursors;
 using UnityEngine;
 using CoI.AutoHelpers.Localization;
 using CoI.AutoHelpers.Logging;
+using CoI.AutoHelpers.Persistence;
 
 namespace AutoTerrainDesignations;
 
@@ -43,6 +44,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     private ISimLoopEvents? m_simLoopEvents;
     private ISaveManager? m_saveManager;
     private SimStep m_lastSimTick;
+    private IModStateJsonStore? m_towerSettingsStateStore;
 
     public string Name => "Auto Terrain Designations";
 
@@ -67,7 +69,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     {
         Manifest = manifest;
         ModVersion = manifest.Version.ToString();
-        JsonConfig = new ModJsonConfig();
+        JsonConfig = new ModJsonConfig(this);
     }
 
     public void RegisterPrototypes(ProtoRegistrator registrator)
@@ -263,6 +265,8 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             AutoTerrainDesignationsTicker ticker = AutoTerrainDesignationsTicker.CreateForWorld(AutoDepthDesignation.CurrentWorldGeneration + 1);
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
             AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, parkAndWaitJobFactory, notificationsManager);
+            m_towerSettingsStateStore = ModStateJsonStores.CreateDefault(JsonConfig, AutoDepthDesignation.TowerSettingsConfigKey);
+            AutoDepthDesignation.LoadTowerSettingsFromJsonStore(m_towerSettingsStateStore);
             AutoDepthDesignation.RequestFarmingReEnableOnLoad(gameWasLoaded);
 
             // Corner designation mode — TerrainCursor, TerrainDesignationsRenderer and
@@ -308,6 +312,10 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 
     private void beforeSave()
     {
+        IModStateJsonStore store = m_towerSettingsStateStore
+            ?? ModStateJsonStores.CreateDefault(JsonConfig, AutoDepthDesignation.TowerSettingsConfigKey);
+        m_towerSettingsStateStore = store;
+        AutoDepthDesignation.SaveTowerSettingsToJsonStore(store);
         AutoDepthDesignation.PurgeTransientNotificationsForSave();
         AutoDepthDesignation.RestoreFarmingRuntimeForSave();
         AutoDepthDesignation.RestoreIdleReleasedVehiclesForSave();
@@ -408,7 +416,6 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 
     public void MigrateJsonConfig(VersionSlim savedVersion, Dict<string, object> savedValues)
     {
-        savedValues.Clear();
     }
 
     public void Dispose()
