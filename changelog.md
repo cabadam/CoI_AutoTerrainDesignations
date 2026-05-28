@@ -1,4 +1,4 @@
-v0.4.2 | 2026-05-28 [unreleased]
+v0.4.2a | 2026-05-28 [packaged]
 * Added: per-tower settings (max height diff, ramp width, max layers, max depth, ore quality, corridor clearance, auto-release, and ore filter) are now persisted into the vanilla save file via a `config.json` state blob; settings survive save/load cycles without any custom save format
 * Changed: ore filter selection is now keyed by entity ID instead of object reference, so it round-trips correctly through save/load
 * Changed: `CoI.AutoHelpers` Runtime, VanillaAttachments, and Persistence source modules are now compiled into ATD (previously only Localization and Logging were included)
