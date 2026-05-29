@@ -173,10 +173,10 @@
   ],
   [
     "panel.ore.priority_selected_tooltip",
-    "Escavadeiras configuradas para priorizar {0}. Clique para desmarcar."
+    "Prioridade de mineração da torre definida como {0}. Clique para desmarcar."
   ],
   [
     "panel.ore.priority_set_tooltip",
-    "Definir todas as escavadeiras para priorizar {0}."
+    "Definir a prioridade de mineração da torre como {0}."
   ]
 ]

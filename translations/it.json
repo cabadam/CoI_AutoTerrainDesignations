@@ -173,10 +173,10 @@
   ],
   [
     "panel.ore.priority_selected_tooltip",
-    "Gli escavatori sono impostati per dare priorità a {0}. Clicca per deselezionare."
+    "La priorità di estrazione della torre è impostata su {0}. Clicca per deselezionare."
   ],
   [
     "panel.ore.priority_set_tooltip",
-    "Imposta tutti gli escavatori in modo che diano priorità a {0}."
+    "Imposta la priorità di estrazione della torre su {0}."
   ]
 ]

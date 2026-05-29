@@ -173,10 +173,10 @@
   ],
   [
     "panel.ore.priority_selected_tooltip",
-    "Excavadoras configuradas para priorizar {0}. Haz clic para quitarlo."
+    "Prioridad de minería de la torre establecida en {0}. Haz clic para quitarla."
   ],
   [
     "panel.ore.priority_set_tooltip",
-    "Configura todas las excavadoras para priorizar {0}."
+    "Establecer la prioridad de minería de la torre en {0}."
   ]
 ]

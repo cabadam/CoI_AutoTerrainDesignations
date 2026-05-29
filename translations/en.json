@@ -173,10 +173,10 @@
   ],
   [
     "panel.ore.priority_selected_tooltip",
-    "Excavators set to prioritize {0}. Click to unset."
+    "Tower mining priority set to {0}. Click to unset."
   ],
   [
     "panel.ore.priority_set_tooltip",
-    "Set all excavators to prioritize {0}."
+    "Set tower mining priority to {0}."
   ]
 ]

@@ -173,10 +173,10 @@
   ],
   [
     "panel.ore.priority_selected_tooltip",
-    "Grävmaskiner prioriterar {0}. Klicka för att ta bort."
+    "Tornets gruvprioritet satt till {0}. Klicka för att ta bort."
   ],
   [
     "panel.ore.priority_set_tooltip",
-    "Ställ in alla grävmaskiner att prioritera {0}."
+    "Sätt tornets gruvprioritet till {0}."
   ]
 ]

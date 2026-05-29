@@ -173,10 +173,10 @@
   ],
   [
     "panel.ore.priority_selected_tooltip",
-    "Bagger priorisieren {0}. Klicken, um die Priorität zu entfernen."
+    "Abbaupriorität des Turms auf {0} gesetzt. Klicken, um die Priorität zu entfernen."
   ],
   [
     "panel.ore.priority_set_tooltip",
-    "Abbaupriorität für alle Bagger auf {0} setzen."
+    "Abbaupriorität des Turms auf {0} setzen."
   ]
 ]

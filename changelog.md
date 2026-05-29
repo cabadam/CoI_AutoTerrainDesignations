@@ -1,5 +1,6 @@
 v0.4.2b | 2026-05-29 [unreleased]
 * Changed: ore composition cards now use the game's speckled panel background (matching the AFD forestry information panel style) and increased card padding from 4 to 6 pt
+* Changed: ore quality priority button tooltips reworded to reflect tower-level persistence — "Set tower mining priority to {0}" / "Tower mining priority set to {0}. Click to unset."
 
 v0.4.2 | 2026-05-29
 * Added: per-tower settings (max height diff, ramp width, max layers, max depth, ore quality, corridor clearance, auto-release, ore filter, mining priority, and farmland preparation automation state) are now persisted into the vanilla save file via a `config.json` state blob; settings survive save/load cycles without any custom save format

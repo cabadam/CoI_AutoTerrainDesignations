@@ -102,9 +102,9 @@ namespace AutoTerrainDesignations
         public static LocStr OreNoMinableDesig =
             Loc.Str("panel.ore.no_minable_designations", "No minable designations found.", "Message shown when the scan finds no minable designations.");
         public static LocStr OrePrioritySelectedTipFmt =
-            Loc.Str("panel.ore.priority_selected_tooltip", "Excavators set to prioritize {0}. Click to unset.", "Tooltip on a priority button when that product is already prioritized. {0} = colored product name.");
+            Loc.Str("panel.ore.priority_selected_tooltip", "Tower mining priority set to {0}. Click to unset.", "Tooltip on a priority button when that product is already prioritized. {0} = colored product name.");
         public static LocStr OrePrioritySetTipFmt =
-            Loc.Str("panel.ore.priority_set_tooltip", "Set all excavators to prioritize {0}.", "Tooltip on a priority button. {0} = colored product name.");
+            Loc.Str("panel.ore.priority_set_tooltip", "Set tower mining priority to {0}.", "Tooltip on a priority button. {0} = colored product name.");
 
         // ------------------------------------------------------------------ //
         // Farming analysis panel
