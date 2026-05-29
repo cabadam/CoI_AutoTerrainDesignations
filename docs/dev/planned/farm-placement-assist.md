@@ -3,9 +3,9 @@ Current as of release: 0.4.0k
 
 **Status:** Planning / not yet implemented.  
 **Feature description:** Allow players to place farm buildings on uneven or infertile ground
-inside a farming-enabled mining tower area. ATD suppresses the vanilla placement blockers,
-injects farming designations for the footprint, pauses construction until the site is prepared,
-then unpauses so the farm can be built normally.
+inside a farming-enabled mining tower area. ATD intercepts the placement before the ghost
+enters the world, injects farming designations for the footprint, lets vehicles prepare the
+site unobstructed, then auto-places the farm when the site is ready.
 
 ---
 
@@ -17,11 +17,31 @@ then unpauses so the farm can be built normally.
 | Farm footprint | The set of 1×1 tiles occupied by a `FarmProto` entity |
 | Designation cell | A 4×4-tile designation grid origin (`DesignationData.OriginTile`); always aligned to a 4-tile boundary |
 | Covered cells | The set of designation-grid origins that overlap the farm footprint |
-| Pending placement | An ATD-tracked record pairing a placed but not-yet-constructible farm with the designation cells it requires |
+| Pending placement | An ATD-tracked `PlacementIntent` record that holds the parameters (proto, position, rotation) of an intercepted farm placement and the designation cells the site requires; no ghost entity is present in the world while the record exists |
 
 ---
 
-## Overview of the full flow
+## Vehicle blocking constraint
+
+**Critical constraint discovered during research (2026-05-29):**
+
+A farm ghost in `InConstruction` state registers its footprint tiles in `TerrainOccupancyManager` on entity addition and sets vehicle-blocking tile flags via the `TileFlagReporter` system. Pausing construction (`TrySetConstructionPause`) does not remove those flags — it only stops vehicle *job* queuing. The tiles remain physically impassable.
+
+This means the original plan (place ghost → pause → prepare ground) is unworkable: vehicles cannot reach the footprint tiles to do the leveling work while the ghost occupies them.
+
+**The ghost must not be present in the world during site preparation.**
+
+### Approach comparison
+
+| Approach | Description | Pros | Cons |
+|---|---|---|---|
+| **A — Intercept & defer (recommended)** | ATD cancels the entity-add command before the ghost enters the world, records the placement intent (proto, position, rotation), prepares the site, then re-issues the placement when all cells are `Done` | Clean UX; no blocking issue; no fighting engine internals | Must intercept the input command or entity-add early enough; player sees no immediate ghost |
+| **B — TileFlagReporter override** | After ghost is placed, ATD creates a `TileFlagReporter` that clears vehicle-blocking bits on the farm tiles | Ghost stays visible | Requires fighting the occupancy manager; fragile; not a supported mod API |
+| **C — Remove & re-place** | ATD lets the ghost be placed, then immediately removes the entity, records the intent, prepares the site, re-places when done | Entity lifetime is normal | Player sees the ghost flicker in and out; entity IDs change; needs the same intercept path anyway |
+
+Approach A is recommended. The exact intercept point (Harmony prefix on the entity-add command or on the layout entity placement controller) needs to be confirmed in Phase 0-B.
+
+## Overview of the full flow (revised)
 
 ```
 Player hovers farm preview
@@ -32,28 +52,29 @@ Player hovers farm preview
         │
 Player clicks to place
         │
-        ├─ Farm ghost appears (ConstructionState = InConstruction)
-        │
-ATD EntityAdded hook fires
+ATD intercepts entity-add command (before ghost enters the world)
         │
         ├─ Is FarmProto + within farming-enabled tower area?
-        │     no  → ignore
-        │     yes → (1) pause construction via TrySetConstructionPause
-        │           (2) compute covered cells
-        │           (3) for each covered cell, ensure a farming-level designation is present
+        │     no  → let command through (vanilla)
+        │     yes → (1) cancel / consume the command
+        │           (2) record PlacementIntent (proto, position, rotation)
+        │           (3) compute covered cells
+        │           (4) for each covered cell, ensure a farming-level designation exists
         │               or create one at the current surface height
-        │           (4) register a PendingFarmPlacement record
+        │           (5) show ATD placement-pending indicator (optional)
+        │           (6) register a PendingFarmPlacement record
+        │
+Vehicles prepare the site (no ghost blocking them)
         │
 ATD tick loop
         │
         ├─ For each PendingFarmPlacement:
-        │     (a) if entity removed → clean up designations ATD placed, remove record
-        │     (b) are all covered cells in Done state? → TrySetConstructionPause(false)
-        │                                                 remove record
+        │     (a) if player cancels intent → clean up ATD designations, remove record
+        │     (b) are all covered cells in Done state?
+        │           → issue the original placement command (auto-place ghost)
+        │           → remove record
         │
-Vehicles prepare the site (existing farming session logic)
-        │
-Farm ghost resumes, vehicles construct the farm normally
+Farm ghost appears on prepared ground, vehicles construct the farm normally
 ```
 
 ---
@@ -75,26 +96,28 @@ during the game's entity-add path (not just the UI preview path), and that retur
 - Confirm that `addRequest.Transform.Position.Xy` is already tile-snapped at validator call time.
 - Verify that suppressing only for `FarmProto` doesn't break non-farm buildings on the same tiles.
 
-### 0-B  Entity-added event
+### 0-B  Intercept point for entity-add cancellation
 
-Locate the event on `IEntitiesManager` (likely `EntityAdded` or similar) that fires after a
-farm ghost is successfully added to the world.  Confirm:
-- It fires on the simulation thread (important: `TrySetConstructionPause` must be called
-  from the right thread context, or queued as an input command).
-- The `IStaticEntity` argument is queryable for its `Proto` type and `Transform`.
+The ghost must be prevented from entering the world entirely (Approach A). Find the earliest
+call-site where the farm placement command can be intercepted and cancelled before the entity
+is registered in the world:
 
-### 0-C  Construction pause behaviour while `InConstruction`
+- Locate the input command or controller method that processes the player's placement click
+  for layout entities (e.g. `BuildingPlacementController.TryPlace`, `LayoutEntityPlacementController.CommitPlacement`,
+  or the equivalent simulation-thread command).
+- Confirm the intercept point is *before* occupancy registration, not *after*.
+- Confirm the full placement parameters (proto, position, rotation) can be read and stored
+  from that call-site so ATD can re-issue them later.
+- If the only intercept point is an `EntityAdded` event (post-add), Approach C (remove & re-place)
+  must be used instead; document the tradeoffs.
 
-Place a farm ghost in-game and call `TrySetConstructionPause(entity, true)` immediately.
-Confirm:
-- Vehicles do not queue construction tasks for the paused farm.
-- The pause survives a save/load cycle (or determine that we need to re-apply it from
-  ATD's own persistent state on load).
-- The entity is still physically present and blocks terrain designation placement on its tiles.
+### 0-C  Verify ghost vehicle-blocking in practice
 
-**Decision point after 0-C:** If the entity blocks designation placement, we may need to place
-designations *before* placement (see Phase 2 alternatives), or investigate whether designations
-can coexist with an entity ghost.
+Confirm in-game that a farm ghost in `InConstruction` state blocks vehicles from entering its
+tiles (expected based on source analysis: occupancy manager registers blocking flags on add).
+Also confirm that terrain designations *can* be placed on the farm's tiles once the ghost is
+absent — i.e. there is no other blocker that would prevent designation placement on a freshly
+cleared site.
 
 ### 0-D  Covering cells vs. entity footprint alignment
 
@@ -173,6 +196,7 @@ tiles are inside a farming-enabled tower area.
 ### 2-A  Patch `FarmFertileGroundValidator.CanAdd`
 
 ```csharp
+// FarmFertileGroundValidator.CanAdd takes the concrete LayoutEntityAddRequest (non-generic, public method).
 [HarmonyPatch(typeof(FarmFertileGroundValidator), nameof(FarmFertileGroundValidator.CanAdd))]
 static class Patch_FarmFertileGroundValidator_CanAdd
 {
@@ -191,9 +215,18 @@ The terrain validator checks height flatness and whether tiles are at the correc
 Add a targeted prefix that only suppresses errors for `FarmProto` within a tower area.
 
 ```csharp
-[HarmonyPatch(typeof(LayoutEntityTerrainValidator), "CanAdd")]   // interface explicit impl — verify method name
+// LayoutEntityTerrainValidator.CanAdd is an explicit interface impl of
+// IEntityAdditionValidator<ILayoutEntityAddRequest>. The IL method name is compiler-mangled;
+// use TargetMethod() to locate it via the interface map rather than a string name.
 static class Patch_LayoutEntityTerrainValidator_CanAdd_Farm
 {
+    static MethodBase TargetMethod()
+    {
+        var iface = typeof(IEntityAdditionValidator<ILayoutEntityAddRequest>);
+        var map = typeof(LayoutEntityTerrainValidator).GetInterfaceMap(iface);
+        return map.TargetMethods[0]; // only one method on this interface
+    }
+
     static bool Prefix(ILayoutEntityAddRequest addRequest, ref EntityValidationResult __result)
     {
         if (addRequest.Proto is not FarmProto) return true;
@@ -217,140 +250,134 @@ on implementing this until Phase 0-E is resolved.
 
 ---
 
-## Phase 3 — Post-placement hook and designation injection
+## Phase 3 — Placement intercept and designation injection
 
-**Goal:** When a farm ghost is placed in a tower area, pause its construction and inject
-farming designations for all covered designation cells that are not already managed.
+**Goal:** Intercept the farm placement before the ghost enters the world, inject farming
+designations for all covered cells, and record the placement intent for later replay.
 
-### 3-A  Subscribe to entity-added event
-
-In `ATD.State.cs` (or a new `ATD.FarmPlacementAssist.cs`), subscribe to `IEntitiesManager.EntityAdded`
-(or the equivalent event found in Phase 0-B) during ATD initialization.
-
-### 3-B  `OnEntityAdded(IEntity entity)` handler
+### 3-A  Intercept — prefix on `EntitiesManager.TryAddEntity`
 
 ```csharp
-static void OnEntityAdded(IEntity entity)
+// EntitiesManager.TryAddEntity is called from createStaticEntityFromCmd AFTER the entity
+// instance is created but BEFORE validators run and BEFORE addEntityInternal.
+// Returning false from the prefix with an error result causes the caller to:
+//   (1) destroy the floating entity via IEntityFriend.Destroy(), and
+//   (2) return false from createStaticEntityFromCmd (no error notification shown to player).
+// ATD records the intent from entity.Prototype and entity.Transform before returning.
+[HarmonyPatch(typeof(EntitiesManager), nameof(EntitiesManager.TryAddEntity))]
+static class Patch_EntitiesManager_TryAddEntity_FarmIntercept
 {
-    if (entity is not IStaticEntity staticEntity) return;
-    if (staticEntity.Proto is not FarmProto) return;
-    IAreaManagingTower? tower = GetFarmingTowerForTile(staticEntity.Transform.Position.Xy);
-    if (tower == null) return;
+    private const string ATD_INTERCEPT_REASON = "ATD_FarmPlacementIntercepted";
 
-    // Do not assist if the site is already fully farmable.
-    IEnumerable<Tile2i> coveredCells = ComputeCoveredDesignationCells(staticEntity);
-    if (AreCellsAlreadyFarmable(coveredCells)) return;
-
-    // Pause construction immediately.
-    s_constructionManager.TrySetConstructionPause(staticEntity, true);
-
-    // Inject flat leveling designations for cells that do not already have one.
-    foreach (Tile2i origin in coveredCells)
+    static bool Prefix(
+        IEntity entity,
+        EntityAddReason reasonToAdd,
+        ref EntityValidationResult __result)
     {
-        EnsureFarmingDesignationForCell(tower, origin, staticEntity.Transform.Position.Z);
-    }
+        if (entity?.Prototype is not FarmProto farmProto) return true;
+        if (reasonToAdd != EntityAddReason.New) return true;
+        if (entity is not IStaticEntity staticEntity) return true;
+        if (!s_initialized) return true; // ATD not ready
 
-    // Register a pending placement record.
-    s_pendingFarmPlacements[staticEntity.Id] = new PendingFarmPlacement(tower.Id, coveredCells.ToHashSet());
+        Tile2i position = staticEntity.Transform.Position.Xy;
+        IAreaManagingTower? tower = GetFarmingTowerForTile(position);
+        if (tower == null) return true; // not in a farming-enabled tower area
+
+        // Site already ready? Let it through — no need to defer.
+        IEnumerable<Tile2i> covered = ComputeCoveredDesignationCells(
+            farmProto, position, staticEntity.Transform.Rotation90);
+        if (AreCellsAlreadyFarmable(covered))
+            return true;
+
+        // Record the placement intent (entity will be destroyed by the caller once we return error).
+        OnFarmPlacementIntercepted(farmProto, position, staticEntity.Transform.Rotation90, tower, covered);
+
+        // Return a recognisable error so the caller (createStaticEntityFromCmd) destroys the entity
+        // and returns false cleanly. The error string is checked in the notification path to suppress
+        // the player-visible "Cannot place" toast (see ATD.FarmPlacementAssist.cs — notification patch).
+        __result = EntityValidationResult.CreateError(ATD_INTERCEPT_REASON);
+        return false;
+    }
 }
 ```
 
-### 3-C  `ComputeCoveredDesignationCells(IStaticEntity entity) → IEnumerable<Tile2i>`
+**Note on error message suppression:** `createStaticEntityFromCmd` sets an `error` string and returns
+`false`; its caller may log that string or show it as a notification. Add a second prefix on whatever
+method displays placement failure notifications and silently swallow errors whose message equals
+`ATD_INTERCEPT_REASON`. Verify the notification path in the spike before implementing.
 
-Enumerate `entity.OccupiedTiles`, compute `SnapToDesignationGrid(origin + rel.RelCoord)` for
-each tile, and return distinct origins.
+### 3-B  `OnFarmPlacementIntercepted(FarmProto proto, Tile2i position, Rotation rotation, IAreaManagingTower tower)`
+
+```csharp
+static void OnFarmPlacementIntercepted(
+    FarmProto proto, Tile2i position, Rotation rotation, IAreaManagingTower tower)
+{
+    IEnumerable<Tile2i> coveredCells = ComputeCoveredDesignationCells(proto, position, rotation);
+
+    // If site already fully prepared, replay the placement immediately.
+    if (AreCellsAlreadyFarmable(coveredCells))
+    {
+        ReplayFarmPlacement(proto, position, rotation);
+        return;
+    }
+
+    // Inject leveling designations for cells not already managed.
+    foreach (Tile2i origin in coveredCells)
+        EnsureFarmingDesignationForCell(tower, origin, s_terrainManager.GetHeight(position).Value);
+
+    // Register intent for later replay.
+    var intent = new PlacementIntent(proto, position, rotation, tower.Id, coveredCells.ToHashSet());
+    s_pendingFarmPlacements.Add(intent);
+    // Optional: show ATD placeholder indicator at position.
+}
+```
+
+### 3-C  `ComputeCoveredDesignationCells(FarmProto proto, Tile2i position, Rotation rotation) → IEnumerable<Tile2i>`
+
+Derive the farm's occupied tiles from its proto layout (no live entity needed — the footprint
+is fully determined by proto + position + rotation). Apply `SnapToDesignationGrid` to each
+occupied tile and return distinct origins.
 
 ### 3-D  `EnsureFarmingDesignationForCell(tower, origin, placementHeight)`
 
-If no farming-level designation is already present at `origin` in the current tower session,
-create a flat `LevelingDesignator` designation at `placementHeight` (the Z-height of the
-entity's transform).  Use the same proto and `DesignationData` pattern as the existing
-farming preparation logic to make it compatible with `FarmingPreparationSession`.
+Same as original plan: if no farming-level designation is already present at `origin` in the
+current tower session, create a flat `LevelingDesignator` designation at `placementHeight`.
+Let the session's normal capture logic pick it up on the next tick.
 
-**Open question:** Should this adopt the cell into the *existing* farming session for the tower,
-or should the session automatically capture it on the next tick?  Prefer the latter (let the
-session's normal capture logic pick it up) to avoid duplicating session management code.
-
-### 3-E  `PendingFarmPlacement` record
+### 3-E  `PlacementIntent` record
 
 ```csharp
-private sealed class PendingFarmPlacement
+private sealed class PlacementIntent
 {
+    public readonly FarmProto Proto;
+    public readonly Tile2i Position;
+    public readonly Rotation Rotation;
     public readonly EntityId TowerId;
     public readonly HashSet<Tile2i> RequiredCells;
-    public readonly HashSet<Tile2i> AtdInjectedCells; // cells ATD created (to clean up if abandoned)
+    public readonly HashSet<Tile2i> AtdInjectedCells;
 
-    public PendingFarmPlacement(EntityId towerId, HashSet<Tile2i> requiredCells)
+    public PlacementIntent(FarmProto proto, Tile2i position, Rotation rotation,
+        EntityId towerId, HashSet<Tile2i> requiredCells)
     {
-        TowerId = towerId;
-        RequiredCells = requiredCells;
+        Proto = proto; Position = position; Rotation = rotation;
+        TowerId = towerId; RequiredCells = requiredCells;
         AtdInjectedCells = new HashSet<Tile2i>();
     }
 }
 
-private static readonly Dictionary<EntityId, PendingFarmPlacement> s_pendingFarmPlacements = new();
+private static readonly List<PlacementIntent> s_pendingFarmPlacements = new();
 ```
 
-### 3-F  Save/load — why ATD cannot use the game save
+### 3-F  Save/load persistence
 
-ATD must be safe to remove from an existing save.  Writing `PendingFarmPlacement` data into
-the game's save file would leave orphaned records if the mod is removed, potentially causing
-`CorruptedSaveException`.  This rules out any game-side serialization hook.
+Because no ghost entity exists in the world, there is no world-state to infer from on load.
+The placement intent must be persisted explicitly. Use the existing `config.json` state blob
+(same mechanism as per-tower settings): serialize `s_pendingFarmPlacements` as a JSON array
+under a new key (e.g. `"pendingFarmPlacements"`). Each entry stores: proto ID string,
+position (x, y), rotation int, tower entity ID.
 
-`s_pendingFarmPlacements` is therefore pure runtime state and must be **reconstructed from
-world-derived state** every time the game loads, the same way the existing farming session
-is rebuilt.
-
-### 3-G  Load-time reconstruction
-
-**Preferred approach — world-state inference:**
-
-On load (in the `ReEnableFarmingOnLoad` restoration path or equivalent), scan all entities:
-
-```csharp
-// Pseudocode — called after farming sessions are restored
-static void RestorePendingFarmPlacements()
-{
-    foreach (IStaticEntity entity in s_entitiesManager.Entities)
-    {
-        if (entity.Proto is not FarmProto) continue;
-        if (entity.ConstructionState != ConstructionState.InConstruction) continue;
-        // Only re-adopt if the entity is actually in a tower area with active farming prep
-        IAreaManagingTower? tower = GetFarmingTowerForTile(entity.Transform.Position.Xy);
-        if (tower == null || !IsFarmingAutomationEnabledForTower(tower)) continue;
-        IEnumerable<Tile2i> cells = ComputeCoveredDesignationCells(entity);
-        if (AreCellsDone(cells, tower.Id)) continue; // already farmable — unblock immediately
-        s_constructionManager.TrySetConstructionPause(entity, true);  // re-apply if not persistent
-        s_pendingFarmPlacements[entity.Id] = new PendingFarmPlacement(tower.Id, cells.ToHashSet());
-    }
-}
-```
-
-This works because the farm entity (its position and construction state) *is* stored in the
-game save — only ATD's runtime bookkeeping is not.  As long as:
-- the farm entity is still `InConstruction` in the save (it will be, because it was paused), and
-- the tower still has farming automation enabled, and
-- at least one covered designation cell is not yet `Done`
-
-...the inference will correctly re-register the pending placement.
-
-**Edge case — player manually unpaused before save:**  
-If the player unpaused the farm themselves and saved, the construction state is still
-`InConstruction` but the pause bit is cleared.  On load, `RestorePendingFarmPlacements` will
-re-pause it (because the site is still not ready).  This is the correct behaviour — the player
-placing the farm opted into ATD management of that site.  Document this in the player-facing
-docs once the feature ships.
-
-**Edge case — OQ-4 (pause survives load natively):**  
-If `TrySetConstructionPause` state is serialized by the vanilla construction manager, the re-apply
-in `RestorePendingFarmPlacements` is a no-op (pausing an already-paused entity).  Safe in either case.
-
-**Alternative — `ATDsettings.json` persistence:**  
-If world-state inference proves unreliable (e.g., ambiguity with player-paused farms in non-ATD
-contexts), persist a `List<int>` of raw `EntityId` values to `ATDsettings.json` under a
-`"PendingFarmPlacements"` key.  On load, read those IDs, attempt to look up each entity, and
-re-register.  `EntityId` values are stable within a save, so this is safe.  Prefer the inference
-approach first; fall back to settings-file persistence only if needed.
+On load, deserialize the list and re-register each intent. If the site is already done at
+load time (cells all `Done`), replay the placement immediately instead of re-registering.
 
 ---
 
@@ -364,41 +391,54 @@ prepared (i.e., all are in `FarmingOriginPhase.Done`).
 ```csharp
 static void TickPendingFarmPlacements()
 {
-    foreach (EntityId farmId in s_pendingFarmPlacements.Keys.ToList())
+    for (int i = s_pendingFarmPlacements.Count - 1; i >= 0; i--)
     {
-        PendingFarmPlacement pending = s_pendingFarmPlacements[farmId];
+        PlacementIntent intent = s_pendingFarmPlacements[i];
 
-        // Entity removed?
-        if (!s_entitiesManager.TryGetEntity(farmId, out IStaticEntity farmEntity))
+        // All covered cells done? → auto-place the farm.
+        if (AreCellsDone(intent))
         {
-            CleanUpAbandonedFarmPlacement(pending);
-            s_pendingFarmPlacements.Remove(farmId);
-            continue;
-        }
-
-        // All covered cells done?
-        if (AreCellsDone(pending))
-        {
-            s_constructionManager.TrySetConstructionPause(farmEntity, false);
-            s_pendingFarmPlacements.Remove(farmId);
+            ReplayFarmPlacement(intent.Proto, intent.Position, intent.Rotation);
+            s_pendingFarmPlacements.RemoveAt(i);
+            // Optional: notify player that the farm is ready and has been placed.
         }
     }
 }
 ```
 
-### 4-B  `AreCellsDone(PendingFarmPlacement pending) → bool`
+### 4-B  `AreCellsDone(PlacementIntent intent) → bool`
 
 Look up the tower's `FarmingPreparationSession` and check that every `Tile2i` in
-`pending.RequiredCells` maps to a `FarmingOriginSession` in `FarmingOriginPhase.Done`.
+`intent.RequiredCells` maps to a `FarmingOriginSession` in `FarmingOriginPhase.Done`.
+Cells not tracked in the session (preparation already removed) are treated as done.
 
-If a cell is not tracked in the session (e.g. it completed before the farm was placed and
-the designation was removed), treat it as done.
+### 4-C  `ReplayFarmPlacement(FarmProto proto, Tile2i position, Rotation rotation)`
 
-### 4-C  `CleanUpAbandonedFarmPlacement(PendingFarmPlacement)`
+```csharp
+static void ReplayFarmPlacement(FarmProto proto, Tile2i position, Rotation90 rotation)
+{
+    // Use IInputScheduler to issue a CreateStaticEntityCmd — the same path as a player click.
+    // allowValidationSuppression is false; the Phase 2 validator patches handle suppression.
+    // IInputScheduler must be stored during Initialize() alongside the other managers.
+    var transform = new TileTransform(
+        new Tile3i(position.X, position.Y, s_terrainManager.GetHeight(position).Value),
+        rotation,
+        isReflected: false);
+    var cmd = new CreateStaticEntityCmd(proto.Id, transform, isFree: false,
+        allowValidationSuppression: false);
+    s_inputScheduler.ScheduleInputCmd(cmd);
+    // Note: cmd.Result (the new EntityId) is available after processing — ignore for now.
+}
+```
 
-Remove ATD-injected designations from `pending.AtdInjectedCells` that the player did not
-already clear.  Do not remove designations placed by the player or by ATD's main auto-depth
-scan (use `pending.AtdInjectedCells` to distinguish).
+`IInputScheduler` must be added as a parameter to `AutoDepthDesignation.Initialize()` and stored
+as `s_inputScheduler`. Inject it from `ATD.AutoTerrainDesignationsMod.cs` the same way other
+managers are injected.
+
+### 4-D  `CleanUpAbandonedFarmPlacement(PlacementIntent intent)`
+
+Called when the player cancels the pending placement (Phase 5 UX). Removes ATD-injected
+designations from `intent.AtdInjectedCells` that have not already been cleared.
 
 ---
 
@@ -422,11 +462,12 @@ the suppression does not apply and the vanilla validators run normally.  This ma
 confusing experience (farm partially in area, still blocked).  Consider a softer warning
 message in the future.
 
-### 5-D  Player manually unpauses the farm before site is ready
+### 5-D  Player cancels the pending placement
 
-ATD must detect this (either by checking the pause state each tick or by subscribing to
-`IConstructionManager.EntityPauseStateChanged`) and either re-pause or drop the pending
-record (letting the player take control).  Recommend dropping the record with a log message.
+ATD needs a way for the player to cancel a pending intent (no ghost is visible, so the normal
+demolish/cancel tool cannot be used). Options: a console command (`atd_cancel_farm_placement`),
+an entry in the tower inspector showing pending farm placements, or a dedicated placeholder
+entity the player can demolish. Define the UX before implementing.
 
 ### 5-E  Multiple tower areas that overlap
 
@@ -446,11 +487,12 @@ is ready to build.
 
 | # | Question | Needed by |
 |---|---|---|
-| OQ-1 | Can `TrySetConstructionPause` be called safely from an entity-added event callback? | Phase 3 |
-| OQ-2 | Does the farm ghost physically block terrain designation placement on its tiles? | Phase 3 |
-| OQ-3 | Do leveling designations need to be injected before or after the ghost appears? | Phase 3 |
-| OQ-4 | Does the construction pause state persist through a save/load cycle natively? (ATD re-applies the pause on load either way via `RestorePendingFarmPlacements`, so this only affects whether double-pausing is a no-op or causes issues) | Phase 3-G |
-| OQ-5 | What method name does `LayoutEntityTerrainValidator` use for the explicit interface implementation of `CanAdd`? | Phase 2 |
+| OQ-1 | ~~Can `TrySetConstructionPause` be called safely from an entity-added event callback?~~ N/A — ghost is not placed | — |
+| OQ-2 | ~~Does the farm ghost physically block terrain designation placement on its tiles?~~ Resolved: YES (occupancy manager blocks vehicles) — ghost must not be placed during prep | Phase 3 |
+| OQ-3 | ~~Do leveling designations need to be injected before or after the ghost appears?~~ Before — no ghost during prep | — |
+| OQ-4 | ~~Does the construction pause state persist through a save/load cycle?~~ N/A | — |
+| OQ-5 | ~~What method name does `LayoutEntityTerrainValidator` use for the explicit interface implementation of `CanAdd`?~~ Resolved: explicit impl of `IEntityAdditionValidator<ILayoutEntityAddRequest>`. Harmony patch must use `TargetMethod()` returning the mapped interface target (see Phase 2-B). | — |
+| OQ-6 | ~~What is the earliest intercept point for a farm placement command where the ghost has not yet entered the world?~~ Resolved: prefix `EntitiesManager.TryAddEntity(IEntity, EntityAddReason, bool)`, which is called before validators run and before `addEntityInternal`. The entity has been instantiated by `cmd.TryCreateEntity` at that point but not registered — return a recognisable error string from the prefix so the caller destroys the entity normally. Replay via `IInputScheduler.ScheduleInputCmd(new CreateStaticEntityCmd(protoId, transform))`. | — |
 
 ---
 
@@ -459,6 +501,7 @@ is ready to build.
 | File | Changes |
 |---|---|
 | `ATD.FarmingPreparationSession.cs` | Add `GetFarmingTowerForTile`, `GetFarmingTowerForRequest`, `AreCellsDone`, `CleanUpAbandonedFarmPlacement`, `TickPendingFarmPlacements`, `s_pendingFarmPlacements` |
-| New `ATD.FarmPlacementAssist.cs` | Validator patches (Phase 2), `OnEntityAdded`, `ComputeCoveredDesignationCells`, `EnsureFarmingDesignationForCell`, `PendingFarmPlacement` class |
+| New `ATD.FarmPlacementAssist.cs` | Placement-intercept patch (Phase 3-A), `OnFarmPlacementIntercepted`, `ComputeCoveredDesignationCells`, `EnsureFarmingDesignationForCell`, `ReplayFarmPlacement`, `PlacementIntent` class; validator patches (Phase 2) |
 | `ATD.Ticker.cs` | Call `TickPendingFarmPlacements()` in the tick loop |
-| `ATD.State.cs` | Subscribe to entity-added event during init; resolve `IConstructionManager`; add load-restoration logic via `RestorePendingFarmPlacements` called from the `ReEnableFarmingOnLoad` path |
+| `ATD.State.cs` | Wire intercept patch during init; resolve any needed managers; call `RestorePendingFarmPlacements` (from persisted JSON) in the load path |
+| `ATD.TowerSettingsConfigPersistence.cs` | Serialize/deserialize `s_pendingFarmPlacements` under `"pendingFarmPlacements"` key in the config blob |

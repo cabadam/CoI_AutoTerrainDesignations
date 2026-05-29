@@ -15,6 +15,7 @@ using Mafi.Core;
 using Mafi.Core.Buildings.Mine;
 using Mafi.Core.Buildings.Towers;
 using Mafi.Core.Entities;
+using Mafi.Core.Input;
 using Mafi.Core.Notifications;
 using Mafi.Core.PathFinding;
 using Mafi.Core.Products;
@@ -42,6 +43,7 @@ namespace AutoTerrainDesignations
         private static ProtosDb? s_protosDb;
         private static WorldMapManager? s_worldMapManager;
         private static IEntitiesManager? s_entitiesManager;
+        private static IInputScheduler? s_inputScheduler;
         private static TerrainPropsManager? s_terrainPropsManager;
         private static IVehiclePathFindingManager? s_vehiclePathFindingManager;
         private static ParkAndWaitJobFactory? s_parkAndWaitJobFactory;
@@ -324,6 +326,7 @@ namespace AutoTerrainDesignations
             s_vehiclePathFindingManager = null;
             s_parkAndWaitJobFactory = null;
             s_excavatorPathFindingParams = null;
+            s_inputScheduler = null;
             s_batchSize = BATCH_SIZE;
 
             s_selectedOrePerTower.Clear();
@@ -349,7 +352,8 @@ namespace AutoTerrainDesignations
             TerrainPropsManager terrainPropsManager,
             IVehiclePathFindingManager? vehiclePathFindingManager = null,
             ParkAndWaitJobFactory? parkAndWaitJobFactory = null,
-            INotificationsManager? notificationsManager = null)
+            INotificationsManager? notificationsManager = null,
+            IInputScheduler? inputScheduler = null)
         {
             ResetWorldRuntimeState();
 
@@ -364,6 +368,7 @@ namespace AutoTerrainDesignations
             s_terrainPropsManager = terrainPropsManager;
             s_vehiclePathFindingManager = vehiclePathFindingManager;
             s_parkAndWaitJobFactory = parkAndWaitJobFactory;
+            s_inputScheduler = inputScheduler;
             s_excavatorPathFindingParams = FindExcavatorPathFindingParams(protosDb);
 
             if (protosDb.TryGetProto(new Proto.ID("MiningDesignator"), out TerrainDesignationProto proto))
