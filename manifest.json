@@ -1,6 +1,6 @@
 {
   "id": "AutoTerrainDesignations",
-  "version": "0.4.2a",
+  "version": "0.4.2",
   "display_name": "Kayser's Automatic Terrain Designations",
   "description_short": "Designate entire deposits with a single click. See deposit's composition. Clear debris. Create manual corner designations. Prepare Farmland.",
   "description_long": "<b>Auto Terrain Designations</b>\n\nAutomatically creates <b>mining designations</b> for your mine tower based on ore deposit depth — no manual painting required.\n\n<b>Features</b>\n- <b>Create Designations</b>: Scans the tower's area and places mining designations at the correct depth for the primary product found.\n- <b>Auto-ramp</b>: Optionally generates access ramps alongside the dig designations so excavators can reach deep layers.\n- <b>Ore composition</b>: Shows a breakdown of which ores are present in the current designations.\n\n<b>How to use</b>\n1. Select a <b>Mine Control Tower</b>.\n2. Optionally use the <i>ore filter</i> to restrict which product to target.\n3. Click <b>Create Designations</b> to scan and place designations.\n4. Click the trash icon to clear all designations.\n\n<b>Note:</b> Only works with mining designations within the tower's managed area.  \n\n<i>Compatible with vanilla saves — can be added to or removed from existing saves safely.</i>",

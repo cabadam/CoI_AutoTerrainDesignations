@@ -1,3 +1,7 @@
+v0.4.2 | 2026-05-29
+* Added: per-tower settings (max height diff, ramp width, max layers, max depth, ore quality, corridor clearance, auto-release, ore filter, mining priority, farmland preparation automation state) and the collapsed state of each tower's **Mining designations**, **Ore composition**, and **Farmland preparation** panels are now persisted into the vanilla save file via a `config.json` state blob; settings survive save/load cycles without any custom save format
+* Added three debug console commands: **atd_dump_pending_save_json**, **atd_dump_last_loaded_json**, **atd_dump_panel_state**
+
 v0.4.1 | 2026-05-21
 * Fixed: corner designation rotation now responds to the player's mapped rotate key instead of always responding to R
 * Added **cornerDesignationKey** global setting: the key used to enter and toggle corner designation mode; configurable via **ATDsettings.json** (default: **K**) or the new **atd_set_corner_designation_key** console command (accepts any Unity KeyCode name, e.g. Alpha1, F1)
