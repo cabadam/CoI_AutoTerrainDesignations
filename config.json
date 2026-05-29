@@ -1,6 +1,6 @@
 {
   "atdTowerSettingsStateJson": {
-    "default": "",
+    "default": "Keep me! I am required to persist the mod tower settings within the vanilla save file.",
     "description": "Do not delete — required so the game registers the 'atdTowerSettingsStateJson' parameter, used to persist the mod tower settings within the vanilla save file."
   }
 }

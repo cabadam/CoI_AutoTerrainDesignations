@@ -318,8 +318,9 @@ namespace AutoTerrainDesignations
                 string name = product.Strings.Name.TranslatedString;
                 var cardProduct = product;
 
-                // Card: dark background, no border (borders managed by container)
-                var card = new Column().FlexGrow(1f).Background(Theme.BackgroundDark).OverflowHidden().Padding(4.pt()).Gap(2.pt());
+                // Card: speckled panel background, matching AFD card style.
+                var card = new Column().FlexGrow(1f).OverflowHidden().Padding(6.pt()).Gap(2.pt());
+                card.Add(new UiComponent().Class(Cls.panelBg).BackgroundTint(new ColorRgba(0, 0, 0, 96)).FixRepeatedBgForPanel().AbsolutePositionFillParent());
 
                 // ResourcesVizColor is stored with low alpha (~40/255) for the 3D overlay;
                 // force alpha=255 so the UI bar is fully opaque.
@@ -397,7 +398,7 @@ namespace AutoTerrainDesignations
             {
                 var cardsScroll = new ScrollRow().AlignSelfStretch();
                 cardsScroll.ScrollerAuto().PreventResizeForScroller();
-                cardsRow.RootElement.style.marginBottom = 18;
+                cardsRow.RootElement.style.marginBottom = 22;
                 cardsScroll.Add(cardsRow);
                 col.Add(cardsScroll);
             }
