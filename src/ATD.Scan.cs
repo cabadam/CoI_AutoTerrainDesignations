@@ -422,15 +422,15 @@ namespace AutoTerrainDesignations
                         continue;
                     }
 
-                    if (!FlatteningDesignationWouldPerformWork(tile, terrMgr, target, towerSettings.FlatteningDesignationType))
+                    var data = new DesignationData(tile,
+                        new HeightTilesI(target), new HeightTilesI(target),
+                        new HeightTilesI(target), new HeightTilesI(target));
+
+                    if (!FlatteningDesignationWouldPerformWork(designationProto, data, terrMgr, towerSettings.FlatteningDesignationType))
                     {
                         skippedNoWorkCount++;
                         continue;
                     }
-
-                    var data = new DesignationData(tile,
-                        new HeightTilesI(target), new HeightTilesI(target),
-                        new HeightTilesI(target), new HeightTilesI(target));
 
                     if (!s_desigManager.AddOrReplaceDesignation(designationProto, data))
                     {
@@ -454,31 +454,91 @@ namespace AutoTerrainDesignations
             }
         }
 
-        /// <summary>Returns true when a flat target designation would change at least one cell in the 4x4 origin.</summary>
-        /// <param name="tileOrigin">Designation origin to inspect.</param>
+        /// <summary>Returns true when a flat target designation would change at least one relevant designation vertex.</summary>
+        /// <param name="designationProto">Designation proto whose fulfillment rules should be applied.</param>
+        /// <param name="data">Prospective designation data to inspect.</param>
         /// <param name="terrMgr">Terrain manager used for live surface heights.</param>
-        /// <param name="target">Flat target elevation.</param>
         /// <param name="flatteningDesignationType">Selected flattening designation type.</param>
         /// <returns>True when the selected designation type has work to perform; otherwise, false.</returns>
         private static bool FlatteningDesignationWouldPerformWork(
-            Tile2i tileOrigin,
+            TerrainDesignationProto designationProto,
+            DesignationData data,
             TerrainManager terrMgr,
-            int target,
             FlatteningDesignationType flatteningDesignationType)
         {
-            GetSurfaceHeightRangeInDesignatableTile(tileOrigin, terrMgr, out float minSurface, out float maxSurface);
+            if (s_desigManager == null)
+            {
+                return true;
+            }
+
             switch (flatteningDesignationType)
             {
                 case FlatteningDesignationType.Mining:
-                    return maxSurface > target + FLATTENING_HEIGHT_EPSILON;
+                    return FlatteningDesignationHasUnfulfilledMining(designationProto, data, terrMgr);
                 case FlatteningDesignationType.Dumping:
-                    return minSurface < target - FLATTENING_HEIGHT_EPSILON;
+                    return FlatteningDesignationHasUnfulfilledDumping(designationProto, data, terrMgr);
                 case FlatteningDesignationType.Leveling:
-                    return minSurface < target - FLATTENING_HEIGHT_EPSILON
-                        || maxSurface > target + FLATTENING_HEIGHT_EPSILON;
+                    return FlatteningDesignationHasUnfulfilledMining(designationProto, data, terrMgr)
+                        || FlatteningDesignationHasUnfulfilledDumping(designationProto, data, terrMgr);
                 default:
                     return true;
             }
+        }
+
+        private static bool FlatteningDesignationHasUnfulfilledMining(
+            TerrainDesignationProto designationProto,
+            DesignationData data,
+            TerrainManager terrMgr)
+        {
+            if (s_desigManager == null || !designationProto.IsFulfilledMiningFn.HasValue)
+            {
+                return false;
+            }
+
+            for (int y = 0; y <= 4; y++)
+            {
+                for (int x = 0; x <= 4; x++)
+                {
+                    Tile2i tile = data.OriginTile + new RelTile2i(x, y);
+                    Tile2iAndIndex tileAndIndex = terrMgr.ExtendTileIndex(tile);
+                    HeightTilesF targetHeight = GetDesignationTargetHeightAt(data, x, y);
+                    bool upperEdge = x == 4 || y == 4;
+                    if (!designationProto.IsFulfilledMiningFn.Value(s_desigManager, tileAndIndex, targetHeight, upperEdge))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
+        }
+
+        private static bool FlatteningDesignationHasUnfulfilledDumping(
+            TerrainDesignationProto designationProto,
+            DesignationData data,
+            TerrainManager terrMgr)
+        {
+            if (s_desigManager == null || !designationProto.IsFulfilledDumpingFn.HasValue)
+            {
+                return false;
+            }
+
+            for (int y = 0; y <= 4; y++)
+            {
+                for (int x = 0; x <= 4; x++)
+                {
+                    Tile2i tile = data.OriginTile + new RelTile2i(x, y);
+                    Tile2iAndIndex tileAndIndex = terrMgr.ExtendTileIndex(tile);
+                    HeightTilesF targetHeight = GetDesignationTargetHeightAt(data, x, y);
+                    bool upperEdge = x == 4 || y == 4;
+                    if (!designationProto.IsFulfilledDumpingFn.Value(s_desigManager, tileAndIndex, targetHeight, upperEdge))
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            return false;
         }
 
         /// <summary>Resolves the terrain designation proto used by flattening mode.</summary>
