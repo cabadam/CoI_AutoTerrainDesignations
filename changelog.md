@@ -1,6 +1,8 @@
+v0.4.2d | 2026-05-30 [unreleased]
+* Added **bottomFlatteningStrength** global setting (1–10, default 5): controls which depth-percentile of each connected ore component is used as the flattening target during the bottom-flattening pass; 1 = mildest (90th-percentile depth, few tiles adjusted), 5 = median (default behavior), 10 = strongest (deepest tile, everything pulled down); configurable via `ATDsettings.json` or the new **atd_set_bottom_flattening_strength** console command
+
 v0.4.2c | 2026-05-30 [packaged]
 * Added: **Farm Placement Assist** (experimental): when a farm building is placed inside a mine tower area, ATD intercepts the placement, automatically injects flat leveling designations for each tile the farm covers, and replays the placement once the site is fully prepared; farms placed on uneven or infertile terrain inside a tower area are handled without any manual designation step
-* Added **bottomFlatteningStrength** global setting (1–10, default 5): controls which depth-percentile of each connected ore component is used as the flattening target during the bottom-flattening pass; 1 = mildest (90th-percentile depth, few tiles adjusted), 5 = median (default behavior), 10 = strongest (deepest tile, everything pulled down); configurable via `ATDsettings.json` or the new **atd_set_bottom_flattening_strength** console command
 
 v0.4.2b | 2026-05-29 [packaged]
 * Fixed: farming preparation access ramp was not generated when terrain was entirely above the designation target level (all-red perimeter on a fresh excavation pad); a physical-fallback BFS collected perimeter target tiles for all designations regardless of readiness and concluded the cluster was accessible from surrounding ground-level terrain; removing the fallback causes an empty target-tile set to correctly mark the cluster as inaccessible and trigger ramp placement
