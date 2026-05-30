@@ -19,5 +19,7 @@ Review ramp building safety margin logic in more depth. Current margin is based 
 ## Issue?: Vehichles auto-released can be assigned to the tower again (or to something else)
 Maybe reverse meaning and make auto-assign instead of auto-unassign?
 
-## Improve ramps?
+## Improve ramps? make them turn?
+
+## Saddle designation?
 

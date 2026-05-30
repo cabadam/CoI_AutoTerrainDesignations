@@ -52,6 +52,93 @@ Persisted in `FarmingOriginSession` across ticks.
 | `Done` | Topsoil band validated as farmable by the filling pass; designation hidden; origin is complete. Only reachable through the filling pass — analysis-time farmable tiles enter `ReadyForFilling` first. |
 | `Blocked` | Progress failed (missing designation manager, placement failed, etc.) |
 
+### Per-origin phase diagram
+
+```mermaid
+stateDiagram-v2
+    [*] --> AnalysisLeveling: flat level designation captured
+
+    AnalysisLeveling --> AnalysisLeveling: analysis = NeedsLeveling
+    AnalysisLeveling --> Preparing: analysis = NeedsPreparation / place z-1 preparation designation + shoulders
+    AnalysisLeveling --> ReadyForFilling: analysis = ReadyForFilling or Done / hide original designation
+    AnalysisLeveling --> Blocked: missing manager or placement failure
+
+    Preparing --> Preparing: analysis still below preparation level
+    Preparing --> ReadyForFilling: preparation level reached / hide designation
+    Preparing --> Blocked: placement or restore failure
+
+    ReadyForFilling --> Filling: tower filling phase begins / restore original designation
+    Filling --> Filling: farmable band not complete
+    Filling --> Done: filling analysis validates farmable band
+
+    Done --> [*]: session completes or is restored
+    Blocked --> [*]: automation disabled or session restored
+```
+
+### Tower tick-loop diagram
+
+```mermaid
+flowchart TD
+    Tick[onSimUpdate: once per game-second] --> Enabled{Session enabled and active?}
+    Enabled -- No --> Stop[Skip tower]
+    Enabled -- Yes --> FillingOwned{Any origin Filling<br/>or tower dump rules owned?}
+
+    FillingOwned -- No --> Prep[Preparation pass]
+    Prep --> Capture[Capture new flat level designations]
+    Capture --> Advance[Analyze and advance origins]
+    Advance --> PrepAccess[Ensure mining access ramps]
+    PrepAccess --> PrepComplete{All origins ReadyForFilling or Done?}
+    PrepComplete -- No --> Stop
+    PrepComplete -- Yes --> BeginFill[BeginFarmingFillingForSession]
+
+    FillingOwned -- Yes --> Fill[Filling pass]
+    BeginFill --> Fill
+    Fill --> ClearOut[Wait for vehicles to leave fill area]
+    ClearOut --> Cleanup[Remove shoulders and preparation ramps]
+    Cleanup --> Rim[Place rim alignment designations]
+    Rim --> FillAccess[Ensure dumping access ramps]
+    FillAccess --> FillAdvance[Analyze filling origins]
+    FillAdvance --> FillComplete{All origins Done?}
+    FillComplete -- No --> Stop
+    FillComplete -- Yes --> Stabilize[Stabilize, restore dump rules, reassign vehicles]
+    Stabilize --> Stop
+```
+
+### Filling handoff diagram
+
+```mermaid
+sequenceDiagram
+    participant Prep as Preparation pass
+    participant Session as FarmingPreparationSession
+    participant Tower as Mine tower
+    participant Vehicles as Assigned vehicles
+    participant Terrain as TerrainDesignationsManager
+    participant Fill as Filling pass
+
+    Prep->>Session: all origins are ReadyForFilling or Done
+    Prep->>Session: BeginFarmingFillingForSession()
+    Session->>Vehicles: park vehicles outside pending fill area
+    Session->>Tower: release empty trucks
+    Session->>Tower: snapshot dump rules and allow farmable products only
+    Session->>Terrain: restore queued original level designations
+    Session->>Session: mark queued origins Filling
+
+    loop each filling tick
+        Fill->>Vehicles: wait until clear-out is complete
+        Fill->>Terrain: remove preparation shoulders and ramps
+        Fill->>Terrain: place or track rim alignment designations
+        Fill->>Terrain: place dumping access ramps if needed
+        Fill->>Session: analyze filling origins
+    end
+
+    Fill->>Session: all origins Done
+    Session->>Terrain: remove rim alignment designations
+    Session->>Session: wait stabilization timer
+    Session->>Tower: restore dump rules and released trucks
+    Session->>Terrain: remove filling access ramps
+    Session->>Session: clear Active flag
+```
+
 ---
 
 ## "Flat" designation definition

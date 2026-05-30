@@ -68,13 +68,11 @@ public sealed class AutoTerrainDesignationsTicker : MonoBehaviour
                 AutoDepthDesignation.ApplyPriorityToNewExcavators();
             }
             catch { }
-#if FARM_PLACEMENT_ASSIST_SPIKE
             try
             {
                 AutoDepthDesignation.TickFarmPlacementAssist();
             }
             catch { }
-#endif
         }
 
         if (gamePaused)

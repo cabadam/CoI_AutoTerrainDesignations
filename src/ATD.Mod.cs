@@ -79,9 +79,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         AutoDepthDesignation.ApplyInspectorPatches(m_harmony);
         AutoDepthDesignation.ApplyCornerPatches(m_harmony);
         AutoDepthDesignation.ApplyVehicleDepotPatches(m_harmony);
-#if FARM_PLACEMENT_ASSIST_SPIKE
         AutoDepthDesignation.ApplyFarmPlacementAssistPatches(m_harmony);
-#endif
 
         AtdNotifications.RegisterPrototypes(registrator);
     }

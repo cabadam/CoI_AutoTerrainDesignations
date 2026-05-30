@@ -9,8 +9,6 @@
 // Auto Terrain Designations - Farm Placement Assist
 // Phase 0 spike: all S1-S5 confirmed 2026-05-30.
 // Phase 1-3 production: intercept, designation injection, AreCellsDone-gated replay.
-//
-// Enable / disable via FARM_PLACEMENT_ASSIST_SPIKE in csproj Debug DefineConstants.
 
 using System;
 using System.Collections.Generic;
@@ -33,8 +31,6 @@ namespace AutoTerrainDesignations
 {
     public static partial class AutoDepthDesignation
     {
-#if FARM_PLACEMENT_ASSIST_SPIKE
-
         // ---------------------------------------------------------------------------------
         // Static state
         // ---------------------------------------------------------------------------------
@@ -69,15 +65,13 @@ namespace AutoTerrainDesignations
 
         private static class Patch_EntitiesCommandsProcessor_Invoke_Batch_Farm
         {
-            // [SPIKE S1] Confirmed: this is the real path for farm placement.
             internal static bool Prefix(BatchCreateStaticEntitiesCmd cmd)
             {
                 if (!IsInitialized) return true;
                 if (s_protosDb == null) return true;
 
                 // Scan the batch for any farm proto in a known tower area.
-                // Spike simplification: blocks the whole batch if any farm is intercepted.
-                // Production: split batch — remove farm entries and re-dispatch the rest.
+                // TODO: split batch — remove farm entries and re-dispatch the rest.
                 bool anyIntercepted = false;
                 foreach (EntityConfigData item in cmd.ConfigData)
                 {
@@ -117,12 +111,10 @@ namespace AutoTerrainDesignations
         // Takes concrete LayoutEntityAddRequest (not the interface).
         private static class Patch_FarmFertileGroundValidator_CanAdd
         {
-            // [SPIKE S5] Confirm green tiles appear over uneven ground in a tower area.
             internal static bool Prefix(LayoutEntityAddRequest addRequest, ref EntityValidationResult __result)
             {
                 if (!IsInitialized) return true;
                 if (GetFarmingTowerForRequest(addRequest) == null) return true;
-                s_log.Info("[ATD FarmPlacementAssist SPIKE] FarmFertileGroundValidator suppressed.");
                 __result = EntityValidationResult.Success;
                 return false;
             }
@@ -132,8 +124,6 @@ namespace AutoTerrainDesignations
         // Explicit interface implementation — located via interface map, not string name.
         private static class Patch_LayoutEntityTerrainValidator_CanAdd_Farm
         {
-            // [SPIKE: confirm this TargetMethod approach compiles and binds correctly;
-            //  verify the interface map has exactly one CanAdd entry for this interface.]
             internal static MethodBase TargetMethod()
             {
                 var iface = typeof(IEntityAdditionValidator<ILayoutEntityAddRequest>);
@@ -147,15 +137,13 @@ namespace AutoTerrainDesignations
                 if (!IsInitialized) return true;
                 if (addRequest.Proto is not FarmProto) return true;
                 if (GetFarmingTowerForRequest(addRequest) == null) return true;
-                s_log.Info("[ATD FarmPlacementAssist SPIKE] LayoutEntityTerrainValidator suppressed.");
                 __result = EntityValidationResult.Success;
                 return false;
             }
         }
 
         // ---------------------------------------------------------------------------------
-        // Tower-area helper — Phase 1-A stub
-        // [TODO Phase 1: move to ATD.FarmingPreparationSession.cs as internal static]
+        // Tower-area helper
         // ---------------------------------------------------------------------------------
 
         /// <summary>Returns the first farming-enabled tower whose area contains tile, or null.</summary>
@@ -166,18 +154,6 @@ namespace AutoTerrainDesignations
                 IAreaManagingTower? tower = kvp.Value.Tower;
                 if (tower != null && tower.Area.ContainsTile(tile)) return tower;
             }
-#if FARM_PLACEMENT_ASSIST_SPIKE
-            // Spike fallback: no active sessions → check all mine towers directly so testing
-            // doesn't require manually starting farming preparation on a tower first.
-            if (s_farmingPreparationSessions.Count == 0 && s_entitiesManager != null)
-            {
-                foreach (Mafi.Core.Buildings.Mine.MineTower tower in
-                    s_entitiesManager.GetAllEntitiesOfType<Mafi.Core.Buildings.Mine.MineTower>())
-                {
-                    if (tower.Area.ContainsTile(tile)) return tower;
-                }
-            }
-#endif
             return null;
         }
 
@@ -367,7 +343,5 @@ namespace AutoTerrainDesignations
             }
             catch (Exception ex) { s_log.Warning("[ATD FPA] Failed to patch LayoutEntityTerrainValidator.CanAdd: " + ex.Message); }
         }
-
-#endif // FARM_PLACEMENT_ASSIST_SPIKE
     }
 }
