@@ -33,7 +33,7 @@ is included by mistake, I intend to correct it promptly upon discovery or notice
     <DefaultItemExcludes>$(DefaultItemExcludes);external\**\*;artifacts\**\*;Mori\**\*</DefaultItemExcludes>
   </PropertyGroup>
 
-  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug' Or '$(Configuration)' == 'Release'">
     <DefineConstants>$(DefineConstants);FARM_PLACEMENT_ASSIST_SPIKE</DefineConstants>
   </PropertyGroup>
 
