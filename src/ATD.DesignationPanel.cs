@@ -422,8 +422,8 @@ namespace AutoTerrainDesignations
             var rampWidthDisplay = new Mafi.Unity.Ui.Library.Display(new LocStrFormatted(RampWidthText(initRamp)))
                 .MinDigits(3).AlignSelfStretch().MarginTopBottom(2.px());
             rampWidthRow = BuildStepRow(
-                AtdLocalization.DesigRampWidthLabel,
-                AtdLocalization.DesigRampWidthTip,
+                new LocStrFormatted("Ramp width"),
+                new LocStrFormatted("Accessway ramp width in tiles."),
                 rampWidthDisplay,
                 (Action)delegate
                 {
@@ -516,7 +516,7 @@ namespace AutoTerrainDesignations
                 });
             orePuritySlider.FlexGrow(0f).Width(140.px());
             UpdateOrePurityTooltip(initPurity);
-            var orePurityRow = new Row().MarginTop(1.pt()).AlignItemsCenter().Gap(1.pt());
+            orePurityRow = new Row().MarginTop(1.pt()).AlignItemsCenter().Gap(1.pt());
             orePurityRow.Add(new Label(AtdLocalization.DesigOrePurityLabel)
                 .Tooltip(AtdLocalization.DesigOrePurityTip));
             orePurityRow.Add(new UiComponent().FlexGrow(1f));
@@ -780,10 +780,23 @@ namespace AutoTerrainDesignations
 
         private static string MaxLayersText(int value) => value == 0 ? "\u221e" : value.ToString();
 
+        private static string RampWidthText(int value) => value.ToString();
+
         private static string MinElevText(int? value)
         {
             if (value == null) return "-\u221e";
             return value.Value > 0 ? "+" + value.Value : value.Value.ToString();
+        }
+
+        private static string ClearanceLevelText(int value)
+        {
+            switch (value)
+            {
+                case 0: return AtdLocalization.LevelOff.TranslatedString;
+                case 1: return "1";
+                case 2: return "2";
+                default: return value.ToString();
+            }
         }
 
     }

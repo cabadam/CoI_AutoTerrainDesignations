@@ -647,9 +647,13 @@ namespace AutoTerrainDesignations
             var origin = new Tile2i(124, 456);
             var replacementOrigin = new Tile2i(128, 456);
             var settings = new ATDTowerSettings(
+                DesignationMode.ResourceMining,
+                FlatteningDesignationType.Leveling,
                 1, 2, 1, null, 0, 1);
             settings.MarkMiningPlanClean("fixture-clean");
             var unrelatedSettings = new ATDTowerSettings(
+                DesignationMode.ResourceMining,
+                FlatteningDesignationType.Leveling,
                 1, 2, 1, null, 0, 1);
             unrelatedSettings.MarkMiningPlanClean(
                 "fixture-unrelated-clean");

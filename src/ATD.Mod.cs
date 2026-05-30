@@ -6,8 +6,6 @@
 // related trademarks, code, and assets belong to MaFi Games. This repository is
 // intended to contain only original mod code/configuration; if MaFi Games material
 // is included by mistake, I intend to correct it promptly upon discovery or notice.
-using CoI.AutoHelpers.Localization;
-using CoI.AutoHelpers.Logging;
 using HarmonyLib;
 using Mafi;
 using Mafi.Collections;
