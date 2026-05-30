@@ -104,6 +104,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetMaxDepthToDigTo(null);
         SetOrePurityLevel(0);
         SetBottomFlatteningEnabled(true);
+        SetBottomFlatteningStrength(5);
         SetMinCorridorClearance(2);
         SetTerrainDesignationsPanelCollapsed(false);
         SetOreCompositionPanelCollapsed(false);
@@ -161,6 +162,24 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     public static void SetBottomFlatteningEnabled(bool value)
     {
         BottomFlatteningEnabled = value;
+    }
+
+    /// <summary>
+    /// Bottom-flattening aggressiveness (1–10). Controls which depth-percentile of a connected ore
+    /// component is chosen as the flattening target.
+    /// <list type="bullet">
+    ///   <item>1 = mildest — targets the 90th-percentile depth (shallow target; only extreme outliers affected).</item>
+    ///   <item>5 = moderate — targets the 50th-percentile depth (median; default).</item>
+    ///   <item>10 = strongest — targets the deepest tile (all other tiles pulled down to match).</item>
+    /// </list>
+    /// In lower-only mode (purity = Off) tiles are only ever pulled deeper; in leveling mode they are
+    /// set to the target regardless of direction.
+    /// </summary>
+    public static int BottomFlatteningStrength { get; private set; } = 5;
+
+    public static void SetBottomFlatteningStrength(int value)
+    {
+        BottomFlatteningStrength = Math.Max(1, Math.Min(10, value));
     }
 
     /// <summary>

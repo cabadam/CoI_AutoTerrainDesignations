@@ -396,6 +396,10 @@ namespace AutoTerrainDesignations
                 if (bottomFlatteningEnabled.HasValue && ShouldPreserveBool(bottomFlatteningEnabled.Value, migrateGeneratedDefaults, true))
                     AutoTerrainDesignationsMod.SetBottomFlatteningEnabled(bottomFlatteningEnabled.Value);
 
+                int? bottomFlatteningStrength = ParseInt(json, "bottomFlatteningStrength");
+                if (bottomFlatteningStrength.HasValue && ShouldPreserveInt(bottomFlatteningStrength.Value, migrateGeneratedDefaults, 5))
+                    AutoTerrainDesignationsMod.SetBottomFlatteningStrength(bottomFlatteningStrength.Value);
+
                 int? corridorClearance = ParseInt(json, "minCorridorClearance");
                 if (corridorClearance.HasValue && ShouldPreserveInt(corridorClearance.Value, migrateGeneratedDefaults, 2))
                     AutoTerrainDesignationsMod.SetMinCorridorClearance(corridorClearance.Value);
@@ -701,8 +705,11 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_orePurityLevel\": \"Default starting value for the Ore Purity Level on each mine tower (0=Off, 1=Low, 2=Med, 3=High, 4=Max). Controls how aggressively poor-quality tiles and sparse ore are excluded. Can be adjusted per tower in-game. Default: 0.\",");
             sb.AppendLine($"  \"orePurityLevel\": {AutoTerrainDesignationsMod.OrePurityLevel},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_bottomFlatteningEnabled\": \"Whether to run the extra designation-bottom flattening pass before placing mining designations. Off purity uses lower-only flattening; other purity modes use conservative leveling. Can also be changed at runtime with atd_set_bottom_flattening. Default: true.\",");
+            sb.AppendLine("  \"_comment_bottomFlatteningEnabled\": \"Whether to run the extra designation-bottom flattening pass before placing mining designations. Off purity uses lower-only flattening; other purity modes use leveling. Can also be changed at runtime with atd_set_bottom_flattening. Default: true.\",");
             sb.AppendLine($"  \"bottomFlatteningEnabled\": {BoolToJsonStr(AutoTerrainDesignationsMod.BottomFlatteningEnabled)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_bottomFlatteningStrength\": \"How aggressively the bottom-flattening pass levels the designation floor (1-10). Controls which depth-percentile of each connected ore component is chosen as the flattening target. 1 = mildest (90th-percentile depth, few tiles affected); 5 = moderate, median target (default); 10 = strongest (deepest tile, everything pulled down). Can also be changed at runtime with atd_set_bottom_flattening_strength. Default: 5.\",");
+            sb.AppendLine($"  \"bottomFlatteningStrength\": {AutoTerrainDesignationsMod.BottomFlatteningStrength},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_minCorridorClearance\": \"Global default corridor clearance used when connecting separated ore components and enforcing passability. Each mine tower can override this individually via the inspector. 0 = disabled \u2014 components are left separate, no corridors or hole-filling (for vehicle-less excavation mods); 1 = 1-tile corridors (small and medium vehicles); 2 = 2-tile corridors (mega vehicles). Default: 2.\",");
             sb.AppendLine($"  \"minCorridorClearance\": {AutoTerrainDesignationsMod.MinCorridorClearance},");

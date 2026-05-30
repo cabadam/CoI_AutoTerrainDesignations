@@ -243,8 +243,6 @@ namespace AutoTerrainDesignations
                 }
             }
             s_switchSound = s_switchSoundField?.GetValue(__instance);
-
-            LogDebug($"Designation tool activated: {typeName}");
         }
 
         // Postfix on TerrainDesignationController.Deactivate.
@@ -265,7 +263,6 @@ namespace AutoTerrainDesignations
             s_cornerModeButtonOuter   = null;
             s_cornerModeButtonInner   = null;
             s_activeCornerProto       = null;
-            LogDebug($"Designation tool deactivated: {typeName}");
         }
 
         // Prefix on TerrainDesignationsRenderer.AddOrUpdatePreviewDesignation — suppresses the
@@ -363,7 +360,6 @@ namespace AutoTerrainDesignations
             if (s_activeAreaToolbox != null &&
                 s_areaToolboxButtonsField?.GetValue(s_activeAreaToolbox) is ToolboxItem[] modeButtons)
                 foreach (var b in modeButtons) b.Selected(false);
-            LogDebug("Corner designation mode entered.");
         }
 
         private static void ExitCornerMode()
@@ -379,7 +375,6 @@ namespace AutoTerrainDesignations
             // Restore the previously active game mode button.
             if (s_activeAreaToolbox != null)
                 s_activeAreaToolbox.SetMode((AreaMode)s_currentAreaMode);
-            LogDebug("Corner designation mode exited.");
         }
 
         /// <summary>
@@ -447,7 +442,6 @@ namespace AutoTerrainDesignations
             if (placed)
             {
                 s_protectedCornerTiles.Add(origin);
-                LogDebug($"Placed {variant} corner at ({origin.X},{origin.Y}).");
             }
         }
 

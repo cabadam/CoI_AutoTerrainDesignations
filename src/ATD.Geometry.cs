@@ -848,7 +848,7 @@ namespace AutoTerrainDesignations
             return true;
         }
 
-        private static int FlattenDesignationBottom(Dict<Tile2i, int> tileDepths, int purityLevel)
+        private static int FlattenDesignationBottom(Dict<Tile2i, int> tileDepths, int purityLevel, int strength)
         {
             if (tileDepths.Count == 0)
                 return 0;
@@ -885,9 +885,15 @@ namespace AutoTerrainDesignations
                 }
                 depths.Sort();
 
-                int targetDepth = lowerOnly
-                    ? depths[Math.Max(0, depths.Count / 10)]
-                    : depths[depths.Count / 2];
+                // strength 1–10: higher = deeper target = more aggressive flattening.
+                // targetIndex maps strength to a percentile from the deep end:
+                //   strength 10 → index 0  (deepest tile)
+                //   strength  5 → index Count/2 (median)
+                //   strength  1 → index 9*Count/10 (90th-percentile, shallow)
+                int clampedStrength = Math.Max(1, Math.Min(10, strength));
+                int targetIndex = Math.Max(0, Math.Min(depths.Count - 1,
+                    depths.Count * (10 - clampedStrength) / 10));
+                int targetDepth = depths[targetIndex];
 
                 foreach (Tile2i tile in component)
                 {

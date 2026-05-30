@@ -211,7 +211,7 @@ namespace AutoTerrainDesignations
             FillRectilinearHull(maxOreDepths, targetProductIds, resourceDetailsByTile, corridorClearance);
             if (AutoTerrainDesignationsMod.BottomFlatteningEnabled)
             {
-                int flattenedBottomTiles = FlattenDesignationBottom(maxOreDepths, purityLevel);
+                int flattenedBottomTiles = FlattenDesignationBottom(maxOreDepths, purityLevel, AutoTerrainDesignationsMod.BottomFlatteningStrength);
                 if (flattenedBottomTiles > 0)
                 {
                     LogDebug(string.Format(

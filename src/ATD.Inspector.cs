@@ -25,7 +25,7 @@ namespace AutoTerrainDesignations
         {
             try
             {
-                LogDebug("[AutoDepth] ApplyInspectorPatches() called");
+                LogDebug("ApplyInspectorPatches() called");
 
                 var assembly = typeof(Mafi.Unity.Entities.EntityMb).Assembly;
                 var inspectorType = assembly.GetType("Mafi.Unity.Ui.Inspectors.MineTowerInspector");
@@ -35,16 +35,16 @@ namespace AutoTerrainDesignations
                     return;
                 }
 
-                LogDebug("[AutoDepth] Found MineTowerInspector type");
+                LogDebug("Found MineTowerInspector type");
 
                 var ctors = inspectorType.GetConstructors(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
-                LogDebug($"[AutoDepth] Found {ctors.Length} constructors");
+                LogDebug($"Found {ctors.Length} constructors");
 
                 if (ctors.Length > 0)
                 {
                     harmony.Patch(ctors[0],
                         postfix: new HarmonyMethod(typeof(AutoDepthDesignation), nameof(InspectorCtorPostfix)));
-                    LogDebug("[AutoDepth] Patched first constructor");
+                    LogDebug("Patched first constructor");
                 }
 
                 // Patch OnActivated() on MineTowerInspector (DeclaredOnly — safe, does not affect
@@ -86,7 +86,7 @@ namespace AutoTerrainDesignations
                 if (!s_settingsLoadAttempted)
                     LoadSettingsFromJson();
 
-                LogDebug("[AutoDepth] InspectorCtorPostfix called");
+                LogDebug("InspectorCtorPostfix called");
 
                 var inspectorType = __instance.GetType();
                 var baseType = inspectorType;
@@ -127,7 +127,7 @@ namespace AutoTerrainDesignations
                         OreCompositionPanel.Inject(mainBody, entityProp, inspector);
                         FarmingAnalysisPanel.Inject(mainBody, entityProp, inspector);
                         mainBody.Show();
-                        LogDebug("[AutoDepth] ATD, Ore composition, and farming analysis panels inserted");
+                        LogDebug("ATD, Ore composition, and farming analysis panels inserted");
                     }
                     else
                     {

@@ -51,7 +51,7 @@ High-level flow:
    - minimum bottom density
 8. Filter isolated regions.
 9. Fill the rectilinear hull and add corridors according to the clearance setting.
-10. Optionally flatten the bottom when `BottomFlatteningEnabled` is on.
+10. Optionally flatten the bottom when `BottomFlatteningEnabled` is on. The target depth-percentile is controlled by `BottomFlatteningStrength` (1–10, default 5): strength 10 selects the deepest tile (index 0), strength 5 selects the median (index `Count/2`), strength 1 selects the 90th-percentile depth (index `9*Count/10`). In lower-only mode (purity = Off) tiles are only ever pushed deeper; in leveling mode they are set to the target regardless of direction.
 11. Build and smooth corner heights.
 12. Place mining designations with `TerrainDesignationsManager.AddOrReplaceDesignation`.
 13. Try to generate an access ramp if enabled.

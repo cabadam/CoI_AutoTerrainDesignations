@@ -32,6 +32,7 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  MaxDepthToDigTo       = {AutoTerrainDesignationsMod.MaxDepthToDigTo?.ToString() ?? "-"}");
         sb.AppendLine($"  OrePurityLevel        = {AutoTerrainDesignationsMod.OrePurityLevel}");
         sb.AppendLine($"  BottomFlattening      = {AutoTerrainDesignationsMod.BottomFlatteningEnabled}");
+        sb.AppendLine($"  BottomFlatteningStrength = {AutoTerrainDesignationsMod.BottomFlatteningStrength}");
         sb.AppendLine($"  MinCorridorClearance  = {AutoTerrainDesignationsMod.MinCorridorClearance}");
         sb.AppendLine($"  TerrainPanelCollapsed = {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}");
         sb.AppendLine($"  OrePanelCollapsed     = {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}");
@@ -109,6 +110,13 @@ public sealed class AtdConsoleCommands
 
         AutoTerrainDesignationsMod.SetBottomFlatteningEnabled(parsed);
         return $"[ATD] BottomFlattening set to {AutoTerrainDesignationsMod.BottomFlatteningEnabled}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets the bottom-flattening strength (1-10). Higher = deeper target = more tiles affected.", null)]
+    private string atdSetBottomFlatteningStrength(int value)
+    {
+        AutoTerrainDesignationsMod.SetBottomFlatteningStrength(value);
+        return $"[ATD] BottomFlatteningStrength set to {AutoTerrainDesignationsMod.BottomFlatteningStrength}.";
     }
 
     [ConsoleCommand(false, false, "Sets the global default max depth to dig to (absolute elevation). Use '-' for no limit.", null)]

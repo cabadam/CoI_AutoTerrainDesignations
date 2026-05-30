@@ -123,6 +123,7 @@ Useful console commands:
 | `atd_set_max_depth_to_dig_to n` | Sets the global default minimum elevation. Use `-` for no limit. |
 | `atd_set_ore_purity_level n` | Sets the global default ore purity preset. |
 | `atd_set_bottom_flattening on\|off` | Toggles the extra bottom-flattening pass. |
+| `atd_set_bottom_flattening_strength n` | Sets how aggressively the bottom-flattening pass levels the designation floor (1–10). 1 = mildest (few tiles affected), 5 = median target (default), 10 = strongest (everything pulled to the deepest tile). |
 | `atd_set_min_corridor_clearance n` | Sets the global default corridor clearance. |
 | `atd_set_ramp_notifications on\|off` | Enables or disables ramp access warning notifications on mine towers (Failed, Truncated, NotAccessible icons). |
 | `atd_set_auto_release_when_idle on\|off` | Sets the global default for the **Auto-release when idle** feature; individual towers can override this via the inspector toggle. |
