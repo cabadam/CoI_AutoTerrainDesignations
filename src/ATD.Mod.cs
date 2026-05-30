@@ -16,6 +16,7 @@ using Mafi.Core.Game;
 using Mafi.Core.GameLoop;
 using Mafi.Core.Mods;
 using Mafi.Core.Notifications;
+using Mafi.Core.Input;
 using Mafi.Core.PathFinding;
 using Mafi.Core.Prototypes;
 using Mafi.Core.SaveGame;
@@ -78,6 +79,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         AutoDepthDesignation.ApplyInspectorPatches(m_harmony);
         AutoDepthDesignation.ApplyCornerPatches(m_harmony);
         AutoDepthDesignation.ApplyVehicleDepotPatches(m_harmony);
+        AutoDepthDesignation.ApplyFarmPlacementAssistPatches(m_harmony);
 
         AtdNotifications.RegisterPrototypes(registrator);
     }
@@ -262,9 +264,10 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             IVehiclePathFindingManager vehiclePathFindingManager = resolver.Resolve<IVehiclePathFindingManager>();
             ParkAndWaitJobFactory parkAndWaitJobFactory = resolver.Resolve<ParkAndWaitJobFactory>();
             INotificationsManager notificationsManager = resolver.Resolve<INotificationsManager>();
+            IInputScheduler inputScheduler = resolver.Resolve<IInputScheduler>();
             AutoTerrainDesignationsTicker ticker = AutoTerrainDesignationsTicker.CreateForWorld(AutoDepthDesignation.CurrentWorldGeneration + 1);
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
-            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, parkAndWaitJobFactory, notificationsManager);
+            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, parkAndWaitJobFactory, notificationsManager, inputScheduler);
             m_towerSettingsStateStore = ModStateJsonStores.CreateDefault(JsonConfig, AutoDepthDesignation.TowerSettingsConfigKey);
             AutoDepthDesignation.LoadTowerSettingsFromJsonStore(m_towerSettingsStateStore);
             AutoDepthDesignation.RequestFarmingReEnableOnLoad(gameWasLoaded);

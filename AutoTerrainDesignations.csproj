@@ -33,6 +33,10 @@ is included by mistake, I intend to correct it promptly upon discovery or notice
     <DefaultItemExcludes>$(DefaultItemExcludes);external\**\*;artifacts\**\*;Mori\**\*</DefaultItemExcludes>
   </PropertyGroup>
 
+  <PropertyGroup Condition="'$(Configuration)' == 'Debug'">
+    <DefineConstants>$(DefineConstants);FARM_PLACEMENT_ASSIST_SPIKE</DefineConstants>
+  </PropertyGroup>
+
   <ItemGroup>
     <PackageReference Include="BepInEx.AssemblyPublicizer.MSBuild" Version="0.4.2">
       <IncludeAssets>build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>

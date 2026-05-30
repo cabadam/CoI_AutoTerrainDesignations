@@ -1,7 +1,7 @@
 # Farm Placement Assist — Implementation Plan
 Current as of release: 0.4.0k
 
-**Status:** Planning / not yet implemented.  
+**Status:** Phase 0 spike complete — all S1–S5 confirmed in-game. Ready for Phase 1 production implementation.  
 **Feature description:** Allow players to place farm buildings on uneven or infertile ground
 inside a farming-enabled mining tower area. ATD intercepts the placement before the ghost
 enters the world, injects farming designations for the footprint, lets vehicles prepare the
@@ -255,56 +255,57 @@ on implementing this until Phase 0-E is resolved.
 **Goal:** Intercept the farm placement before the ghost enters the world, inject farming
 designations for all covered cells, and record the placement intent for later replay.
 
-### 3-A  Intercept — prefix on `EntitiesManager.TryAddEntity`
+### 3-A  Intercept — prefix on `EntitiesCommandsProcessor.Invoke(BatchCreateStaticEntitiesCmd)`
+
+**Confirmed in Phase 0 spike (2026-05-30):** farms use `BatchCreateStaticEntitiesCmd`, not
+`CreateStaticEntityCmd`. No entity is instantiated before this prefix fires — the intercept
+is completely clean (no ghost, no occupancy registration).
 
 ```csharp
-// EntitiesManager.TryAddEntity is called from createStaticEntityFromCmd AFTER the entity
-// instance is created but BEFORE validators run and BEFORE addEntityInternal.
-// Returning false from the prefix with an error result causes the caller to:
-//   (1) destroy the floating entity via IEntityFriend.Destroy(), and
-//   (2) return false from createStaticEntityFromCmd (no error notification shown to player).
-// ATD records the intent from entity.Prototype and entity.Transform before returning.
-[HarmonyPatch(typeof(EntitiesManager), nameof(EntitiesManager.TryAddEntity))]
-static class Patch_EntitiesManager_TryAddEntity_FarmIntercept
+[HarmonyPatch]
+static class Patch_EntitiesCommandsProcessor_Invoke_Batch_Farm
 {
-    private const string ATD_INTERCEPT_REASON = "ATD_FarmPlacementIntercepted";
+    static MethodBase TargetMethod() =>
+        AccessTools.Method(typeof(EntitiesCommandsProcessor), "Invoke",
+            new[] { typeof(BatchCreateStaticEntitiesCmd) });
 
-    static bool Prefix(
-        IEntity entity,
-        EntityAddReason reasonToAdd,
-        ref EntityValidationResult __result)
+    static bool Prefix(BatchCreateStaticEntitiesCmd cmd)
     {
-        if (entity?.Prototype is not FarmProto farmProto) return true;
-        if (reasonToAdd != EntityAddReason.New) return true;
-        if (entity is not IStaticEntity staticEntity) return true;
-        if (!s_initialized) return true; // ATD not ready
+        if (!IsInitialized || s_protosDb == null) return true;
 
-        Tile2i position = staticEntity.Transform.Position.Xy;
-        IAreaManagingTower? tower = GetFarmingTowerForTile(position);
-        if (tower == null) return true; // not in a farming-enabled tower area
+        bool anyIntercepted = false;
+        foreach (EntityConfigData item in cmd.ConfigData)
+        {
+            if (item.Prototype.ValueOrNull is not FarmProto farmProto) continue;
+            TileTransform? transform = item.Transform;
+            if (!transform.HasValue) continue;
 
-        // Site already ready? Let it through — no need to defer.
-        IEnumerable<Tile2i> covered = ComputeCoveredDesignationCells(
-            farmProto, position, staticEntity.Transform.Rotation90);
-        if (AreCellsAlreadyFarmable(covered))
-            return true;
+            Tile2i position = transform.Value.Position.Xy;
+            IAreaManagingTower? tower = GetFarmingTowerForTile(position);
+            if (tower == null) continue;
 
-        // Record the placement intent (entity will be destroyed by the caller once we return error).
-        OnFarmPlacementIntercepted(farmProto, position, staticEntity.Transform.Rotation90, tower, covered);
+            // Site already ready? Let through (no deferral needed).
+            IEnumerable<Tile2i> covered = ComputeCoveredDesignationCells(
+                farmProto, position, transform.Value.Rotation);
+            if (AreCellsAlreadyFarmable(covered)) continue;
 
-        // Return a recognisable error so the caller (createStaticEntityFromCmd) destroys the entity
-        // and returns false cleanly. The error string is checked in the notification path to suppress
-        // the player-visible "Cannot place" toast (see ATD.FarmPlacementAssist.cs — notification patch).
-        __result = EntityValidationResult.CreateError(ATD_INTERCEPT_REASON);
+            OnFarmPlacementIntercepted(farmProto, position, transform.Value.Rotation,
+                transform.Value.Position.Z, tower, covered);
+            anyIntercepted = true;
+        }
+
+        if (!anyIntercepted) return true;
+
+        // Report success so the engine doesn't play the error sound / show a toast.
+        cmd.SetResultSuccess();
         return false;
     }
 }
 ```
 
-**Note on error message suppression:** `createStaticEntityFromCmd` sets an `error` string and returns
-`false`; its caller may log that string or show it as a notification. Add a second prefix on whatever
-method displays placement failure notifications and silently swallow errors whose message equals
-`ATD_INTERCEPT_REASON`. Verify the notification path in the spike before implementing.
+**Replay:** use `IInputScheduler.ScheduleInputCmd(new CreateStaticEntityCmd(protoId, transform))`.
+The replay fires on the `~Mai` thread via the Unity ticker (≈1 s after intercept in spike;
+production should replay immediately when `AreCellsDone` becomes true, not on a fixed timer).
 
 ### 3-B  `OnFarmPlacementIntercepted(FarmProto proto, Tile2i position, Rotation rotation, IAreaManagingTower tower)`
 
@@ -492,7 +493,7 @@ is ready to build.
 | OQ-3 | ~~Do leveling designations need to be injected before or after the ghost appears?~~ Before — no ghost during prep | — |
 | OQ-4 | ~~Does the construction pause state persist through a save/load cycle?~~ N/A | — |
 | OQ-5 | ~~What method name does `LayoutEntityTerrainValidator` use for the explicit interface implementation of `CanAdd`?~~ Resolved: explicit impl of `IEntityAdditionValidator<ILayoutEntityAddRequest>`. Harmony patch must use `TargetMethod()` returning the mapped interface target (see Phase 2-B). | — |
-| OQ-6 | ~~What is the earliest intercept point for a farm placement command where the ghost has not yet entered the world?~~ Resolved: prefix `EntitiesManager.TryAddEntity(IEntity, EntityAddReason, bool)`, which is called before validators run and before `addEntityInternal`. The entity has been instantiated by `cmd.TryCreateEntity` at that point but not registered — return a recognisable error string from the prefix so the caller destroys the entity normally. Replay via `IInputScheduler.ScheduleInputCmd(new CreateStaticEntityCmd(protoId, transform))`. | — |
+| OQ-6 | ~~What is the earliest intercept point for a farm placement command where the ghost has not yet entered the world?~~ Resolved: **`EntitiesCommandsProcessor.Invoke(BatchCreateStaticEntitiesCmd)`** — farms use `BatchCreateStaticEntitiesCmd`, NOT `CreateStaticEntityCmd`. Harmony prefix on this method fires before any entity is instantiated. Read `cmd.ConfigData`, pattern-match each entry's `Prototype.ValueOrNull` as `FarmProto`, extract `item.Transform`. Return false + `cmd.SetResultSuccess()` to silently consume. Replay via `IInputScheduler.ScheduleInputCmd(new CreateStaticEntityCmd(protoId, transform))` scheduled from the Unity ticker (~1 s delay, acceptable for spike). Confirmed in-game 2026-05-30: intercept on `~Sim` thread, replay on `~Mai` thread, farm appears. | — |
 
 ---
 

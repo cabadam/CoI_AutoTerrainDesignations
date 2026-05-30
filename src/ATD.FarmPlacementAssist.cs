@@ -6,23 +6,18 @@
 // related trademarks, code, and assets belong to MaFi Games. This repository is
 // intended to contain only original mod code/configuration; if MaFi Games material
 // is included by mistake, I intend to correct it promptly upon discovery or notice.
-// Auto Terrain Designations - Farm Placement Assist (Phase 0 spike)
+// Auto Terrain Designations - Farm Placement Assist
+// Phase 0 spike: all S1-S5 confirmed 2026-05-30.
+// Phase 1-3 production: intercept, designation injection, AreCellsDone-gated replay.
 //
-// SPIKE FILE — not production-ready. All [SPIKE] annotations mark things that must be
-// verified or completed before this code ships. The spike goal is to confirm:
-//   (S1) EntitiesCommandsProcessor.Invoke(CreateStaticEntityCmd) fires on player placement.
-//   (S2) cmd.ProtoId resolves to a FarmProto; cmd.Transform has correct position.
-//   (S3) GetFarmingTowerForTile correctly identifies a farming-enabled tower area.
-//   (S4) ReplayFarmPlacement successfully re-places the farm via IInputScheduler.
-//   (S5) The validator patches allow placement on uneven / infertile ground in a tower area.
-//
-// Enable / disable the spike by toggling FARM_PLACEMENT_ASSIST_SPIKE in project settings or:
-#define FARM_PLACEMENT_ASSIST_SPIKE
+// Enable / disable via FARM_PLACEMENT_ASSIST_SPIKE in csproj Debug DefineConstants.
 
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 using HarmonyLib;
 using Mafi;
+using Mafi.Collections.ImmutableCollections;
 using Mafi.Core;
 using Mafi.Core.Buildings.Farms;
 using Mafi.Core.Buildings.Towers;
@@ -32,6 +27,7 @@ using Mafi.Core.Entities.Static.Layout;
 using Mafi.Core.Entities.Validators;
 using Mafi.Core.Input;
 using Mafi.Core.Terrain;
+using Mafi.Core.Terrain.Designation;
 
 namespace AutoTerrainDesignations
 {
@@ -45,64 +41,69 @@ namespace AutoTerrainDesignations
 
         // s_inputScheduler is declared and wired in ATD.State.cs.
 
-        // Sentinel error string used in the intercept to make createStaticEntityFromCmd
-        // believe placement failed (and thus destroy the floating entity / set cmd error).
-        // [SPIKE: verify this doesn't surface as a player-visible notification — if it does,
-        // patch the notification path to suppress messages matching this constant.]
-        private const string ATD_FARM_INTERCEPT_REASON = "ATD_FarmPlacementIntercepted";
+        private static readonly List<PlacementIntent> s_pendingFarmPlacements = new();
 
-        // Pending farm placements: list of intents waiting for site preparation.
-        // [TODO Phase 3-E: replace with proper PlacementIntent class]
-        // Z is taken from the original command's transform so we don't need to call GetHeight at intercept time.
-        // At replay time we'll use the same Z; production code should re-read surface height after preparation.
-        private static readonly List<(FarmProto Proto, Tile2i Position, int Z, Rotation90 Rotation, IAreaManagingTower Tower)>
-            s_spikeIntents = new();
-
-        // ---------------------------------------------------------------------------------
-        // Intercept patch — Phase 3-A
-        // Preferred intercept: EntitiesCommandsProcessor.Invoke(CreateStaticEntityCmd)
-        // Called on the simulation thread BEFORE the entity is instantiated — cleanest hook.
-        // ---------------------------------------------------------------------------------
-
-        [HarmonyPatch(typeof(EntitiesCommandsProcessor), nameof(EntitiesCommandsProcessor.Invoke),
-            new[] { typeof(CreateStaticEntityCmd) })]
-        private static class Patch_EntitiesCommandsProcessor_Invoke_Farm
+        private sealed class PlacementIntent
         {
-            // [SPIKE S1] Confirm this prefix fires when the player places a farm.
-            static bool Prefix(CreateStaticEntityCmd cmd)
+            public readonly FarmProto Proto;
+            public readonly Tile2i Position;
+            public readonly int Z;
+            public readonly Rotation90 Rotation;
+            public readonly IAreaManagingTower Tower;
+            public readonly IReadOnlyList<Tile2i> RequiredCells;
+            public readonly HashSet<Tile2i> AtdInjectedCells = new();
+
+            public PlacementIntent(FarmProto proto, Tile2i position, int z, Rotation90 rotation,
+                IAreaManagingTower tower, IReadOnlyList<Tile2i> requiredCells)
+            {
+                Proto = proto; Position = position; Z = z; Rotation = rotation;
+                Tower = tower; RequiredCells = requiredCells;
+            }
+        }
+
+        // ---------------------------------------------------------------------------------
+        // Intercept patch — Phase 3-A (corrected)
+        // Farms use BatchCreateStaticEntitiesCmd, NOT CreateStaticEntityCmd.
+        // Confirmed by S1 probe: Invoke(CreateStaticEntityCmd) never fires for farms.
+        // ---------------------------------------------------------------------------------
+
+        private static class Patch_EntitiesCommandsProcessor_Invoke_Batch_Farm
+        {
+            // [SPIKE S1] Confirmed: this is the real path for farm placement.
+            internal static bool Prefix(BatchCreateStaticEntitiesCmd cmd)
             {
                 if (!IsInitialized) return true;
                 if (s_protosDb == null) return true;
 
-                // Resolve the proto. [SPIKE S2] Verify FarmProto match.
-                if (!s_protosDb.TryGetProto<FarmProto>(cmd.ProtoId, out var farmProto))
-                    return true; // not a farm — let through
+                // Scan the batch for any farm proto in a known tower area.
+                // Spike simplification: blocks the whole batch if any farm is intercepted.
+                // Production: split batch — remove farm entries and re-dispatch the rest.
+                bool anyIntercepted = false;
+                foreach (EntityConfigData item in cmd.ConfigData)
+                {
+                    if (item.Prototype.ValueOrNull is not FarmProto farmProto) continue;
 
-                Tile2i position = cmd.Transform.Position.Xy;
+                    TileTransform? transform = item.Transform;
+                    if (!transform.HasValue) continue;
 
-                // [SPIKE S3] Verify GetFarmingTowerForTile finds the correct tower.
-                IAreaManagingTower? tower = GetFarmingTowerForTile(position);
-                if (tower == null)
-                    return true; // not inside a farming-enabled tower area — let through
+                    Tile2i position = transform.Value.Position.Xy;
+                    IAreaManagingTower? tower = GetFarmingTowerForTile(position);
+                    if (tower == null) continue;
 
-                // Check if the site is already fully prepared — if so, let through.
-                // [TODO Phase 3-B: implement AreCellsAlreadyFarmable]
+                    s_log.Info($"[ATD FarmPlacementAssist] Intercepted farm placement: " +
+                        $"proto={farmProto.Id}, pos={position}, rot={transform.Value.Rotation}, tower={tower.Id}.");
 
-                s_log.Info($"[ATD FarmPlacementAssist SPIKE] Intercepted farm placement: " +
-                    $"proto={farmProto.Id}, pos={position}, rot={cmd.Transform.Rotation}. " +
-                    $"Tower found: {tower.Id}. Deferring placement.");
+                    OnFarmPlacementIntercepted(farmProto, position, transform.Value.Position.Z,
+                        transform.Value.Rotation, tower);
+                    anyIntercepted = true;
+                }
 
-                // Record the intent. [TODO Phase 3-E: replace with PlacementIntent class]
-                s_spikeIntents.Add((farmProto, position, cmd.Transform.Position.Z, cmd.Transform.Rotation, tower));
+                if (!anyIntercepted) return true;
 
-                // Inject farming designations for the covered cells.
-                // [TODO Phase 3-C/D: ComputeCoveredDesignationCells + EnsureFarmingDesignationForCell]
-
-                // Mark the command as failed so the engine doesn't proceed.
-                // [SPIKE: observe whether this shows a player-visible error notification.
-                //  If it does, intercept the notification path to suppress ATD_FARM_INTERCEPT_REASON.]
-                cmd.SetResultError(EntityId.Invalid, ATD_FARM_INTERCEPT_REASON);
-                return false; // skip original Invoke
+                // Report success so the engine doesn't play the error sound/toast.
+                // No entity is created because we returned false (skipped original Invoke).
+                cmd.SetResultSuccess();
+                return false;
             }
         }
 
@@ -114,11 +115,10 @@ namespace AutoTerrainDesignations
 
         // Phase 2-A: FarmFertileGroundValidator.CanAdd
         // Takes concrete LayoutEntityAddRequest (not the interface).
-        [HarmonyPatch(typeof(FarmFertileGroundValidator), nameof(FarmFertileGroundValidator.CanAdd))]
         private static class Patch_FarmFertileGroundValidator_CanAdd
         {
             // [SPIKE S5] Confirm green tiles appear over uneven ground in a tower area.
-            static bool Prefix(LayoutEntityAddRequest addRequest, ref EntityValidationResult __result)
+            internal static bool Prefix(LayoutEntityAddRequest addRequest, ref EntityValidationResult __result)
             {
                 if (!IsInitialized) return true;
                 if (GetFarmingTowerForRequest(addRequest) == null) return true;
@@ -134,7 +134,7 @@ namespace AutoTerrainDesignations
         {
             // [SPIKE: confirm this TargetMethod approach compiles and binds correctly;
             //  verify the interface map has exactly one CanAdd entry for this interface.]
-            static MethodBase TargetMethod()
+            internal static MethodBase TargetMethod()
             {
                 var iface = typeof(IEntityAdditionValidator<ILayoutEntityAddRequest>);
                 var map = typeof(LayoutEntityTerrainValidator).GetInterfaceMap(iface);
@@ -142,7 +142,7 @@ namespace AutoTerrainDesignations
                 return map.TargetMethods[0];
             }
 
-            static bool Prefix(ILayoutEntityAddRequest addRequest, ref EntityValidationResult __result)
+            internal static bool Prefix(ILayoutEntityAddRequest addRequest, ref EntityValidationResult __result)
             {
                 if (!IsInitialized) return true;
                 if (addRequest.Proto is not FarmProto) return true;
@@ -166,70 +166,206 @@ namespace AutoTerrainDesignations
                 IAreaManagingTower? tower = kvp.Value.Tower;
                 if (tower != null && tower.Area.ContainsTile(tile)) return tower;
             }
+#if FARM_PLACEMENT_ASSIST_SPIKE
+            // Spike fallback: no active sessions → check all mine towers directly so testing
+            // doesn't require manually starting farming preparation on a tower first.
+            if (s_farmingPreparationSessions.Count == 0 && s_entitiesManager != null)
+            {
+                foreach (Mafi.Core.Buildings.Mine.MineTower tower in
+                    s_entitiesManager.GetAllEntitiesOfType<Mafi.Core.Buildings.Mine.MineTower>())
+                {
+                    if (tower.Area.ContainsTile(tile)) return tower;
+                }
+            }
+#endif
             return null;
         }
 
-        /// <summary>Returns the farming tower for a concrete add request, or null if outside all tower areas.
-        /// Spike simplification: checks only the origin tile; production will check all occupied tiles.</summary>
+        /// <summary>Returns the farming tower if all 4 corners of the farm's bounding rect are inside it, or null.</summary>
         internal static IAreaManagingTower? GetFarmingTowerForRequest(LayoutEntityAddRequest addRequest)
-        {
-            if (addRequest.Proto is not FarmProto) return null;
-            // [SPIKE S3] Origin check only. Production: check all addRequest.OccupiedTiles.
-            return GetFarmingTowerForTile(addRequest.Transform.Position.Xy);
-        }
+            => GetFarmingTowerForRequest((ILayoutEntityAddRequest)addRequest);
 
         internal static IAreaManagingTower? GetFarmingTowerForRequest(ILayoutEntityAddRequest addRequest)
         {
             if (addRequest.Proto is not FarmProto) return null;
-            // [SPIKE S3] Origin check only. Production: check all addRequest.OccupiedTiles.
-            return GetFarmingTowerForTile(addRequest.Transform.Position.Xy);
+            var r = addRequest.BoundingRect;
+            IAreaManagingTower? tower = GetFarmingTowerForTile(r.Origin);
+            if (tower == null) return null;
+            if (!tower.Area.ContainsTile(r.PlusXTileIncl)) return null;
+            if (!tower.Area.ContainsTile(r.PlusYTileIncl)) return null;
+            if (!tower.Area.ContainsTile(new Tile2i(r.Origin.X + r.Size.X - 1, r.Origin.Y + r.Size.Y - 1))) return null;
+            return tower;
         }
 
         // ---------------------------------------------------------------------------------
-        // Replay path — Phase 4-C stub
-        // [TODO Phase 4: verify s_inputScheduler is populated; test (S4) in-game]
+        // Core Phase 3 — covered cell computation, designation injection, intent tracking
+        // ---------------------------------------------------------------------------------
+
+        /// <summary>Returns the unique 4×4 designation-grid origins covered by the farm footprint.</summary>
+        internal static List<Tile2i> ComputeCoveredDesignationCells(FarmProto proto, Tile2i position, Rotation90 rotation)
+        {
+            // Build a zero-Z TileTransform so GetOccupiedTilesRelative handles rotation.
+            var transform = new TileTransform(new Tile3i(position.X, position.Y, 0), rotation, isReflected: false);
+            ImmutableArray<OccupiedTileRelative> relTiles = proto.Layout.GetOccupiedTilesRelative(transform);
+            var origins = new HashSet<Tile2i>();
+            foreach (OccupiedTileRelative rel in relTiles)
+                origins.Add(SnapToDesignationGrid(position + rel.RelCoord));
+            return new List<Tile2i>(origins);
+        }
+
+        /// <summary>Returns true if every cell is already in Done phase inside an active farming session.</summary>
+        private static bool AreCellsAlreadyFarmable(IReadOnlyList<Tile2i> cells)
+        {
+            foreach (Tile2i origin in cells)
+            {
+                bool done = false;
+                foreach (var kvp in s_farmingPreparationSessions)
+                {
+                    if (kvp.Value.Origins.TryGetValue(origin, out var os) && os.Phase == FarmingOriginPhase.Done)
+                    { done = true; break; }
+                }
+                if (!done) return false;
+            }
+            return cells.Count > 0;
+        }
+
+        /// <summary>Returns true when all required cells are Done in an active farming session.</summary>
+        private static bool AreCellsDone(PlacementIntent intent)
+            => AreCellsAlreadyFarmable(intent.RequiredCells);
+
+        /// <summary>
+        /// Ensures a flat leveling designation exists at <paramref name="origin"/> at
+        /// <paramref name="targetHeight"/>. Records the origin in <paramref name="intent"/>.AtdInjectedCells
+        /// if a new designation was created so it can be cleaned up if the player cancels.
+        /// </summary>
+        private static void EnsureFarmingDesignationForCell(Tile2i origin, int targetHeight, PlacementIntent intent)
+        {
+            if (s_desigManager == null || s_levelingProto == null) return;
+
+            // Skip if a designation already exists at this origin.
+            if (s_desigManager.GetDesignationAt(origin).HasValue) return;
+
+            var data = new DesignationData(origin, new HeightTilesI(targetHeight));
+            if (s_desigManager.AddOrReplaceDesignation(s_levelingProto, data))
+                intent.AtdInjectedCells.Add(origin);
+            else
+                s_log.Warning($"[ATD FarmPlacementAssist] Failed to add leveling designation at {origin}.");
+        }
+
+        /// <summary>
+        /// Called when a farm placement is intercepted. Either replays immediately (site ready)
+        /// or injects leveling designations and registers a pending intent.
+        /// </summary>
+        private static void OnFarmPlacementIntercepted(
+            FarmProto proto, Tile2i position, int z, Rotation90 rotation, IAreaManagingTower tower)
+        {
+            List<Tile2i> cells = ComputeCoveredDesignationCells(proto, position, rotation);
+
+            // If the site is already fully prepared, replay immediately — no deferral needed.
+            if (AreCellsAlreadyFarmable(cells))
+            {
+                s_log.Info($"[ATD FarmPlacementAssist] Site already farmable — replaying immediately.");
+                ReplayFarmPlacement(proto, position, z, rotation);
+                return;
+            }
+
+            var intent = new PlacementIntent(proto, position, z, rotation, tower, cells);
+
+            // Determine target height from the farm's origin tile.
+            int targetHeight = s_desigManager != null
+                ? (int)Math.Floor(s_desigManager.TerrainManager.GetHeight(position).Value.ToFloat())
+                : z;
+
+            // Inject a flat leveling designation for every cell that doesn't already have one.
+            foreach (Tile2i origin in cells)
+                EnsureFarmingDesignationForCell(origin, targetHeight, intent);
+
+            s_pendingFarmPlacements.Add(intent);
+            s_log.Info($"[ATD FarmPlacementAssist] Deferred. {cells.Count} cells queued, " +
+                $"{intent.AtdInjectedCells.Count} new designations injected.");
+        }
+
+        // ---------------------------------------------------------------------------------
+        // Replay path (Phase 4-C — S4 confirmed 2026-05-30)
         // ---------------------------------------------------------------------------------
 
         internal static void ReplayFarmPlacement(FarmProto proto, Tile2i position, int z, Rotation90 rotation)
         {
             if (s_inputScheduler == null)
             {
-                s_log.Warning("[ATD FarmPlacementAssist] Cannot replay farm placement: IInputScheduler not available.");
+                s_log.Warning("[ATD FarmPlacementAssist] Cannot replay: IInputScheduler not available.");
                 return;
             }
-
-            // [SPIKE S4] Use Z from original intercept for spike. In production, re-read surface
-            // height after preparation via TerrainManager.GetHeight(position).IntegerPart.
-            var transform = new TileTransform(
-                new Tile3i(position.X, position.Y, z),
-                rotation,
-                isReflected: false);
-
-            var cmd = new CreateStaticEntityCmd(proto.Id, transform, isFree: false,
-                allowValidationSuppression: false);
+            var transform = new TileTransform(new Tile3i(position.X, position.Y, z), rotation, isReflected: false);
+            var cmd = new CreateStaticEntityCmd(proto.Id, transform, isFree: false, allowValidationSuppression: false);
             s_inputScheduler.ScheduleInputCmd(cmd);
-            s_log.Info($"[ATD FarmPlacementAssist SPIKE] Replayed farm placement: proto={proto.Id}, pos={position}.");
+            s_log.Info($"[ATD FarmPlacementAssist] Replayed farm placement: proto={proto.Id}, pos={position}.");
         }
 
         // ---------------------------------------------------------------------------------
-        // Tick — Phase 4-A stub
-        // Call from ATD.Ticker.cs tick loop once the real intent tracking is in place.
+        // Tick — AreCellsDone-gated replay (Phase 4-A)
         // ---------------------------------------------------------------------------------
 
         internal static void TickFarmPlacementAssist()
         {
-            if (s_spikeIntents.Count == 0) return;
-            for (int i = s_spikeIntents.Count - 1; i >= 0; i--)
+            if (s_pendingFarmPlacements.Count == 0) return;
+            for (int i = s_pendingFarmPlacements.Count - 1; i >= 0; i--)
             {
-                var (proto, pos, z, rot, tower) = s_spikeIntents[i];
-                // [TODO Phase 4-B: implement AreCellsDone check]
-                // For the spike, just log status each tick to observe state changes.
-                s_log.Info($"[ATD FarmPlacementAssist SPIKE] Pending intent: proto={proto.Id}, pos={pos}. " +
-                    $"(TODO: check covered cells done)");
-                // Spike: remove after one tick to avoid log spam during testing.
-                // Replace with real AreCellsDone gate before production.
-                s_spikeIntents.RemoveAt(i);
+                PlacementIntent intent = s_pendingFarmPlacements[i];
+                if (!AreCellsDone(intent)) continue;
+                s_pendingFarmPlacements.RemoveAt(i);
+                ReplayFarmPlacement(intent.Proto, intent.Position, intent.Z, intent.Rotation);
             }
+        }
+
+        // ---------------------------------------------------------------------------------
+        // Patch registration — ATD does not use PatchAll(); every patch must be registered
+        // explicitly. Call from ATD.Mod.cs alongside the other Apply*Patches calls.
+        // ---------------------------------------------------------------------------------
+
+        internal static void ApplyFarmPlacementAssistPatches(Harmony harmony)
+        {
+            try
+            {
+                // --- Intercept: EntitiesCommandsProcessor.Invoke(BatchCreateStaticEntitiesCmd) ---
+                var invokeTarget = AccessTools.Method(
+                    typeof(EntitiesCommandsProcessor), "Invoke",
+                    new[] { typeof(BatchCreateStaticEntitiesCmd) });
+                var invokePrefix = AccessTools.Method(
+                    typeof(Patch_EntitiesCommandsProcessor_Invoke_Batch_Farm), "Prefix");
+                if (invokeTarget == null || invokePrefix == null)
+                    s_log.Warning("[ATD FPA] EntitiesCommandsProcessor.Invoke(Batch) patch target not found.");
+                else
+                    harmony.Patch(invokeTarget, prefix: new HarmonyMethod(invokePrefix));
+            }
+            catch (Exception ex) { s_log.Warning("[ATD FPA] Failed to patch EntitiesCommandsProcessor.Invoke(Batch): " + ex.Message); }
+
+            try
+            {
+                // --- FarmFertileGroundValidator.CanAdd ---
+                var fertileTarget = AccessTools.Method(
+                    typeof(FarmFertileGroundValidator), "CanAdd");
+                var fertilePrefix = AccessTools.Method(
+                    typeof(Patch_FarmFertileGroundValidator_CanAdd), "Prefix");
+                if (fertileTarget == null || fertilePrefix == null)
+                    s_log.Warning("[ATD FPA] FarmFertileGroundValidator.CanAdd patch target not found.");
+                else
+                    harmony.Patch(fertileTarget, prefix: new HarmonyMethod(fertilePrefix));
+            }
+            catch (Exception ex) { s_log.Warning("[ATD FPA] Failed to patch FarmFertileGroundValidator.CanAdd: " + ex.Message); }
+
+            try
+            {
+                // --- LayoutEntityTerrainValidator.CanAdd (explicit interface impl) ---
+                var terrainTarget = Patch_LayoutEntityTerrainValidator_CanAdd_Farm.TargetMethod();
+                var terrainPrefix = AccessTools.Method(
+                    typeof(Patch_LayoutEntityTerrainValidator_CanAdd_Farm), "Prefix");
+                if (terrainTarget == null || terrainPrefix == null)
+                    s_log.Warning("[ATD FPA] LayoutEntityTerrainValidator.CanAdd patch target not found.");
+                else
+                    harmony.Patch(terrainTarget, prefix: new HarmonyMethod(terrainPrefix));
+            }
+            catch (Exception ex) { s_log.Warning("[ATD FPA] Failed to patch LayoutEntityTerrainValidator.CanAdd: " + ex.Message); }
         }
 
 #endif // FARM_PLACEMENT_ASSIST_SPIKE

@@ -142,6 +142,8 @@ Shoulder placement skips any tile tracked as a farming origin by any active sess
 
 Mining-proto ramp designations placed by the access check. Tracked in `PreparationAccessRampOrigins`; removed at the start of the filling pass.
 
+**Vanilla readiness gate** (`IsFarmingDesignationReadyForVehicleWork`, `isFilling: false`): before collecting perimeter target tiles for a designation, `IsReadyToMineNonAmphibious()` is checked. This mirrors the vanilla excavator dispatch condition. If no designation in a cluster passes — for example, because terrain is entirely above the designation target height on a fresh excavation pad and no mining bits are set yet — the cluster has an empty target-tile set and is marked inaccessible immediately, triggering ramp placement without running the BFS.
+
 Ramp tile eligibility (`IsFreeRampTile`):
 - Tiles already occupied by any designation (including designations placed by other sessions) are rejected.
 - Active work-phase origins (`AnalysisLeveling`/`Preparing`) of the current session are reserved.
@@ -174,7 +176,7 @@ Each tick while filling:
 1. **Vehicle clear-out**: if a clear-out is still pending, waits until cached vehicles have left the fill area (or ignores stuck ones).
 2. **Cleanup**: removes preparation shoulders and preparation ramps.
 3. **Rim alignment** (`PlaceFarmingRimAlignmentDesignations`): places flat level designations at `targetHeight` on boundary tiles immediately outside the fill area, where the terrain one step further out is within 0.2 tiles of `targetHeight`. These repair terrain disturbances left by preparation ramps at the boundary. Uses the leveling proto. Tracked in `RimAlignmentOrigins`. Rim placement skips tiles tracked as farming origins by any other active session to prevent overwriting their active leveling designations.
-4. **Access check** (`EnsureFarmingAccessForCurrentPhase`, `isFilling: true`): same BFS approach as preparation. Unreachable filling designations are grouped into disconnected clusters; one **dumping-proto access ramp** is placed per cluster. Tracked in `FillingAccessRampOrigins`. The same tile eligibility rules apply as for preparation ramps.
+4. **Access check** (`EnsureFarmingAccessForCurrentPhase`, `isFilling: true`): same BFS approach as preparation. Unreachable filling designations are grouped into disconnected clusters; one **dumping-proto access ramp** is placed per cluster. Tracked in `FillingAccessRampOrigins`. The same tile eligibility rules apply as for preparation ramps. **Vanilla readiness gate**: `IsReadyToDumpNonAmphibious()` is used instead of the mining bitmap, matching the vanilla truck dispatch condition. Fresh fill designations (terrain below target) have the dumping bit unset, so the cluster is correctly marked inaccessible until a ramp reaches it.
 5. **Advance origins**: for each `Filling` or `Done` origin, checks the designation still exists. Runs `AnalyzeFarmingFillingDesignation`; transitions to `Done` when the farmable band check passes.
 
 ### Completion
