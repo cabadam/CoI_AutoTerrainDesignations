@@ -1,5 +1,4 @@
-﻿
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.5.2.0
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -7,7 +6,7 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoTerrainDesignations", "
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "AutoForestryDesignations", "..\AutoForestryDesignations\AutoForestryDesignations.csproj", "{7AB9C18B-8A89-474F-96DF-1E3C8A43BB55}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CoI_DesignerToolkit", "..\CoI_DesignerToolkit\CoI_DesignerToolkit.csproj", "{B7F7861D-014B-4F3E-9FB8-091DC450535E}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DesignerToolkit", "..\DesignerToolkit\DesignerToolkit.csproj", "{B7F7861D-014B-4F3E-9FB8-091DC450535E}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
