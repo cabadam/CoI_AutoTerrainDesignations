@@ -40,20 +40,25 @@ namespace AutoTerrainDesignations
 
         private static readonly List<PlacementIntent> s_pendingFarmPlacements = new();
 
+        // Positions registered here are replays issued by ATD itself. The intercept prefix
+        // checks this set and lets matching commands through without re-intercepting them.
+        private static readonly HashSet<Tile2i> s_farmPlacementReplayPositions = new();
+
         private sealed class PlacementIntent
         {
-            public readonly FarmProto Proto;
-            public readonly Tile2i Position;
-            public readonly int Z;
-            public readonly Rotation90 Rotation;
+            // Full original item from BatchCreateStaticEntitiesCmd — preserves proto, transform
+            // (including IsReflected), recipes, crop assignments, port configs, and all other
+            // blueprint-configured state so replay recreates the entity exactly as intended.
+            public readonly EntityConfigData ConfigData;
+            public readonly bool OriginalApplyConfiguration;
             public readonly IAreaManagingTower Tower;
             public readonly IReadOnlyList<Tile2i> RequiredCells;
             public readonly HashSet<Tile2i> AtdInjectedCells = new();
 
-            public PlacementIntent(FarmProto proto, Tile2i position, int z, Rotation90 rotation,
+            public PlacementIntent(EntityConfigData configData, bool originalApplyConfiguration,
                 IAreaManagingTower tower, IReadOnlyList<Tile2i> requiredCells)
             {
-                Proto = proto; Position = position; Z = z; Rotation = rotation;
+                ConfigData = configData; OriginalApplyConfiguration = originalApplyConfiguration;
                 Tower = tower; RequiredCells = requiredCells;
             }
         }
@@ -82,14 +87,18 @@ namespace AutoTerrainDesignations
                     if (!transform.HasValue) continue;
 
                     Tile2i position = transform.Value.Position.Xy;
+
+                    // Let ATD's own replays through without re-intercepting them.
+                    if (s_farmPlacementReplayPositions.Remove(position)) continue;
+
                     IAreaManagingTower? tower = GetFarmingTowerForTile(position);
                     if (tower == null) continue;
 
                     s_log.Info($"[ATD FarmPlacementAssist] Intercepted farm placement: " +
-                        $"proto={farmProto.Id}, pos={position}, rot={transform.Value.Rotation}, tower={tower.Id}.");
+                        $"proto={farmProto.Id}, pos={position}, rot={transform.Value.Rotation}, " +
+                        $"reflected={transform.Value.IsReflected}, tower={tower.Id}.");
 
-                    OnFarmPlacementIntercepted(farmProto, position, transform.Value.Position.Z,
-                        transform.Value.Rotation, tower);
+                    OnFarmPlacementIntercepted(item, tower, cmd.ApplyConfiguration);
                     anyIntercepted = true;
                 }
 
@@ -195,10 +204,9 @@ namespace AutoTerrainDesignations
         // ---------------------------------------------------------------------------------
 
         /// <summary>Returns the unique 4×4 designation-grid origins covered by the farm footprint.</summary>
-        internal static List<Tile2i> ComputeCoveredDesignationCells(FarmProto proto, Tile2i position, Rotation90 rotation)
+        internal static List<Tile2i> ComputeCoveredDesignationCells(FarmProto proto, TileTransform transform)
         {
-            // Build a zero-Z TileTransform so GetOccupiedTilesRelative handles rotation.
-            var transform = new TileTransform(new Tile3i(position.X, position.Y, 0), rotation, isReflected: false);
+            Tile2i position = transform.Position.Xy;
             ImmutableArray<OccupiedTileRelative> relTiles = proto.Layout.GetOccupiedTilesRelative(transform);
             var origins = new HashSet<Tile2i>();
             foreach (OccupiedTileRelative rel in relTiles)
@@ -250,19 +258,24 @@ namespace AutoTerrainDesignations
         /// or injects leveling designations and registers a pending intent.
         /// </summary>
         private static void OnFarmPlacementIntercepted(
-            FarmProto proto, Tile2i position, int z, Rotation90 rotation, IAreaManagingTower tower)
+            EntityConfigData configData, IAreaManagingTower tower, bool applyConfiguration)
         {
-            List<Tile2i> cells = ComputeCoveredDesignationCells(proto, position, rotation);
+            FarmProto farmProto = (FarmProto)configData.Prototype.Value;
+            TileTransform transform = configData.Transform!.Value;
+            Tile2i position = transform.Position.Xy;
+            int z = transform.Position.Z;
+
+            List<Tile2i> cells = ComputeCoveredDesignationCells(farmProto, transform);
 
             // If the site is already fully prepared, replay immediately — no deferral needed.
             if (AreCellsAlreadyFarmable(cells))
             {
                 s_log.Info($"[ATD FarmPlacementAssist] Site already farmable — replaying immediately.");
-                ReplayFarmPlacement(proto, position, z, rotation);
+                ReplayFarmPlacement(configData, applyConfiguration);
                 return;
             }
 
-            var intent = new PlacementIntent(proto, position, z, rotation, tower, cells);
+            var intent = new PlacementIntent(configData, applyConfiguration, tower, cells);
 
             // Determine target height from the farm's origin tile.
             int targetHeight = s_desigManager != null
@@ -282,17 +295,25 @@ namespace AutoTerrainDesignations
         // Replay path (Phase 4-C — S4 confirmed 2026-05-30)
         // ---------------------------------------------------------------------------------
 
-        internal static void ReplayFarmPlacement(FarmProto proto, Tile2i position, int z, Rotation90 rotation)
+        internal static void ReplayFarmPlacement(EntityConfigData configData, bool applyConfiguration)
         {
             if (s_inputScheduler == null)
             {
                 s_log.Warning("[ATD FarmPlacementAssist] Cannot replay: IInputScheduler not available.");
                 return;
             }
-            var transform = new TileTransform(new Tile3i(position.X, position.Y, z), rotation, isReflected: false);
-            var cmd = new CreateStaticEntityCmd(proto.Id, transform, isFree: false, allowValidationSuppression: false);
+            // Register the position so the intercept prefix lets this replay through.
+            if (configData.Transform.HasValue)
+                s_farmPlacementReplayPositions.Add(configData.Transform.Value.Position.Xy);
+            var cmd = new BatchCreateStaticEntitiesCmd(
+                ImmutableArray.Create(configData),
+                BuildMiniZippersMode.DeferToProto,
+                isFree: false,
+                allowValidationSuppression: false,
+                applyConfiguration: applyConfiguration);
             s_inputScheduler.ScheduleInputCmd(cmd);
-            s_log.Info($"[ATD FarmPlacementAssist] Replayed farm placement: proto={proto.Id}, pos={position}.");
+            s_log.Info($"[ATD FarmPlacementAssist] Replayed farm placement: " +
+                $"proto={configData.Prototype.ValueOrNull?.Id}, pos={configData.Transform?.Position}.");
         }
 
         // ---------------------------------------------------------------------------------
@@ -307,7 +328,7 @@ namespace AutoTerrainDesignations
                 PlacementIntent intent = s_pendingFarmPlacements[i];
                 if (!AreCellsDone(intent)) continue;
                 s_pendingFarmPlacements.RemoveAt(i);
-                ReplayFarmPlacement(intent.Proto, intent.Position, intent.Z, intent.Rotation);
+                ReplayFarmPlacement(intent.ConfigData, intent.OriginalApplyConfiguration);
             }
         }
 

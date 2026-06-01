@@ -1,4 +1,5 @@
 v0.4.2d | 2026-05-30 [unreleased]
+* Fixed: Farm Placement Assist replayed intercepted placements with crop assignments, recipe selections, port configurations, and reflection lost; the original `PlacementIntent` stored only proto, position, and rotation, discarding the rest of the engine's entity configuration; the intent now stores the full `EntityConfigData` from the intercepted command and replays it verbatim via `BatchCreateStaticEntitiesCmd` so all blueprint-configured state is preserved
 * Added **bottomFlatteningStrength** global setting (1–10, default 5): controls which depth-percentile of each connected ore component is used as the flattening target during the bottom-flattening pass; 1 = mildest (90th-percentile depth, few tiles adjusted), 5 = median (default behavior), 10 = strongest (deepest tile, everything pulled down); configurable via `ATDsettings.json` or the new **atd_set_bottom_flattening_strength** console command
 
 v0.4.2c | 2026-05-30 [packaged]

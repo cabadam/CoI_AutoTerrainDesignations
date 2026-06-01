@@ -141,6 +141,7 @@ namespace AutoTerrainDesignations
         {
             s_farmingDebugStoredDesignations.Clear();
             s_farmingPreparationSessions.Clear();
+            s_farmPlacementReplayPositions.Clear();
             s_farmingAutomationDisabledTowerIds.Clear();
             s_farmingAutomationTickIndex = 0;
             s_farmingTowerBootstrapCompleted = false;

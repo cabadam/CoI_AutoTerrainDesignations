@@ -1,5 +1,5 @@
 # Farming Designations — Architecture Reference
-Current as of release: 0.4.0l [unreleased]
+Current as of release: 0.4.2d [unreleased]
 
 ## Feature summary
 
@@ -17,6 +17,7 @@ Farming Designations automates the preparation and topsoil filling of flat level
 | `ATD.FarmingAccess.cs` | Access ramp placement (preparation and filling phases), result caching |
 | `ATD.FarmingDebugTransitions.cs` | Shoulder placement, preparation transitions; debug console commands (`atd_farming_*`) |
 | `ATD.FarmingAnalysisPanel.cs` | UI: injects the Farmland Preparation panel into the mine tower inspector |
+| `ATD.FarmPlacementAssist.cs` | Farm Placement Assist: intercepts farm placement commands, injects leveling designations, replays placement when site is ready |
 
 All farming code lives inside the `AutoDepthDesignation` partial class (`namespace AutoTerrainDesignations`), except the session data classes and the panel helper.
 
@@ -275,6 +276,47 @@ When all origins reach `Done`:
 3. After stabilization: tower dump rules restored, released trucks reassigned, filling access ramps removed.
 4. A completion notification is shown on the tower.
 5. The session's `Active` flag is cleared.
+
+---
+
+## Farm Placement Assist
+
+`ATD.FarmPlacementAssist.cs` intercepts farm building placements inside a farming-enabled tower area, prevents the ghost from entering the world (which would block vehicle access to the site), prepares the terrain, then replays the placement once all covered cells are ready.
+
+### Intercept
+
+A Harmony prefix on `EntitiesCommandsProcessor.Invoke(BatchCreateStaticEntitiesCmd)` inspects each item in the batch. When an item's prototype is a `FarmProto` and its footprint origin falls inside a farming-enabled tower area, the item is captured into a `PlacementIntent` and the original command is consumed (returns `false`, calls `cmd.SetResultSuccess()`).
+
+The `PlacementIntent` stores the **full `EntityConfigData`** from the intercepted batch item — not just proto and position. This preserves:
+- `TileTransform` including `IsReflected` (reflection affects port positions even though it does not change tile occupation)
+- Recipe selections
+- Crop assignments
+- Any other blueprint-configured state
+
+The `bool ApplyConfiguration` flag from the original `BatchCreateStaticEntitiesCmd` is also stored and passed through on replay.
+
+### Footprint computation
+
+`ComputeCoveredDesignationCells(FarmProto, TileTransform)` calls `proto.Layout.GetOccupiedTilesRelative(transform)` with the full `TileTransform` (rotation + reflection) and snaps each occupied tile to the 4×4 designation grid. Farm sizes (T1 = 4×4, T2 = 8×8, T3 = 12×12) align cleanly to the grid.
+
+### Validator suppression
+
+Three Harmony prefixes suppress validation errors during hover and placement so that ATD-managed farms can be ghost-placed on uneven or infertile ground:
+- `FarmFertileGroundValidator.CanAdd` — suppresses fertility check
+- `LayoutEntityTerrainValidator.CanAdd` (explicit interface impl) — suppresses map-bounds / ocean check for `FarmProto`
+- `StaticEntitiesTerrainInteractionManager.CanAdd` — suppresses terrain-height check for `FarmProto` in tower area
+
+All three check `GetFarmingTowerForRequest` / `GetFarmingTowerForTile` and pass through immediately if the placement is outside a known tower area.
+
+### Pending intent lifecycle
+
+1. `OnFarmPlacementIntercepted` computes covered cells and checks `AreCellsAlreadyFarmable`. If the site is already fully prepared, the placement is replayed immediately via `ReplayFarmPlacement` — no intent is created.
+2. Otherwise a `PlacementIntent` is registered in `s_pendingFarmPlacements` and a flat `LevelingDesignation` is injected for each covered cell that does not already have a designation (tracked in `intent.AtdInjectedCells` for cleanup on cancel).
+3. `TickFarmPlacementAssist` (called once per tick) iterates pending intents and calls `AreCellsDone` — which checks that every required cell has `FarmingOriginPhase.Done` in any active farming session. When all cells are done, the intent is removed and `ReplayFarmPlacement` fires.
+
+### Replay
+
+`ReplayFarmPlacement(EntityConfigData, bool applyConfiguration)` schedules a new `BatchCreateStaticEntitiesCmd(ImmutableArray.Create(configData), ..., applyConfiguration)` via `s_inputScheduler.ScheduleInputCmd`. The validator suppression patches remain active so the replayed command passes validation.
 
 ---
 

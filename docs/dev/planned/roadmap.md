@@ -27,5 +27,7 @@ Can same vehicles be soft-assigned to several towers?
 
 ## Level ground for ANY entity/blueprint /MrTammy
 
+See [building-leveling-assist.md](building-leveling-assist.md) for full implementation plan.
+
 Check Wanderer's issues
 
