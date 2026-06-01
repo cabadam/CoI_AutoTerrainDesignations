@@ -20,6 +20,7 @@ using Mafi.Core;
 using Mafi.Core.Buildings.Farms;
 using Mafi.Core.Buildings.Towers;
 using Mafi.Core.Entities;
+using Mafi.Core.Entities.Static;
 using Mafi.Core.Entities.Static.Commands;
 using Mafi.Core.Entities.Static.Layout;
 using Mafi.Core.Entities.Validators;
@@ -122,6 +123,7 @@ namespace AutoTerrainDesignations
 
         // Phase 2-B: LayoutEntityTerrainValidator.CanAdd
         // Explicit interface implementation — located via interface map, not string name.
+        // Suppresses map-bounds and ocean checks only; does NOT handle terrain height.
         private static class Patch_LayoutEntityTerrainValidator_CanAdd_Farm
         {
             internal static MethodBase TargetMethod()
@@ -137,6 +139,21 @@ namespace AutoTerrainDesignations
                 if (!IsInitialized) return true;
                 if (addRequest.Proto is not FarmProto) return true;
                 if (GetFarmingTowerForRequest(addRequest) == null) return true;
+                __result = EntityValidationResult.Success;
+                return false;
+            }
+        }
+
+        // Phase 2-C: StaticEntitiesTerrainInteractionManager.CanAdd
+        // This is the validator that emits "Terrain too high" / "Terrain too low" errors.
+        // IEntityWithOccupiedTilesAddRequest exposes Proto (as ILayoutEntityProto) and Origin.
+        private static class Patch_StaticEntitiesTerrainInteractionManager_CanAdd_Farm
+        {
+            internal static bool Prefix(IEntityWithOccupiedTilesAddRequest addRequest, ref EntityValidationResult __result)
+            {
+                if (!IsInitialized) return true;
+                if (addRequest.Proto is not FarmProto) return true;
+                if (GetFarmingTowerForTile(addRequest.Origin.Xy) == null) return true;
                 __result = EntityValidationResult.Success;
                 return false;
             }
@@ -342,6 +359,21 @@ namespace AutoTerrainDesignations
                     harmony.Patch(terrainTarget, prefix: new HarmonyMethod(terrainPrefix));
             }
             catch (Exception ex) { s_log.Warning("[ATD FPA] Failed to patch LayoutEntityTerrainValidator.CanAdd: " + ex.Message); }
+
+            try
+            {
+                // --- StaticEntitiesTerrainInteractionManager.CanAdd (terrain too high/low) ---
+                var terrainInteractionTarget = AccessTools.Method(
+                    typeof(StaticEntitiesTerrainInteractionManager), "CanAdd",
+                    new[] { typeof(IEntityWithOccupiedTilesAddRequest) });
+                var terrainInteractionPrefix = AccessTools.Method(
+                    typeof(Patch_StaticEntitiesTerrainInteractionManager_CanAdd_Farm), "Prefix");
+                if (terrainInteractionTarget == null || terrainInteractionPrefix == null)
+                    s_log.Warning("[ATD FPA] StaticEntitiesTerrainInteractionManager.CanAdd patch target not found.");
+                else
+                    harmony.Patch(terrainInteractionTarget, prefix: new HarmonyMethod(terrainInteractionPrefix));
+            }
+            catch (Exception ex) { s_log.Warning("[ATD FPA] Failed to patch StaticEntitiesTerrainInteractionManager.CanAdd: " + ex.Message); }
         }
     }
 }
