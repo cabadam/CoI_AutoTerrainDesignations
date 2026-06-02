@@ -118,9 +118,34 @@ namespace AutoTerrainDesignations
                 return true;
             }
             accessSw.Stop();
+
+            // Merge spatially adjacent inaccessible clusters into super-clusters so that one
+            // ramp serves the entire contiguous group. Without this, each sub-cluster would
+            // get its own ramp, which often points into an adjacent cluster's footprint — an
+            // area also being prepared — rather than to a stable external surface.
+            inaccessibleClusters = MergeAdjacentInaccessibleClusters(inaccessibleClusters);
+
+            // Order clusters greedily by Manhattan distance from cluster anchor to tower's
+            // bounding-box center, ascending. The closest cluster is processed first; it will
+            // typically have to ramp up to the surrounding tower-area surface (no other cluster
+            // is connected yet, so no bridge target exists). Once placed, its origins are
+            // removed from the "forbidden approach" set, so subsequent clusters can produce
+            // bridge candidates that connect through it. The geometric Score inside
+            // TryPlaceRampCandidates already prefers shorter accessways, so a short ramp wins
+            // over a longer bridge naturally; bridges are only chosen when distance is similar.
+            Tile2i towerCenterForOrdering = new Tile2i(
+                (tower.Area.BoundingBoxMin.X + tower.Area.BoundingBoxMax.X) / 2,
+                (tower.Area.BoundingBoxMin.Y + tower.Area.BoundingBoxMax.Y) / 2);
+            inaccessibleClusters.Sort((a, b) =>
+            {
+                int da = System.Math.Abs(a.Anchor.X - towerCenterForOrdering.X) + System.Math.Abs(a.Anchor.Y - towerCenterForOrdering.Y);
+                int db = System.Math.Abs(b.Anchor.X - towerCenterForOrdering.X) + System.Math.Abs(b.Anchor.Y - towerCenterForOrdering.Y);
+                return da.CompareTo(db);
+            });
+
             int inaccessibleCount = inaccessibleClusters.Sum(cluster => cluster.Count);
             LogFarmingPerfIfSlow(session, tower, "access check", accessSw.ElapsedMilliseconds, $"mode={(isFilling ? "filling" : "preparation")}, work={currentWork.Count}, inaccessible={inaccessibleCount}, clusters={inaccessibleClusters.Count}");
-            LogDebug($"[ATD Farming Access] mode={(isFilling ? "filling" : "preparation")} work={currentWork.Count} inaccessibleClusters={inaccessibleClusters.Count} inaccessibleOrigins={inaccessibleCount}.");
+            LogDebug($"[ATD Farming Access] mode={(isFilling ? "filling" : "preparation")} work={currentWork.Count} inaccessibleClusters={inaccessibleClusters.Count} inaccessibleOrigins={inaccessibleCount} (after adjacency merge).");
 
             if (inaccessibleClusters.Count == 0)
             {
@@ -136,16 +161,6 @@ namespace AutoTerrainDesignations
             if (towerSettings.RampWidth <= 0)
             {
                 session.LastAccessRampDetail = $"Access ramp needed for {inaccessibleCount} origin(s), but ramp generation is disabled.";
-                SetFarmingAccessCache(session, workKey, ready: false, session.LastAccessRampDetail);
-                return false;
-            }
-
-            string requestKey = BuildFarmingAccessRampRequestKey(inaccessibleClusters, isFilling);
-            if (session.LastAccessRampRequestKey == requestKey)
-            {
-                string waitMode = isFilling ? "dumping" : "excavation";
-                session.LastAccessRampDetail =
-                    $"Access ramp already requested for {inaccessibleCount} unreachable {waitMode} origin(s); waiting for terrain/designation state to change.";
                 SetFarmingAccessCache(session, workKey, ready: false, session.LastAccessRampDetail);
                 return false;
             }
@@ -176,84 +191,203 @@ namespace AutoTerrainDesignations
             // in the same tick instead of one per tick.
             string mode = isFilling ? "dumping" : "excavation";
             HashSet<Tile2i> ownedRamps = GetOwnedFarmingAccessRamps(session, isFilling);
+            // Purge owned ramps that are still designated but are no longer reachable from the
+            // tower. This catches ramps that became stranded after adjacent excavation lowered
+            // the approach slope (changing the terrain since the ramp was placed). Clearing the
+            // request key forces a fresh placement attempt next tick.
+            if (PurgeUnreachableOwnedRamps(ownedRamps, tower, isFilling))
+                session.LastAccessRampRequestKey = string.Empty;
             // Also reserve ramps already placed in previous ticks so we never double-stack.
             foreach (Tile2i existingRamp in ownedRamps)
                 reservedRampTiles.Add(existingRamp);
+
+            // Build the requestKey AFTER reservedRampTiles is populated so that the bucket term
+            // reflects how many surrounding active-phase tiles remain. When an inaccessible cluster
+            // is geometrically enclosed by an accessible one, all ramp candidates exit through the
+            // accessible cluster's reserved tiles — NotAccessible is returned. As the accessible
+            // cluster advances (reserved count shrinks), the bucket changes, allowing a retry every
+            // ~50 tile completions instead of waiting for the inaccessible cluster itself to change.
+            string requestKey = BuildFarmingAccessRampRequestKey(inaccessibleClusters, isFilling)
+                + "|r=" + (reservedRampTiles.Count / 50);
+            if (session.LastAccessRampRequestKey == requestKey)
+            {
+                string waitMode = isFilling ? "dumping" : "excavation";
+                session.LastAccessRampDetail =
+                    $"Access ramp already requested for {inaccessibleCount} unreachable {waitMode} origin(s); waiting for terrain/designation state to change.";
+                SetFarmingAccessCache(session, workKey, ready: false, session.LastAccessRampDetail);
+                return false;
+            }
             int clustersPlaced = 0;
             int clustersFailed = 0;
             var clusterDetails = new List<string>();
 
+            // Forbidden-approach set: origins of inaccessible-cluster designations that haven't
+            // yet been successfully placed in this tick. On each fixpoint pass we attempt every
+            // still-pending cluster; any that succeed (Crested/Truncated) are removed from the
+            // set, allowing the NEXT pass's bridge candidates to approach through them. We loop
+            // until a pass produces no successes — that's the natural propagation order, which
+            // the simple distance-based ordering can't capture (a closer cluster may need a
+            // farther one to be placed first to enable a bridge).
+            var forbiddenApproachOrigins = new HashSet<Tile2i>();
+            foreach (FarmingAccessCluster c in inaccessibleClusters)
+                foreach (Tile2i o in c.Origins)
+                    forbiddenApproachOrigins.Add(o);
+
+            // Per-cluster final outcome — captures the last pass that touched the cluster so we
+            // emit one detail line per cluster regardless of how many passes ran.
+            var lastOutcomeByDebugId = new Dictionary<int, (RampPlacementOutcome outcome, Tile2i topTile, Tile2i anchor, int count)>();
+            // Clusters that succeeded in any pass (don't retry them).
+            var succeededDebugIds = new HashSet<int>();
+            // Per-cluster previous-pass placed origins, kept so a retry can clean up the prior
+            // NotAccessible fallback designation before placing a fresh one. The final pass's
+            // placement (whatever it is) is left in place.
+            var prevPlacedByDebugId = new Dictionary<int, List<Tile2i>>();
+
+            for (int pass = 0; pass < inaccessibleClusters.Count; pass++)
+            {
+                bool anySuccessThisPass = false;
+                foreach (FarmingAccessCluster cluster in inaccessibleClusters)
+                {
+                    if (succeededDebugIds.Contains(cluster.DebugId)) continue;
+
+                    Tile2i anchor = cluster.Anchor;
+                    TerrainDesignationProto? clusterRampProto = GetFarmingAccessRampProtoForCluster(cluster.Designations, isFilling, defaultRampProto);
+                    if (clusterRampProto == null)
+                    {
+                        if (pass == 0)
+                        {
+                            clustersFailed++;
+                            clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: ramp proto unavailable");
+                            LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} ramp skipped: proto unavailable. {FormatFarmingAccessClusterSummary(cluster)}");
+                            succeededDebugIds.Add(cluster.DebugId); // mark done so we don't retry
+                        }
+                        continue;
+                    }
+
+                    var attachDesignations = new List<TerrainDesignation>(cluster.Designations);
+                    var tileDepths = new Dict<Tile2i, int>();
+                    var cornerHeights = new Dict<Tile2i, int>();
+                    foreach (TerrainDesignation designation in cluster.Designations)
+                    {
+                        AddFarmingRampPlanTile(designation, tileDepths, cornerHeights);
+                    }
+
+                    if (!isFilling && s_dumpingProto != null && clusterRampProto == s_dumpingProto)
+                        AddConnectedPreparationShouldersToRampPlan(session, cluster.Designations, tileDepths, cornerHeights, attachDesignations);
+
+                    LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} planning ramp pass={pass} proto={clusterRampProto.Id.Value} width={(cluster.Count < towerSettings.RampWidth ? 1 : towerSettings.RampWidth)} attach={attachDesignations.Count} reserved={reservedRampTiles.Count} forbiddenOrigins={forbiddenApproachOrigins.Count}. {FormatFarmingAccessClusterSummary(cluster)}");
+
+                    if (AttachSurfaceAlreadyHasOwnedRamp(attachDesignations, ownedRamps, clusterRampProto))
+                    {
+                        if (pass == 0)
+                        {
+                            clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: existing ramp pending");
+                            LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} ramp skipped: existing owned ramp pending.");
+                            succeededDebugIds.Add(cluster.DebugId);
+                        }
+                        continue;
+                    }
+
+                    // If the previous pass placed a NotAccessible fallback for this cluster, remove
+                    // it now before retrying. Otherwise the next CreateAccessRamp call would stack
+                    // a second ramp on top of the first (the fallback is in the world but not in
+                    // ownedRamps, so the duplicate-prevention code wouldn't catch it).
+                    if (prevPlacedByDebugId.TryGetValue(cluster.DebugId, out List<Tile2i>? prevOrigins) && prevOrigins != null)
+                    {
+                        foreach (Tile2i prev in prevOrigins)
+                        {
+                            ownedRamps.Remove(prev);
+                            reservedRampTiles.Remove(prev);
+                            Option<TerrainDesignation> placed = s_desigManager.GetDesignationAt(prev);
+                            if (placed.HasValue && placed.Value.Prototype == clusterRampProto)
+                                s_desigManager.RemoveDesignation(prev);
+                        }
+                        prevOrigins.Clear();
+                    }
+
+                    int configuredRampWidth = cluster.Count < towerSettings.RampWidth
+                        ? 1
+                        : towerSettings.RampWidth;
+
+                    var placedRampOrigins = new List<Tile2i>();
+                    // Temporarily exclude this cluster's own origins so its ramp candidates can
+                    // attach to its own designations. Restored after the call below if placement
+                    // didn't yield tower-reachable access.
+                    foreach (Tile2i o in cluster.Origins)
+                        forbiddenApproachOrigins.Remove(o);
+                    RampPlacementOutcome outcome = CreateAccessRamp(
+                        tower,
+                        tileDepths,
+                        cornerHeights,
+                        s_desigManager.TerrainManager,
+                        configuredRampWidth,
+                        clusterRampProto,
+                        placedRampOrigins,
+                        reservedRampTiles,
+                        useLocalSurfaceReference: isFilling || (s_dumpingProto != null && clusterRampProto == s_dumpingProto),
+                        allowExistingPlannedRampShortcut: false,
+                        out Tile2i rampTopTile,
+                        forbiddenApproachClusterOrigins: forbiddenApproachOrigins);
+                    bool clusterIsNowConnected =
+                        outcome != RampPlacementOutcome.Failed
+                        && outcome != RampPlacementOutcome.NotAccessible;
+                    if (!clusterIsNowConnected)
+                    {
+                        foreach (Tile2i o in cluster.Origins)
+                            forbiddenApproachOrigins.Add(o);
+                    }
+
+                    foreach (Tile2i origin in placedRampOrigins)
+                    {
+                        ownedRamps.Add(origin);
+                        reservedRampTiles.Add(origin);
+                    }
+
+                    if (outcome == RampPlacementOutcome.NotAccessible)
+                    {
+                        // Vanilla behaviour: NotAccessible places a designation in the world even
+                        // though the mouth isn't yet vehicle-reachable. Don't track in ownedRamps
+                        // (so the duplicate-prevention code doesn't block a future placement once
+                        // the surroundings advance). Record the placement so the NEXT pass — if
+                        // any — can remove it before laying down a fresh attempt.
+                        foreach (Tile2i origin in placedRampOrigins)
+                            ownedRamps.Remove(origin);
+                        prevPlacedByDebugId[cluster.DebugId] = new List<Tile2i>(placedRampOrigins);
+                        LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} pass={pass} ramp not accessible; mouth unreachable, will retry as surrounding work advances.");
+                    }
+                    else if (outcome == RampPlacementOutcome.Failed)
+                    {
+                        LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} pass={pass} ramp failed.");
+                    }
+                    else
+                    {
+                        anySuccessThisPass = true;
+                        succeededDebugIds.Add(cluster.DebugId);
+                        LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} pass={pass} ramp {outcome} at ({rampTopTile.X},{rampTopTile.Y}); placedOrigins={placedRampOrigins.Count}.");
+                    }
+
+                    lastOutcomeByDebugId[cluster.DebugId] = (outcome, rampTopTile, anchor, cluster.Count);
+                }
+
+                if (!anySuccessThisPass) break;
+            }
+
+            // Emit one detail line per cluster from the final outcome.
             foreach (FarmingAccessCluster cluster in inaccessibleClusters)
             {
-                Tile2i anchor = cluster.Anchor;
-                TerrainDesignationProto? clusterRampProto = GetFarmingAccessRampProtoForCluster(cluster.Designations, isFilling, defaultRampProto);
-                if (clusterRampProto == null)
+                if (!lastOutcomeByDebugId.TryGetValue(cluster.DebugId, out var info)) continue;
+                Tile2i a = info.anchor;
+                if (info.outcome == RampPlacementOutcome.NotAccessible)
+                    clusterDetails.Add($"({a.X},{a.Y})+{info.count}: not accessible");
+                else if (info.outcome == RampPlacementOutcome.Failed)
                 {
                     clustersFailed++;
-                    clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: ramp proto unavailable");
-                    LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} ramp skipped: proto unavailable. {FormatFarmingAccessClusterSummary(cluster)}");
-                    continue;
-                }
-
-                var attachDesignations = new List<TerrainDesignation>(cluster.Designations);
-                var tileDepths = new Dict<Tile2i, int>();
-                var cornerHeights = new Dict<Tile2i, int>();
-                foreach (TerrainDesignation designation in cluster.Designations)
-                {
-                    AddFarmingRampPlanTile(designation, tileDepths, cornerHeights);
-                }
-
-                if (!isFilling && s_dumpingProto != null && clusterRampProto == s_dumpingProto)
-                    AddConnectedPreparationShouldersToRampPlan(session, cluster.Designations, tileDepths, cornerHeights, attachDesignations);
-
-                LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} planning ramp proto={clusterRampProto.Id.Value} width={(cluster.Count < towerSettings.RampWidth ? 1 : towerSettings.RampWidth)} attach={attachDesignations.Count} reserved={reservedRampTiles.Count}. {FormatFarmingAccessClusterSummary(cluster)}");
-
-                // If a previous-tick owned ramp is still present adjacent to the current attach
-                // surface and snapped toward it (non-red edge), skip placing a new ramp. For
-                // dumping-prep, the attach surface includes the owned shoulder ring, not just the
-                // original farming origins.
-                if (AttachSurfaceAlreadyHasOwnedRamp(attachDesignations, ownedRamps, clusterRampProto))
-                {
-                    clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: existing ramp pending");
-                    LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} ramp skipped: existing owned ramp pending.");
-                    continue;
-                }
-
-                int configuredRampWidth = cluster.Count < towerSettings.RampWidth
-                    ? 1
-                    : towerSettings.RampWidth;
-
-                var placedRampOrigins = new List<Tile2i>();
-                RampPlacementOutcome outcome = CreateAccessRamp(
-                    tower,
-                    tileDepths,
-                    cornerHeights,
-                    s_desigManager.TerrainManager,
-                    configuredRampWidth,
-                    clusterRampProto,
-                    placedRampOrigins,
-                    reservedRampTiles,
-                    useLocalSurfaceReference: isFilling || (s_dumpingProto != null && clusterRampProto == s_dumpingProto),
-                    allowExistingPlannedRampShortcut: false,
-                    out Tile2i rampTopTile);
-
-                foreach (Tile2i origin in placedRampOrigins)
-                {
-                    ownedRamps.Add(origin);
-                    reservedRampTiles.Add(origin);
-                }
-
-                if (outcome == RampPlacementOutcome.Failed)
-                {
-                    clustersFailed++;
-                    clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: failed");
-                    LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} ramp failed.");
+                    clusterDetails.Add($"({a.X},{a.Y})+{info.count}: failed");
                 }
                 else
                 {
                     clustersPlaced++;
-                    clusterDetails.Add($"({anchor.X},{anchor.Y})+{cluster.Count}: {outcome} at ({rampTopTile.X},{rampTopTile.Y})");
-                    LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} ramp {outcome} at ({rampTopTile.X},{rampTopTile.Y}); placedOrigins={placedRampOrigins.Count}.");
+                    clusterDetails.Add($"({a.X},{a.Y})+{info.count}: {info.outcome} at ({info.topTile.X},{info.topTile.Y})");
                 }
             }
 
@@ -581,6 +715,52 @@ namespace AutoTerrainDesignations
                 : session.PreparationAccessRampOrigins;
         }
 
+        /// <summary>
+        /// Scans <paramref name="ownedRamps"/> and removes any entry whose ramp designation is
+        /// still present in the world but is no longer vehicle-reachable from the tower (terrain
+        /// changed after placement — e.g. adjacent excavation lowered the approach slope). The
+        /// designation is deleted so the tile is freed for a better placement on the next tick.
+        /// Returns true if at least one ramp was purged.
+        /// </summary>
+        private static bool PurgeUnreachableOwnedRamps(
+            HashSet<Tile2i> ownedRamps, IAreaManagingTower tower, bool isFilling)
+        {
+            if (s_desigManager == null || ownedRamps.Count == 0) return false;
+
+            TerrainDesignationProto? rampProto = isFilling ? s_dumpingProto : s_miningProto;
+            if (rampProto == null) return false;
+
+            // Ensure the pathability bitmap is up-to-date before running BFS checks.
+            if (s_vehiclePathFindingManager != null)
+            {
+                try { s_vehiclePathFindingManager.PathabilityProvider.UpdateChangedTiles(); }
+                catch { }
+            }
+
+            bool anyPurged = false;
+            foreach (Tile2i origin in ownedRamps.ToList())
+            {
+                Option<TerrainDesignation> desig = s_desigManager.GetDesignationAt(origin);
+                if (!desig.HasValue || desig.Value.Prototype != rampProto)
+                {
+                    // Designation already gone (fulfilled or replaced) — just drop the tracking entry.
+                    ownedRamps.Remove(origin);
+                    continue;
+                }
+
+                if (!IsRampMouthReachableFromTower(tower, origin))
+                {
+                    // Ramp was accessible when placed but terrain has since changed.
+                    // Delete the designation so a better placement can be found next tick.
+                    s_desigManager.RemoveDesignation(origin);
+                    ownedRamps.Remove(origin);
+                    anyPurged = true;
+                    LogDebug($"[ATD Farming Access] Purged unreachable owned ramp at ({origin.X},{origin.Y}); terrain changed after placement.");
+                }
+            }
+            return anyPurged;
+        }
+
         private static int RemoveOwnedFarmingAccessRamps(FarmingPreparationSession session, bool isFilling)
         {
             if (s_desigManager == null)
@@ -663,11 +843,12 @@ namespace AutoTerrainDesignations
             var targetTilesByOrigin = new Dictionary<Tile2i, HashSet<Tile2i>>();
             var originsByTargetTile = new Dictionary<Tile2i, List<Tile2i>>();
             var designationsByOrigin = new Dictionary<Tile2i, TerrainDesignation>(designations.Count);
+            int notReadyCount = 0;
             foreach (TerrainDesignation designation in designations)
             {
                 if (!IsFarmingDesignationReadyForVehicleWork(designation, isFilling))
                 {
-                    LogDebug($"[ATD Farming Access] origin=({designation.OriginTileCoord.X},{designation.OriginTileCoord.Y}) proto={designation.Prototype.Id.Value} not ready for {(isFilling ? "filling" : "preparation")} vehicle work.");
+                    notReadyCount++;
                     continue;
                 }
 
@@ -692,6 +873,9 @@ namespace AutoTerrainDesignations
                     LogDebug($"[ATD Farming Access] origin=({designation.OriginTileCoord.X},{designation.OriginTileCoord.Y}) has no adjacent pathable target tiles.");
                 }
             }
+
+            if (notReadyCount > 0)
+                LogDebug($"[ATD Farming Access] skipped {notReadyCount} designation(s) not ready for {(isFilling ? "filling" : "preparation")} vehicle work.");
 
             // If no designation passed the vanilla readiness check (IsReadyToMineNonAmphibious /
             // IsReadyToDumpNonAmphibious), vanilla will not assign any vehicle to this cluster
@@ -823,6 +1007,84 @@ namespace AutoTerrainDesignations
                     LogDebug($"[ATD Farming Access] cluster#{cluster.DebugId} reached through non-red edge at origin=({origin.X},{origin.Y}).");
                 cluster.HasAccess = true;
             }
+        }
+
+        /// <summary>
+        /// Merges spatially adjacent inaccessible clusters into super-clusters.
+        /// Two clusters are adjacent if any designation origin in one is exactly 4 tiles
+        /// (one designation width) from any designation origin in the other. The merged
+        /// super-cluster's full footprint is used for ramp generation, which causes the
+        /// ramp candidate search to exit at the true outer boundary of the group rather
+        /// than pointing inward toward a neighbour that is also being prepared.
+        /// </summary>
+        private static List<FarmingAccessCluster> MergeAdjacentInaccessibleClusters(
+            List<FarmingAccessCluster> inaccessibleClusters)
+        {
+            if (inaccessibleClusters.Count <= 1)
+                return inaccessibleClusters;
+
+            // Union-Find: parent[i] is the representative of cluster i.
+            int[] parent = new int[inaccessibleClusters.Count];
+            for (int i = 0; i < parent.Length; i++)
+                parent[i] = i;
+
+            int Find(int x)
+            {
+                while (parent[x] != x) { parent[x] = parent[parent[x]]; x = parent[x]; }
+                return x;
+            }
+
+            void Union(int a, int b)
+            {
+                int ra = Find(a), rb = Find(b);
+                if (ra != rb) parent[ra] = rb;
+            }
+
+            // Build a lookup: origin tile → cluster index.
+            var indexByOrigin = new Dictionary<Tile2i, int>();
+            for (int i = 0; i < inaccessibleClusters.Count; i++)
+                foreach (Tile2i origin in inaccessibleClusters[i].Origins)
+                    indexByOrigin[origin] = i;
+
+            // Merge clusters that share a designation boundary (4 tiles apart, cardinal).
+            var designationOffsets = new RelTile2i[]
+            {
+                new RelTile2i(4, 0), new RelTile2i(-4, 0),
+                new RelTile2i(0, 4), new RelTile2i(0, -4)
+            };
+
+            for (int i = 0; i < inaccessibleClusters.Count; i++)
+            {
+                foreach (Tile2i origin in inaccessibleClusters[i].Origins)
+                {
+                    foreach (RelTile2i offset in designationOffsets)
+                    {
+                        if (indexByOrigin.TryGetValue(origin + offset, out int j) && j != i)
+                            Union(i, j);
+                    }
+                }
+            }
+
+            // Build merged super-clusters, preserving insertion order of the first member.
+            var merged = new Dictionary<int, FarmingAccessCluster>();
+            var mergedOrder = new List<int>();
+            for (int i = 0; i < inaccessibleClusters.Count; i++)
+            {
+                int root = Find(i);
+                if (!merged.TryGetValue(root, out FarmingAccessCluster mc))
+                {
+                    mc = new FarmingAccessCluster { DebugId = inaccessibleClusters[root].DebugId, NeedsAccess = true };
+                    merged[root] = mc;
+                    mergedOrder.Add(root);
+                }
+                foreach (TerrainDesignation d in inaccessibleClusters[i].Designations)
+                    mc.Add(d);
+            }
+
+            if (merged.Count < inaccessibleClusters.Count)
+                LogDebug($"[ATD Farming Access] merged {inaccessibleClusters.Count} adjacent inaccessible clusters into {merged.Count} super-cluster(s).");
+
+            return mergedOrder.Select(root => merged[root]).ToList();
         }
 
         private static string FormatFarmingAccessClusterList(IEnumerable<FarmingAccessCluster> clusters)

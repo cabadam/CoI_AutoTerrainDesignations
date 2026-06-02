@@ -267,7 +267,8 @@ namespace AutoTerrainDesignations
             HashSet<Tile2i>? reservedRampTiles,
             bool useLocalSurfaceReference,
             bool allowExistingPlannedRampShortcut,
-            out Tile2i topRowTile)
+            out Tile2i topRowTile,
+            HashSet<Tile2i>? forbiddenApproachClusterOrigins = null)
         {
             topRowTile = default;
             s_lastRampFailureReason = null;
@@ -303,7 +304,7 @@ namespace AutoTerrainDesignations
                 LogDebug(string.Format("No usable {0}-wide ramp space found inside the tower area.", rampWidth));
             }
 
-            RampPlacementOutcome outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, candidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile);
+            RampPlacementOutcome outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, candidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile, forbiddenApproachClusterOrigins);
             if (outcome != RampPlacementOutcome.Failed)
             {
                 return outcome;
@@ -314,7 +315,7 @@ namespace AutoTerrainDesignations
             {
                 LogDebug(string.Format("Retrying ramp search with a sideways offset of {0} lane(s).", lateralRetryOffset));
                 List<RampCandidate> shiftedCandidates = CollectRampCandidates(tower, tileDepths, rampWidth, lateralRetryOffset, reservedRampTiles);
-                outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, shiftedCandidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile);
+                outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, shiftedCandidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile, forbiddenApproachClusterOrigins);
                 if (outcome != RampPlacementOutcome.Failed)
                 {
                     return outcome;
@@ -325,7 +326,7 @@ namespace AutoTerrainDesignations
             {
                 LogDebug("Retrying ramp search with width 1 as last resort.");
                 List<RampCandidate> narrowCandidates = CollectRampCandidates(tower, tileDepths, 1, 0, reservedRampTiles);
-                outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, narrowCandidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile);
+                outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, narrowCandidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile, forbiddenApproachClusterOrigins);
                 if (outcome != RampPlacementOutcome.Failed)
                 {
                     return outcome;
@@ -340,7 +341,7 @@ namespace AutoTerrainDesignations
             return RampPlacementOutcome.Failed;
         }
 
-        private static RampPlacementOutcome TryPlaceRampCandidates(IAreaManagingTower tower, Dict<Tile2i, int> tileDepths, Dict<Tile2i, int> cornerHeights, TerrainManager terrMgr, List<RampCandidate> candidates, TerrainDesignationProto rampProto, List<Tile2i>? placedRampOrigins, HashSet<Tile2i>? reservedRampTiles, bool useLocalSurfaceReference, out Tile2i topRowTile)
+        private static RampPlacementOutcome TryPlaceRampCandidates(IAreaManagingTower tower, Dict<Tile2i, int> tileDepths, Dict<Tile2i, int> cornerHeights, TerrainManager terrMgr, List<RampCandidate> candidates, TerrainDesignationProto rampProto, List<Tile2i>? placedRampOrigins, HashSet<Tile2i>? reservedRampTiles, bool useLocalSurfaceReference, out Tile2i topRowTile, HashSet<Tile2i>? forbiddenApproachClusterOrigins = null)
         {
             topRowTile = default;
             if (candidates.Count == 0)
@@ -372,6 +373,42 @@ namespace AutoTerrainDesignations
                 RampPlacementOutcome dryOutcome = TryPlaceRamp(tower, candidate, tileDepths, cornerHeights, terrMgr, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, dryRun: true, out Tile2i dryTopRowTile);
                 if (dryOutcome == RampPlacementOutcome.Failed)
                 {
+                    continue;
+                }
+
+                // If the mouth exits onto a non-ramp designation, the approach terrain will be
+                // modified after placement. That's fine when the designation's TARGET z at the
+                // shared edge matches the mouth's surface z (a "bridge" between designations) —
+                // such candidates are first-class. It's only a problem when the target z differs
+                // by more than 1 step from the mouth, which would strand the mouth above a cliff
+                // or below a mound after excavation/dumping completes. Those go to fallback.
+                if (RampMouthApproachTargetMismatches(terrMgr, dryTopRowTile, candidate.Direction,
+                        candidate.OreTiles.Length, rampProto))
+                {
+                    if (!hasFallback)
+                    {
+                        hasFallback = true;
+                        fallbackCandidate = candidate;
+                        fallbackTopRowTile = dryTopRowTile;
+                    }
+                    continue;
+                }
+
+                // Reject candidates whose mouth approach lands inside a designation belonging to
+                // a cluster that itself isn't yet connected to the tower. The BFS pathability
+                // check below traverses undug terrain inside such designations and falsely reports
+                // them reachable; once that cluster is excavated the approach becomes a cliff.
+                // Bridges to ALREADY-connected clusters (or to vanilla terrain) are still allowed.
+                if (forbiddenApproachClusterOrigins != null && forbiddenApproachClusterOrigins.Count > 0
+                    && RampMouthApproachInForbiddenCluster(dryTopRowTile, candidate.Direction,
+                        candidate.OreTiles.Length, rampProto, forbiddenApproachClusterOrigins))
+                {
+                    if (!hasFallback)
+                    {
+                        hasFallback = true;
+                        fallbackCandidate = candidate;
+                        fallbackTopRowTile = dryTopRowTile;
+                    }
                     continue;
                 }
 
@@ -868,11 +905,55 @@ namespace AutoTerrainDesignations
             }
 
             int towerReferenceHeight = GetSurfaceHeight(terrMgr, towerPos);
+
+            // If the mouth approach (one tile beyond the mouth row in the ramp direction) lands
+            // inside a non-ramp designation, the post-work z of that approach is the designation's
+            // TARGET z at the shared edge — not the current surface. Using current surface here
+            // would force the body to climb up to it (a wedge), even though the approach will
+            // ultimately be excavated/filled to its target. By switching the reference to the
+            // approach target, a face at the same target z produces a FLAT bridge body across
+            // the gap (designated to the same target). When face z == approach target z, the
+            // body stays at that z; when they differ, a partial climb still happens. No facing
+            // designation → behave as before (reference = tower surface).
+            int approachReferenceHeight = towerReferenceHeight;
+            bool hasApproachReference = TryGetMouthApproachTargetHeight(
+                candidate, rampProto, out int approachTargetZ);
+            if (hasApproachReference)
+                approachReferenceHeight = approachTargetZ;
+
             int[] currentBoundaryHeights = BuildEdgeBoundaryHeights(laneFirstEdgeHeights, laneSecondEdgeHeights);
             Tile2i[] currentTiles = (Tile2i[])candidate.RampTiles.Clone();
             List<RampTilePlan> plannedTiles = new List<RampTilePlan>();
             int maxSteps = Mathf.Max(tileDepths.Count + 32, 32);
             int maxAttachmentDepth = candidate.LaneAttachmentDepths.Max();
+
+            // Early-exit: if the ore face boundary already sits at the reference height, no ramp
+            // body is needed (flat terrain / same-Z case). The in-loop stop check fires only AFTER
+            // AddRampRowPlans, so without this guard one flat tile would always be placed.
+            // Exception: when bridging into another designation (hasApproachReference), we DO want
+            // that one flat tile placed — it's the bridge body that connects the two clusters.
+            if (!hasApproachReference)
+            {
+                bool atOrAboveTowerLevelInitial = true;
+                for (int c = 0; c < currentBoundaryHeights.Length; c++)
+                {
+                    if (currentBoundaryHeights[c] < approachReferenceHeight)
+                    { atOrAboveTowerLevelInitial = false; break; }
+                }
+                int[] initialRefHeights = useLocalSurfaceReference || atOrAboveTowerLevelInitial
+                    ? BuildSurfaceBoundaryHeights(terrMgr, candidate.RampTiles)
+                    : BuildConstantBoundaryHeights(laneCount, approachReferenceHeight);
+                if (BoundaryHeightsMatch(currentBoundaryHeights, initialRefHeights))
+                {
+                    if (!dryRun)
+                    {
+                        AddGapConnectorPlans(plannedTiles, candidate, laneFirstEdgeHeights, laneSecondEdgeHeights);
+                        ApplyRampPlan(plannedTiles, tileDepths, cornerHeights, rampProto, placedRampOrigins);
+                    }
+                    topRowTile = candidate.RampTiles[0];
+                    return RampPlacementOutcome.Crested;
+                }
+            }
 
             for (int rampStepIndex = 0; rampStepIndex < maxSteps; rampStepIndex++)
             {
@@ -897,18 +978,20 @@ namespace AutoTerrainDesignations
                     // heights so the ramp can continue rising to crest terrain that sits above
                     // the tower's elevation. The pathability check in TryPlaceRampCandidates
                     // ensures only accessible crested ramps are committed first.
+                    // Exception: when bridging into another designation (hasApproachReference),
+                    // we want a flat body at the approach z, NOT a wedge climbing back to surface.
                     bool atOrAboveTowerLevel = true;
                     for (int c = 0; c < currentBoundaryHeights.Length; c++)
                     {
-                        if (currentBoundaryHeights[c] < towerReferenceHeight)
+                        if (currentBoundaryHeights[c] < approachReferenceHeight)
                         {
                             atOrAboveTowerLevel = false;
                             break;
                         }
                     }
-                    referenceBoundaryHeights = atOrAboveTowerLevel
+                    referenceBoundaryHeights = (atOrAboveTowerLevel && !hasApproachReference)
                         ? BuildSurfaceBoundaryHeights(terrMgr, currentTiles)
-                        : BuildConstantBoundaryHeights(laneCount, towerReferenceHeight);
+                        : BuildConstantBoundaryHeights(laneCount, approachReferenceHeight);
                 }
                 int[] nextBoundaryHeights = new int[laneCount + 1];
                 for (int corner = 0; corner < currentBoundaryHeights.Length; corner++)
@@ -975,8 +1058,9 @@ namespace AutoTerrainDesignations
 
                 if (hasReadyMouthDesignation
                     || (isAboveSurfaceEverywhere
-                        && ((usesMiningReadiness && !reachedReferenceLevel)
-                            || (!usesMiningReadiness && !usesDumpingReadiness))))
+                        && (reachedReferenceLevel
+                            || (!usesMiningReadiness && !usesDumpingReadiness)))
+                    || (hasApproachReference && reachedReferenceLevel))
                 {
                     if (!dryRun)
                     {
@@ -1445,6 +1529,126 @@ namespace AutoTerrainDesignations
             // loops) do not accidentally treat newly placed ramp tiles as free.
             s_designationOriginsInArea.Add(tile);
             placedRampOrigins?.Add(tile);
+        }
+
+        /// <summary>
+        /// If the mouth-approach tile (one step beyond the candidate's mouth row, lane 0, in the
+        /// ramp direction) sits inside a non-ramp designation, returns that designation's TARGET
+        /// z at the shared edge corner. Used by <see cref="TryPlaceRamp"/> to flatten the body
+        /// when the approach is into another designation that will end up at the same z, turning
+        /// what would otherwise be a wedge into a trivial bridge.
+        /// </summary>
+        private static bool TryGetMouthApproachTargetHeight(
+            RampCandidate candidate, TerrainDesignationProto rampProto, out int approachTargetZ)
+        {
+            approachTargetZ = 0;
+            if (s_desigManager == null) return false;
+            Tile2i approachTile = Offset(candidate.RampTiles[0], candidate.Direction);
+            Option<TerrainDesignation> opt = s_desigManager.GetDesignationAt(approachTile);
+            if (!opt.HasValue) return false;
+            if (opt.Value.Prototype == rampProto) return false;
+            // Sample the target z at the shared-edge midpoint of the facing designation cell.
+            int sx, sy;
+            if (candidate.Direction.X > 0)      { sx = 0; sy = 2; }
+            else if (candidate.Direction.X < 0) { sx = 4; sy = 2; }
+            else if (candidate.Direction.Y > 0) { sx = 2; sy = 0; }
+            else                                { sx = 2; sy = 4; }
+            approachTargetZ = (int)Math.Round(
+                GetDesignationTargetHeightAt(opt.Value.Data, sx, sy).Value.ToFloat());
+            return true;
+        }
+
+        /// <summary>
+        /// Returns true if any lane's approach tile (one step beyond the ramp mouth) hosts a
+        /// non-ramp designation whose origin is in <paramref name="forbiddenOrigins"/>. Used by
+        /// the iterative cluster-by-cluster placement pass: clusters not yet connected to the
+        /// tower are forbidden as approach targets, because BFS through undug terrain inside
+        /// them currently reports reachable but the post-excavation result strands the mouth.
+        /// Approaches into already-connected clusters (not in the forbidden set) are allowed
+        /// and yield bridge candidates.
+        /// </summary>
+        private static bool RampMouthApproachInForbiddenCluster(
+            Tile2i topRowTile, Tile2i direction, int laneCount,
+            TerrainDesignationProto rampProto, HashSet<Tile2i> forbiddenOrigins)
+        {
+            if (s_desigManager == null) return false;
+            Tile2i perp = GetPerpendicular(direction);
+            for (int lane = 0; lane < laneCount; lane++)
+            {
+                Tile2i mouthTile = Offset(topRowTile, Scale(perp, lane));
+                Tile2i approachTile = Offset(mouthTile, direction);
+                Option<TerrainDesignation> opt = s_desigManager.GetDesignationAt(approachTile);
+                if (!opt.HasValue) continue;
+                if (opt.Value.Prototype == rampProto) continue;
+                if (forbiddenOrigins.Contains(opt.Value.OriginTileCoord)) return true;
+            }
+            return false;
+        }
+
+        /// <summary>
+        /// Returns true if any lane's approach tile (one step beyond the ramp mouth in
+        /// <paramref name="direction"/>) hosts a non-ramp designation whose TARGET height at the
+        /// shared edge differs from the mouth's surface height by more than one step. Such an
+        /// approach will become a cliff or mound after excavation/dumping completes, stranding
+        /// the mouth. Bridges between designations whose target z's match the mouth z are NOT
+        /// flagged — they are first-class candidates.
+        /// </summary>
+        private static bool RampMouthApproachTargetMismatches(
+            TerrainManager terrMgr, Tile2i topRowTile, Tile2i direction, int laneCount,
+            TerrainDesignationProto rampProto)
+        {
+            if (s_desigManager == null) return false;
+            Tile2i perp = GetPerpendicular(direction);
+            for (int lane = 0; lane < laneCount; lane++)
+            {
+                Tile2i mouthTile = Offset(topRowTile, Scale(perp, lane));
+                Tile2i approachTile = Offset(mouthTile, direction);
+                Option<TerrainDesignation> opt = s_desigManager.GetDesignationAt(approachTile);
+                if (!opt.HasValue) continue;
+                if (opt.Value.Prototype == rampProto) continue; // Adjacent ramp is fine.
+
+                // Determine the two shared-edge corners (world tile coords) and the target-height
+                // local sample positions inside the approach designation's 4×4 grid.
+                Tile2i mouthCornerA, mouthCornerB;
+                int approachAx, approachAy, approachBx, approachBy;
+                if (direction.X > 0)
+                {
+                    mouthCornerA = mouthTile + new RelTile2i(4, 0);
+                    mouthCornerB = mouthTile + new RelTile2i(4, 4);
+                    approachAx = 0; approachAy = 0;
+                    approachBx = 0; approachBy = 4;
+                }
+                else if (direction.X < 0)
+                {
+                    mouthCornerA = mouthTile;
+                    mouthCornerB = mouthTile + new RelTile2i(0, 4);
+                    approachAx = 4; approachAy = 0;
+                    approachBx = 4; approachBy = 4;
+                }
+                else if (direction.Y > 0)
+                {
+                    mouthCornerA = mouthTile + new RelTile2i(0, 4);
+                    mouthCornerB = mouthTile + new RelTile2i(4, 4);
+                    approachAx = 0; approachAy = 0;
+                    approachBx = 4; approachBy = 0;
+                }
+                else
+                {
+                    mouthCornerA = mouthTile;
+                    mouthCornerB = mouthTile + new RelTile2i(4, 0);
+                    approachAx = 0; approachAy = 4;
+                    approachBx = 4; approachBy = 4;
+                }
+
+                int mouthZA = GetSurfaceHeight(terrMgr, mouthCornerA);
+                int mouthZB = GetSurfaceHeight(terrMgr, mouthCornerB);
+                float targetZA = GetDesignationTargetHeightAt(opt.Value.Data, approachAx, approachAy).Value.ToFloat();
+                float targetZB = GetDesignationTargetHeightAt(opt.Value.Data, approachBx, approachBy).Value.ToFloat();
+
+                if (Math.Abs(mouthZA - targetZA) > 1f || Math.Abs(mouthZB - targetZB) > 1f)
+                    return true;
+            }
+            return false;
         }
 
         /// <summary>
