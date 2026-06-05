@@ -37,7 +37,6 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  TerrainPanelCollapsed = {AutoTerrainDesignationsMod.TerrainDesignationsPanelCollapsed}");
         sb.AppendLine($"  OrePanelCollapsed     = {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}");
         sb.AppendLine($"  FarmingPanelCollapsed = {AutoTerrainDesignationsMod.FarmingPanelCollapsed}");
-        sb.AppendLine($"  ReEnableFarmingOnLoad = {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}");
         sb.AppendLine($"  ExcavatorCompleteNtf  = {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}");
         sb.AppendLine($"  RampNotifications     = {AutoTerrainDesignationsMod.RampNotificationsEnabled}");
         sb.AppendLine($"  AutoReleaseWhenIdle   = {AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle}");
@@ -168,22 +167,6 @@ public sealed class AtdConsoleCommands
 
         AutoTerrainDesignationsMod.SetOreCompositionPanelCollapsed(parsed);
         return $"[ATD] OreCompositionPanelCollapsed set to {AutoTerrainDesignationsMod.OreCompositionPanelCollapsed}.";
-    }
-
-    [ConsoleCommand(false, false, "Sets whether ATD re-enables farming automation for apparent farmland towers on load (true/false, on/off, 1/0).", null)]
-    private string atdSetReEnableFarmingOnLoad(string value)
-    {
-        if (!TryParseConsoleBool(value, out bool parsed))
-            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
-
-        AutoTerrainDesignationsMod.SetReEnableFarmingOnLoad(parsed);
-        return $"[ATD] ReEnableFarmingOnLoad set to {AutoTerrainDesignationsMod.ReEnableFarmingOnLoad}.";
-    }
-
-    [ConsoleCommand(false, false, "Alias for atd_set_re_enable_farming_on_load.", null)]
-    private string atdReEnableFarmingOnLoad(string value)
-    {
-        return atdSetReEnableFarmingOnLoad(value);
     }
 
     [ConsoleCommand(false, false, "Sets whether vehicle depot excavator completion notifications are shown (true/false, on/off, 1/0).", null)]

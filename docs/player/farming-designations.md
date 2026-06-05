@@ -45,7 +45,7 @@ Vehicle access ramps are added automatically when excavators or trucks cannot re
 - Only **flat** level designations participate. Designations with different corner heights are ignored.
 - The tower's dump rules are modified only during filling, and only for that tower.
 - The mod never changes global (cross-tower) dump rules.
-- Automation state is not saved. After reloading a save, re-enable the toggle to resume.
+- Automation state is saved per tower. After reloading a save, towers restore their own farmland preparation automation setting.
 - If you manually remove or replace a tracked designation, the mod drops that tile from the session. Place a new flat level designation and the next scan will pick it up.
 - When extending a farming area adjacent to a previously completed area, the completed tiles are temporarily hidden to prevent dirt-spill conflicts with the new preparation work. They are restored together with the new tiles during the filling phase.
 - When extending a farming area, make sure new designations use the correct target height. If they do not match the adjacent area's height, new tiles may be treated as a separate session at the wrong elevation.
@@ -59,16 +59,6 @@ When enabled, all excavators and trucks assigned to the tower are automatically 
 - Released vehicles are tracked. When pending excavation work returns, ATD re-assigns those vehicles back to the tower.
 - Useful for sharing vehicles between multiple towers when excavation work is intermittent.
 - Default is off. The global default is controlled by **autoReleaseVehiclesWhenIdle** in `ATDsettings.json`.
-
-### `reEnableFarmingOnLoad` (ATDsettings.json)
-
-Controls whether ATD automatically re-enables farmland preparation automation after loading a save for towers whose managed designations look like farmland work: non-empty and made up entirely of flat level designations.
-
-Default: `true`
-
-Set this to `false` if you prefer to always enable the toggle manually after a reload, or to avoid unintended re-activation on towers with flat level designations that are not intended for farming.
-
-Can also be changed at runtime — see console commands below.
 
 ### `farmingPanelCollapsed` (ATDsettings.json)
 
@@ -86,7 +76,6 @@ Open the in-game developer console (default: **F8** or **~**) to run these.
 
 | Command | What it does |
 |---|---|
-| `atd_set_re_enable_farming_on_load true\|false` | Toggles the re-enable-on-load setting at runtime. Change is saved to `ATDsettings.json`. |
 | `atd_set_farming_panel_collapsed true\|false` | Sets whether the **Farmland preparation** panel starts collapsed by default. Change is saved to `ATDsettings.json`. |
 | `atd_farming_analyze_origin x y` | Prints the read-only farming analysis for the designation at tile (x, y). Coordinates snap to the 4×4 designation origin. Useful for checking why a tile is `Blocked` or `NeedsPreparation`. |
 | `atd_farming_dump_all` | Prints full session state and terrain analysis for every mine tower. Useful for a broad overview of what all towers are doing. |

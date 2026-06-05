@@ -178,5 +178,189 @@
   [
     "panel.ore.priority_set_tooltip",
     "Установить приоритет добычи башни на {0}."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Восстановить значения"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Восстанавливает глобальные значения мода по умолчанию для всех настроек."
+  ],
+  [
+    "settings.action.save_as_global",
+    "Сохранить глобально"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Сохраняет эти настройки глобально в ATDsettings.json."
+  ],
+  [
+    "settings.batch_size.label",
+    "Размер пакета"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Количество обозначений за кадр корутины, пока игра не на паузе. Диапазон: 1-200."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Выравнивание дна"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Сила выравнивания дна от 0 до 10. 0 отключает этот проход."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Используйте одну клавишу, например K, 1, F1, Space или Escape."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Режим угловых обозначений"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Клавиша для входа и переключения режима угловых обозначений, когда активен инструмент обозначения рельефа."
+  ],
+  [
+    "settings.heading.designations",
+    "Обозначения"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Горячие клавиши"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Настройки добычи по умолчанию"
+  ],
+  [
+    "settings.heading.notifications",
+    "Уведомления"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Панели по умолчанию"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Производительность сканирования"
+  ],
+  [
+    "settings.max_slope.label",
+    "Макс. уклон"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Максимально допустимая разница высот между соседними углами обозначения. Диапазон: 1-3."
+  ],
+  [
+    "settings.mod.name",
+    "Автоматические обозначения рельефа"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Уведомления о завершении экскаватора"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Показывает ли ATD зеленое уведомление, когда любое депо техники завершает экскаватор."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Уведомления о пандусах"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Показывает ли ATD предупреждения о доступе к пандусу на шахтных башнях."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Минимальная плотность дна"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Минимальная плотность руды от предыдущего дна руды до этого дна. Ограничена от 0 до 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Минимальный размер компонента"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Минимальное число соединенных клеток обозначения, чтобы кластер прошел фильтр изоляции."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Минимальная высота руды"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Минимальная толщина руды в клетках рельефа для этого уровня качества."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Минимальная чистота руды"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Минимальное отношение руды к столбцу для этого уровня качества. Ограничено от 0 до 1."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Панель ферм свернута"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Будет ли панель подготовки фермерской земли свернута по умолчанию."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Панель добычи свернута"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Будет ли панель обозначений добычи свернута по умолчанию."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Панель руды свернута"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Будет ли панель состава руды свернута по умолчанию."
+  ],
+  [
+    "settings.status.applied",
+    "Применено"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Недопустимая клавиша"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Встроенные значения по умолчанию восстановлены в памяти."
+  ],
+  [
+    "settings.status.save_failed",
+    "Не удалось сохранить; проверьте журнал."
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Сохранено в ATDsettings.json."
+  ],
+  [
+    "settings.tab.defaults",
+    "По умолчанию"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Настройки игры"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Качество руды"
   ]
 ]

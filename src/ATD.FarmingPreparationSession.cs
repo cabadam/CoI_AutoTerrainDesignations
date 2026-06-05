@@ -120,7 +120,6 @@ namespace AutoTerrainDesignations
             new HashSet<EntityId>();
         private static int s_farmingAutomationTickIndex;
         private static bool s_farmingTowerBootstrapCompleted;
-        private static bool s_farmingReEnableOnLoadPending;
         private static bool s_farmingSaveRestorePending;
         private const float FARMING_FILLING_STABILIZATION_SECONDS = 3f;
         private const long FARMING_PERF_LOG_THRESHOLD_MS = 25;
@@ -145,7 +144,6 @@ namespace AutoTerrainDesignations
             s_farmingAutomationDisabledTowerIds.Clear();
             s_farmingAutomationTickIndex = 0;
             s_farmingTowerBootstrapCompleted = false;
-            s_farmingReEnableOnLoadPending = false;
             s_farmingSaveRestorePending = false;
         }
 
@@ -200,11 +198,6 @@ namespace AutoTerrainDesignations
                 ? towerId.ToString()
                 : "?";
             s_log.Info($"[ATD Farming Perf] {operation}: {elapsedMs} ms, tower={towerText}, origins={session.Origins.Count}, {detail}");
-        }
-
-        internal static void RequestFarmingReEnableOnLoad(bool gameWasLoaded)
-        {
-            s_farmingReEnableOnLoadPending = gameWasLoaded && AutoTerrainDesignationsMod.ReEnableFarmingOnLoad;
         }
 
         internal static string StartFarmingPreparationForTower(IAreaManagingTower? tower)
@@ -530,7 +523,6 @@ namespace AutoTerrainDesignations
 
             s_farmingAutomationTickIndex++;
             BootstrapFarmingAutomationForExistingTowers();
-            ReEnableFarmingAutomationForLoadedFarmingTowers();
 
             foreach (var entry in s_farmingPreparationSessions.ToList())
             {
@@ -601,83 +593,6 @@ namespace AutoTerrainDesignations
             {
                 Log.Warning("[ATD Farming] Failed to bootstrap farming automation for existing towers: " + ex.Message);
             }
-        }
-
-        /// <summary>
-        /// On game load, infers whether farming automation should be active for a tower by examining
-        /// whether its designations look like farmland work (<see cref="LooksLikeLoadedFarmingTower"/>).
-        /// Skips any tower already present in <c>s_farmingAutomationDisabledTowerIds</c> or
-        /// <c>s_farmingPreparationSessions</c> (i.e. towers whose state was restored from the
-        /// persistence blob).
-        /// <para>
-        /// This is a fallback for saves that predate persistence (v0.4.2). Once old saves without
-        /// the <c>atdTowerSettingsStateJson</c> blob are no longer in circulation, this method and
-        /// its supporting state (<c>s_farmingReEnableOnLoadPending</c>, <c>ReEnableFarmingOnLoad</c>,
-        /// <c>RequestFarmingReEnableOnLoad</c>) can be removed.
-        /// </para>
-        /// </summary>
-        private static void ReEnableFarmingAutomationForLoadedFarmingTowers()
-        {
-            if (!s_farmingReEnableOnLoadPending)
-                return;
-
-            s_farmingReEnableOnLoadPending = false;
-            if (s_entitiesManager == null || s_desigManager == null || s_levelingProto == null)
-                return;
-
-            int enabled = 0;
-            try
-            {
-                foreach (MineTower tower in s_entitiesManager.GetAllEntitiesOfType<MineTower>())
-                {
-                    if (!TryGetTowerEntityId(tower, out EntityId towerId) || !towerId.IsValid)
-                        continue;
-
-                    if (s_farmingAutomationDisabledTowerIds.Contains(towerId))
-                        continue;
-
-                    if (s_farmingPreparationSessions.TryGetValue(towerId, out FarmingPreparationSession existingSession)
-                        && existingSession.Enabled)
-                    {
-                        existingSession.Tower = tower;
-                        continue;
-                    }
-
-                    if (!LooksLikeLoadedFarmingTower(tower))
-                        continue;
-
-                    FarmingPreparationSession session = GetOrCreateFarmingPreparationSession(towerId);
-                    session.Tower = tower;
-                    session.Enabled = true;
-                    session.Active = true;
-                    session.AutoStartFilling = true;
-                    session.LastReport = "[ATD Farming] Farming automation re-enabled on load for apparent farmland designations.";
-                    enabled++;
-                }
-
-                if (enabled > 0)
-                    Log.Info($"[ATD Farming] Re-enabled farming automation on load for {enabled} tower(s).");
-            }
-            catch (System.Exception ex)
-            {
-                Log.Warning("[ATD Farming] Failed to re-enable farming automation on load: " + ex.Message);
-            }
-        }
-
-        private static bool LooksLikeLoadedFarmingTower(IAreaManagingTower tower)
-        {
-            bool hasDesignation = false;
-            foreach (TerrainDesignation designation in tower.ManagedDesignations)
-            {
-                hasDesignation = true;
-                if (!IsLevelingDesignation(designation))
-                    return false;
-
-                if (!TryGetFlatTargetHeight(designation.Data, out _))
-                    return false;
-            }
-
-            return hasDesignation;
         }
 
         private static bool CanStartTowerLevelFilling(FarmingPreparationSession session)

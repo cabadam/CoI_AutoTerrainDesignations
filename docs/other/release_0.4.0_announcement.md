@@ -59,7 +59,7 @@ ATD will also load any additional language file added under `translations/`, so 
 
 Only flat level designations participate. Corner/sloped designations are ignored by the farming automation.
 
-Important: with the default settings, when this version loads a save, any mine tower that contains only flat leveling designations may be treated as farmland work and start Farmland Preparation Automation automatically. If you use flat level designations for non-farming projects, check those towers after loading or turn off `reEnableFarmingOnLoad`.
+Important: in this version, when loading a save, any mine tower that contains only flat leveling designations may be treated as farmland work and start Farmland Preparation Automation automatically. In current ATD versions, farming automation restores from persisted per-tower state instead of this inference.
 
 ## 📦 Compatibility
 

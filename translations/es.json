@@ -178,5 +178,189 @@
   [
     "panel.ore.priority_set_tooltip",
     "Establecer la prioridad de minería de la torre en {0}."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Restaurar predeterminados"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Restaura los valores globales predeterminados del mod para todos los ajustes."
+  ],
+  [
+    "settings.action.save_as_global",
+    "Guardar como global"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Guarda estos ajustes globalmente en ATDsettings.json."
+  ],
+  [
+    "settings.batch_size.label",
+    "Tamaño de lote"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Designaciones colocadas por fotograma de corrutina mientras el juego no está en pausa. Rango: 1-200."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Aplanado del fondo"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Fuerza del aplanado del fondo de 0 a 10. 0 desactiva la pasada de aplanado."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Usa una sola tecla, como K, 1, F1, Space o Escape."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Modo de designaciones de esquina"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Tecla para entrar y alternar el modo de designaciones de esquina mientras una herramienta de designación de terreno está activa."
+  ],
+  [
+    "settings.heading.designations",
+    "Designaciones"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Atajos de teclado"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Predeterminados de minería"
+  ],
+  [
+    "settings.heading.notifications",
+    "Notificaciones"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Predeterminados de paneles"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Rendimiento del escaneo"
+  ],
+  [
+    "settings.max_slope.label",
+    "Pendiente máxima"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Diferencia máxima de altura permitida entre esquinas de designación adyacentes. Rango: 1-3."
+  ],
+  [
+    "settings.mod.name",
+    "Designaciones automáticas de terreno"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Notificaciones de excavadora terminada"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Si ATD muestra una notificación verde cuando un depósito de vehículos completa una excavadora."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Notificaciones de advertencia de rampa"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Si ATD muestra advertencias de acceso por rampa en las torres mineras."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Densidad mínima del fondo"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Densidad mínima de mineral desde el fondo de mineral anterior hasta este fondo. Limitada de 0 a 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Tamaño mínimo de componente"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Cantidad mínima de casillas de designación conectadas para que un grupo sobreviva al filtro de aislamiento."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Altura mínima del mineral"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Espesor mínimo del mineral en casillas de terreno para este nivel de calidad."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Pureza mínima del mineral"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Relación mínima mineral/columna para este nivel de calidad. Limitada de 0 a 1."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Panel agrícola contraído"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Si el panel de preparación de tierras de cultivo empieza contraído de forma predeterminada."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Panel de minería contraído"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Si el panel de designaciones de minería empieza contraído de forma predeterminada."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Panel de mineral contraído"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Si el panel de composición del mineral empieza contraído de forma predeterminada."
+  ],
+  [
+    "settings.status.applied",
+    "Aplicado"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Tecla no válida"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Predeterminados integrados restaurados en memoria."
+  ],
+  [
+    "settings.status.save_failed",
+    "Error al guardar; revisa el registro."
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Guardado en ATDsettings.json."
+  ],
+  [
+    "settings.tab.defaults",
+    "Predeterminados"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Ajustes de juego"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Calidad del mineral"
   ]
 ]

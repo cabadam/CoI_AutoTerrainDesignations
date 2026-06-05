@@ -178,5 +178,189 @@
   [
     "panel.ore.priority_set_tooltip",
     "Definir a prioridade de mineração da torre como {0}."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Restaurar padrões"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Restaura os padrões globais do mod para todas as configurações."
+  ],
+  [
+    "settings.action.save_as_global",
+    "Salvar como global"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Salva estas configurações globalmente em ATDsettings.json."
+  ],
+  [
+    "settings.batch_size.label",
+    "Tamanho do lote"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Designações colocadas por quadro de corrotina enquanto o jogo não está pausado. Intervalo: 1-200."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Nivelamento do fundo"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Força do nivelamento do fundo de 0 a 10. 0 desativa a etapa de nivelamento."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Use uma única tecla, como K, 1, F1, Space ou Escape."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Modo de designações de canto"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Tecla usada para entrar e alternar o modo de designações de canto enquanto uma ferramenta de designação de terreno está ativa."
+  ],
+  [
+    "settings.heading.designations",
+    "Designações"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Atalhos de teclado"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Padrões de mineração"
+  ],
+  [
+    "settings.heading.notifications",
+    "Notificações"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Padrões dos painéis"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Desempenho da varredura"
+  ],
+  [
+    "settings.max_slope.label",
+    "Inclinação máxima"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Diferença máxima de altura permitida entre cantos de designação adjacentes. Intervalo: 1-3."
+  ],
+  [
+    "settings.mod.name",
+    "Designações automáticas de terreno"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Notificações de escavadeira concluída"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Se o ATD mostra uma notificação verde quando qualquer depósito de veículos conclui uma escavadeira."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Notificações de aviso de rampa"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Se o ATD mostra avisos de acesso por rampa nas torres de mineração."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Densidade mínima do fundo"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Densidade mínima de minério do fundo anterior até este fundo. Limitada de 0 a 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Tamanho mínimo do componente"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Número mínimo de blocos de designação conectados para que um grupo sobreviva ao filtro de isolamento."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Altura mínima do minério"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Espessura mínima do minério em blocos de terreno para este nível de qualidade."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Pureza mínima do minério"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Proporção mínima minério/coluna para este nível de qualidade. Limitada de 0 a 1."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Painel agrícola recolhido"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Se o painel de preparação de lavoura começa recolhido por padrão."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Painel de mineração recolhido"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Se o painel de designações de mineração começa recolhido por padrão."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Painel de minério recolhido"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Se o painel de composição do minério começa recolhido por padrão."
+  ],
+  [
+    "settings.status.applied",
+    "Aplicado"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Tecla inválida"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Padrões internos restaurados na memória."
+  ],
+  [
+    "settings.status.save_failed",
+    "Falha ao salvar; verifique o log."
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Salvo em ATDsettings.json."
+  ],
+  [
+    "settings.tab.defaults",
+    "Padrões"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Configurações do jogo"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Qualidade do minério"
   ]
 ]

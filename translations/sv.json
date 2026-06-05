@@ -178,5 +178,189 @@
   [
     "panel.ore.priority_set_tooltip",
     "Sätt tornets gruvprioritet till {0}."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Återställ standard"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Återställer moddens globala standardvärden för alla inställningar."
+  ],
+  [
+    "settings.action.save_as_global",
+    "Spara globalt"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Sparar dessa inställningar globalt i ATDsettings.json."
+  ],
+  [
+    "settings.batch_size.label",
+    "Batchstorlek"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Markeringar som placeras per coroutine-bildruta när spelet inte är pausat. Intervall: 1-200."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Bottenutjämning"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Styrka för bottenutjämning från 0 till 10. 0 stänger av utjämningspasset."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Använd en enskild tangent, till exempel K, 1, F1, Space eller Escape."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Läge för hörnmarkeringar"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Tangent för att gå in i och växla läget för hörnmarkeringar när ett terrängmarkeringsverktyg är aktivt."
+  ],
+  [
+    "settings.heading.designations",
+    "Markeringar"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Kortkommandon"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Brytningsstandard"
+  ],
+  [
+    "settings.heading.notifications",
+    "Aviseringar"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Panelstandard"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Skanningsprestanda"
+  ],
+  [
+    "settings.max_slope.label",
+    "Maxlutning"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Största tillåtna höjdskillnad mellan intilliggande markeringshörn. Intervall: 1-3."
+  ],
+  [
+    "settings.mod.name",
+    "Automatiska terrängmarkeringar"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Aviseringar för färdiga grävmaskiner"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Om ATD visar en grön avisering när en fordonsdepå färdigställer en grävmaskin."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Rampvarningar"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Om ATD visar varningar för rampåtkomst på gruvtorn."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Minsta bottendensitet"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Minsta malmdensitet från föregående malmbotten till denna malmbotten. Begränsad från 0 till 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Minsta komponentstorlek"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Minsta antal sammanhängande markeringsrutor för att ett kluster ska överleva isoleringsfiltret."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Minsta malmhöjd"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Minsta malmtjocklek i terrängrutor för den här kvalitetsnivån."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Minsta malmrenhet"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Minsta förhållande malm/kolumn för den här kvalitetsnivån. Begränsad från 0 till 1."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Jordbrukspanel hopfälld"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Om panelen för jordbruksförberedelse ska börja hopfälld som standard."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Brytningspanel hopfälld"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Om panelen för brytningsmarkeringar ska börja hopfälld som standard."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Malmpanel hopfälld"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Om panelen för malmsammansättning ska börja hopfälld som standard."
+  ],
+  [
+    "settings.status.applied",
+    "Tillämpat"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Ogiltig tangent"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Inbyggda standardvärden återställda i minnet."
+  ],
+  [
+    "settings.status.save_failed",
+    "Det gick inte att spara; kontrollera loggen."
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Sparat i ATDsettings.json."
+  ],
+  [
+    "settings.tab.defaults",
+    "Standardvärden"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Spelinställningar"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Malmkvalitet"
   ]
 ]

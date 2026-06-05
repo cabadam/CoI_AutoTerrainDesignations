@@ -178,5 +178,189 @@
   [
     "panel.ore.priority_set_tooltip",
     "Set tower mining priority to {0}."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Restore defaults"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Restore the global mod defaults for all settings."
+  ],
+  [
+    "settings.action.save_as_global",
+    "Save as global"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Save these settings globally in ATDsettings.json."
+  ],
+  [
+    "settings.batch_size.label",
+    "Batch size"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Designations placed per coroutine frame while the game is unpaused. Range: 1-200."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Bottom flattening"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Bottom-flattening strength from 0 to 10. 0 disables the bottom-flattening pass."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Use a single key such as K, 1, F1, Space, or Escape."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Corner designations mode"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Key used to enter and toggle corner designation mode while a terrain designation tool is active."
+  ],
+  [
+    "settings.heading.designations",
+    "Designations"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Keyboard shortcuts"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Mining defaults"
+  ],
+  [
+    "settings.heading.notifications",
+    "Notifications"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Panel defaults"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Scan performance"
+  ],
+  [
+    "settings.max_slope.label",
+    "Max slope"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Maximum allowed height difference between adjacent designation corners. Range: 1-3."
+  ],
+  [
+    "settings.mod.name",
+    "Auto Terrain Designations"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Excavator completion notifications"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Whether ATD shows a green notification when any vehicle depot completes an excavator."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Ramp warning notifications"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Whether ATD shows ramp access warning notifications on mine towers."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Minimum bottom density"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Minimum ore density from the previous ore bottom to this ore bottom. Clamped from 0 to 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Minimum component size"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Minimum connected designation tile count for a cluster to survive the isolation filter."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Minimum ore height"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Minimum ore thickness in terrain tiles for this quality level."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Minimum ore purity"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Minimum ore-to-column ratio for this quality level. Clamped from 0 to 1."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Farming panel collapsed"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Whether the Farmland preparation panel starts collapsed by default."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Mining panel collapsed"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Whether the Mining designations panel starts collapsed by default."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Ore panel collapsed"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Whether the Ore composition panel starts collapsed by default."
+  ],
+  [
+    "settings.status.applied",
+    "Applied"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Invalid key"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Restored built-in defaults in memory."
+  ],
+  [
+    "settings.status.save_failed",
+    "Save failed; check the log."
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Saved to ATDsettings.json."
+  ],
+  [
+    "settings.tab.defaults",
+    "Defaults"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Game settings"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Ore quality"
   ]
 ]

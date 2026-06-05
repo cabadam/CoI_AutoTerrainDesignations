@@ -392,7 +392,7 @@ A line is emitted only when the measured duration exceeds `FARMING_PERF_LOG_THRE
 
 The extraction script `tools/extract-atd-farming-perf.ps1` filters `[ATD Farming Perf]` lines from the newest (or a specified) log file.
 
-**On load**: if `ReEnableFarmingOnLoad` is enabled in settings, any tower whose managed designations are all flat level designations has farming automation re-enabled automatically.
+**On load**: farming automation restores from the per-tower persisted state in the vanilla config-backed tower settings blob. ATD no longer infers farming automation from flat level designations alone.
 
 ---
 

@@ -178,5 +178,189 @@
   [
     "panel.ore.priority_set_tooltip",
     "Imposta la priorità di estrazione della torre su {0}."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Ripristina predefiniti"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Ripristina i valori globali predefiniti del mod per tutte le impostazioni."
+  ],
+  [
+    "settings.action.save_as_global",
+    "Salva come globale"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Salva queste impostazioni globalmente in ATDsettings.json."
+  ],
+  [
+    "settings.batch_size.label",
+    "Dimensione batch"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Designazioni piazzate per frame di coroutine mentre il gioco non è in pausa. Intervallo: 1-200."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Spianamento del fondo"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Forza dello spianamento del fondo da 0 a 10. 0 disattiva il passaggio di spianamento."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Usa un solo tasto, come K, 1, F1, Space o Escape."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Modalità designazioni angolari"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Tasto per entrare e alternare la modalità designazioni angolari mentre è attivo uno strumento di designazione del terreno."
+  ],
+  [
+    "settings.heading.designations",
+    "Designazioni"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Scorciatoie da tastiera"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Predefiniti minerari"
+  ],
+  [
+    "settings.heading.notifications",
+    "Notifiche"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Predefiniti dei pannelli"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Prestazioni scansione"
+  ],
+  [
+    "settings.max_slope.label",
+    "Pendenza max"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Differenza massima di altezza consentita tra angoli di designazione adiacenti. Intervallo: 1-3."
+  ],
+  [
+    "settings.mod.name",
+    "Designazioni automatiche del terreno"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Notifiche completamento escavatore"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Se ATD mostra una notifica verde quando un deposito veicoli completa un escavatore."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Notifiche avviso rampa"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Se ATD mostra avvisi di accesso rampa sulle torri minerarie."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Densità minima del fondo"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Densità minima del minerale dal fondo precedente a questo fondo. Limitata da 0 a 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Dimensione minima componente"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Numero minimo di caselle di designazione connesse perché un gruppo superi il filtro di isolamento."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Altezza minima minerale"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Spessore minimo del minerale in caselle di terreno per questo livello di qualità."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Purezza minima minerale"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Rapporto minimo minerale/colonna per questo livello di qualità. Limitato da 0 a 1."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Pannello agricolo chiuso"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Se il pannello di preparazione dei terreni agricoli parte chiuso per impostazione predefinita."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Pannello minerario chiuso"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Se il pannello delle designazioni minerarie parte chiuso per impostazione predefinita."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Pannello minerale chiuso"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Se il pannello composizione del minerale parte chiuso per impostazione predefinita."
+  ],
+  [
+    "settings.status.applied",
+    "Applicato"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Tasto non valido"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Predefiniti integrati ripristinati in memoria."
+  ],
+  [
+    "settings.status.save_failed",
+    "Salvataggio non riuscito; controlla il log."
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Salvato in ATDsettings.json."
+  ],
+  [
+    "settings.tab.defaults",
+    "Predefiniti"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Impostazioni di gioco"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Qualità del minerale"
   ]
 ]

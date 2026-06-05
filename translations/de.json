@@ -178,5 +178,189 @@
   [
     "panel.ore.priority_set_tooltip",
     "Abbaupriorität des Turms auf {0} setzen."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Standardwerte wiederherstellen"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Stellt die globalen Mod-Standardwerte für alle Einstellungen wieder her."
+  ],
+  [
+    "settings.action.save_as_global",
+    "Global speichern"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Speichert diese Einstellungen global in ATDsettings.json."
+  ],
+  [
+    "settings.batch_size.label",
+    "Stapelgröße"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Markierungen pro Coroutine-Frame, während das Spiel nicht pausiert ist. Bereich: 1-200."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Sohle ebnen"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Stärke der Sohlenglättung von 0 bis 10. 0 deaktiviert den Glättungsdurchlauf."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Nutze eine einzelne Taste wie K, 1, F1, Space oder Escape."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Eckmarkierungsmodus"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Taste zum Aktivieren und Umschalten des Eckmarkierungsmodus, während ein Geländemarkierungswerkzeug aktiv ist."
+  ],
+  [
+    "settings.heading.designations",
+    "Markierungen"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Tastenkürzel"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Abbau-Standardwerte"
+  ],
+  [
+    "settings.heading.notifications",
+    "Benachrichtigungen"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Panel-Standardwerte"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Scan-Leistung"
+  ],
+  [
+    "settings.max_slope.label",
+    "Max. Neigung"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Maximal erlaubter Höhenunterschied zwischen benachbarten Markierungsecken. Bereich: 1-3."
+  ],
+  [
+    "settings.mod.name",
+    "Automatische Geländemarkierungen"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Bagger-Fertigstellungsbenachrichtigungen"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Ob ATD eine grüne Benachrichtigung zeigt, wenn ein Fahrzeugdepot einen Bagger fertigstellt."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Rampenwarnungen"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Ob ATD Rampenzugangs-Warnungen an Minentürmen anzeigt."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Minimale Sohldichte"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Minimale Erzdichte vom vorherigen Erzboden bis zu diesem Erzboden. Auf 0 bis 1 begrenzt."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Minimale Komponentengröße"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Minimale Anzahl verbundener Markierungskacheln, damit ein Cluster den Isolationsfilter übersteht."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Minimale Erzhöhe"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Minimale Erzdicke in Geländekacheln für diese Qualitätsstufe."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Minimale Erzreinheit"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Minimales Erz-zu-Spalte-Verhältnis für diese Qualitätsstufe. Auf 0 bis 1 begrenzt."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Farm-Panel eingeklappt"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Ob das Panel für Ackerlandvorbereitung standardmäßig eingeklappt startet."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Abbau-Panel eingeklappt"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Ob das Panel für Abbaumarkierungen standardmäßig eingeklappt startet."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Erz-Panel eingeklappt"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Ob das Erz-Zusammensetzungs-Panel standardmäßig eingeklappt startet."
+  ],
+  [
+    "settings.status.applied",
+    "Angewendet"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Ungültige Taste"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Eingebaute Standardwerte im Speicher wiederhergestellt."
+  ],
+  [
+    "settings.status.save_failed",
+    "Speichern fehlgeschlagen; prüfe das Log."
+  ],
+  [
+    "settings.status.saved_to_file",
+    "In ATDsettings.json gespeichert."
+  ],
+  [
+    "settings.tab.defaults",
+    "Standardwerte"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Spieleinstellungen"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Erzqualität"
   ]
 ]

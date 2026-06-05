@@ -87,6 +87,102 @@ namespace AutoTerrainDesignations
             Loc.Str("panel.designations.scanning_filter.tooltip", "Force the scan to target a specific product. None = useful products first, then debris, then dirt.", "Tooltip for the scanning filter ore picker.");
 
         // ------------------------------------------------------------------ //
+        // Mod settings window
+        // ------------------------------------------------------------------ //
+        public static LocStr SettingsModName =
+            Loc.Str("settings.mod.name", "Auto Terrain Designations", "Mod name in the shared Mod Settings window.");
+        public static LocStr SettingsTabDefaults =
+            Loc.Str("settings.tab.defaults", "Defaults", "Settings tab title for ATD defaults.");
+        public static LocStr SettingsTabGameSettings =
+            Loc.Str("settings.tab.game_settings", "Game settings", "Settings tab title for ATD game settings.");
+        public static LocStr SettingsTabOreQuality =
+            Loc.Str("settings.tab.ore_quality", "Ore quality", "Settings tab title for ATD ore quality settings.");
+        public static LocStr SettingsHeadingMiningDefaults =
+            Loc.Str("settings.heading.mining_defaults", "Mining defaults", "Settings section heading for mining defaults.");
+        public static LocStr SettingsHeadingPanelDefaults =
+            Loc.Str("settings.heading.panel_defaults", "Panel defaults", "Settings section heading for panel defaults.");
+        public static LocStr SettingsHeadingDesignations =
+            Loc.Str("settings.heading.designations", "Designations", "Settings section heading for designation behavior.");
+        public static LocStr SettingsHeadingScanPerformance =
+            Loc.Str("settings.heading.scan_performance", "Scan performance", "Settings section heading for scan performance.");
+        public static LocStr SettingsHeadingKeyboardShortcuts =
+            Loc.Str("settings.heading.keyboard_shortcuts", "Keyboard shortcuts", "Settings section heading for keyboard shortcuts.");
+        public static LocStr SettingsHeadingNotifications =
+            Loc.Str("settings.heading.notifications", "Notifications", "Settings section heading for notification settings.");
+        public static LocStr SettingsMaxSlopeLabel =
+            Loc.Str("settings.max_slope.label", "Max slope", "Settings row label for maximum designation slope.");
+        public static LocStr SettingsMaxSlopeTooltip =
+            Loc.Str("settings.max_slope.tooltip", "Maximum allowed height difference between adjacent designation corners. Range: 1-3.", "Tooltip for maximum designation slope setting.");
+        public static LocStr SettingsBottomFlatteningLabel =
+            Loc.Str("settings.bottom_flattening.label", "Bottom flattening", "Settings row label for bottom flattening.");
+        public static LocStr SettingsBottomFlatteningTooltip =
+            Loc.Str("settings.bottom_flattening.tooltip", "Bottom-flattening strength from 0 to 10. 0 disables the bottom-flattening pass.", "Tooltip for bottom flattening setting.");
+        public static LocStr SettingsBatchSizeLabel =
+            Loc.Str("settings.batch_size.label", "Batch size", "Settings row label for scan batch size.");
+        public static LocStr SettingsBatchSizeTooltip =
+            Loc.Str("settings.batch_size.tooltip", "Designations placed per coroutine frame while the game is unpaused. Range: 1-200.", "Tooltip for scan batch size setting.");
+        public static LocStr SettingsMiningPanelCollapsedLabel =
+            Loc.Str("settings.panel_defaults.mining_collapsed.label", "Mining panel collapsed", "Settings toggle label for default mining panel collapsed state.");
+        public static LocStr SettingsMiningPanelCollapsedTooltip =
+            Loc.Str("settings.panel_defaults.mining_collapsed.tooltip", "Whether the Mining designations panel starts collapsed by default.", "Tooltip for default mining panel collapsed state.");
+        public static LocStr SettingsOrePanelCollapsedLabel =
+            Loc.Str("settings.panel_defaults.ore_collapsed.label", "Ore panel collapsed", "Settings toggle label for default ore panel collapsed state.");
+        public static LocStr SettingsOrePanelCollapsedTooltip =
+            Loc.Str("settings.panel_defaults.ore_collapsed.tooltip", "Whether the Ore composition panel starts collapsed by default.", "Tooltip for default ore panel collapsed state.");
+        public static LocStr SettingsFarmingPanelCollapsedLabel =
+            Loc.Str("settings.panel_defaults.farming_collapsed.label", "Farming panel collapsed", "Settings toggle label for default farming panel collapsed state.");
+        public static LocStr SettingsFarmingPanelCollapsedTooltip =
+            Loc.Str("settings.panel_defaults.farming_collapsed.tooltip", "Whether the Farmland preparation panel starts collapsed by default.", "Tooltip for default farming panel collapsed state.");
+        public static LocStr SettingsExcavatorNotificationsLabel =
+            Loc.Str("settings.notifications.excavator_completion.label", "Excavator completion notifications", "Settings toggle label for excavator completion notifications.");
+        public static LocStr SettingsExcavatorNotificationsTooltip =
+            Loc.Str("settings.notifications.excavator_completion.tooltip", "Whether ATD shows a green notification when any vehicle depot completes an excavator.", "Tooltip for excavator completion notifications.");
+        public static LocStr SettingsRampNotificationsLabel =
+            Loc.Str("settings.notifications.ramp_warning.label", "Ramp warning notifications", "Settings toggle label for ramp warning notifications.");
+        public static LocStr SettingsRampNotificationsTooltip =
+            Loc.Str("settings.notifications.ramp_warning.tooltip", "Whether ATD shows ramp access warning notifications on mine towers.", "Tooltip for ramp warning notifications.");
+        public static LocStr SettingsMinOreHeightLabel =
+            Loc.Str("settings.ore_quality.min_ore_height.label", "Minimum ore height", "Settings row label for minimum ore height threshold.");
+        public static LocStr SettingsMinOreHeightTooltip =
+            Loc.Str("settings.ore_quality.min_ore_height.tooltip", "Minimum ore thickness in terrain tiles for this quality level.", "Tooltip for minimum ore height threshold.");
+        public static LocStr SettingsMinBottomDensityLabel =
+            Loc.Str("settings.ore_quality.min_bottom_density.label", "Minimum bottom density", "Settings row label for minimum bottom density threshold.");
+        public static LocStr SettingsMinBottomDensityTooltip =
+            Loc.Str("settings.ore_quality.min_bottom_density.tooltip", "Minimum ore density from the previous ore bottom to this ore bottom. Clamped from 0 to 1.", "Tooltip for minimum bottom density threshold.");
+        public static LocStr SettingsMinOrePurityLabel =
+            Loc.Str("settings.ore_quality.min_ore_purity.label", "Minimum ore purity", "Settings row label for minimum ore purity threshold.");
+        public static LocStr SettingsMinOrePurityTooltip =
+            Loc.Str("settings.ore_quality.min_ore_purity.tooltip", "Minimum ore-to-column ratio for this quality level. Clamped from 0 to 1.", "Tooltip for minimum ore purity threshold.");
+        public static LocStr SettingsMinComponentSizeLabel =
+            Loc.Str("settings.ore_quality.min_component_size.label", "Minimum component size", "Settings row label for minimum component size threshold.");
+        public static LocStr SettingsMinComponentSizeTooltip =
+            Loc.Str("settings.ore_quality.min_component_size.tooltip", "Minimum connected designation tile count for a cluster to survive the isolation filter.", "Tooltip for minimum component size threshold.");
+        public static LocStr SettingsCornerModeLabel =
+            Loc.Str("settings.corner_mode.label", "Corner designations mode", "Settings row label for corner designations mode shortcut.");
+        public static LocStr SettingsCornerModeTooltip =
+            Loc.Str("settings.corner_mode.tooltip", "Key used to enter and toggle corner designation mode while a terrain designation tool is active.", "Tooltip for corner designations mode shortcut.");
+        public static LocStr SettingsCornerModeInvalidTooltip =
+            Loc.Str("settings.corner_mode.invalid_tooltip", "Use a single key such as K, 1, F1, Space, or Escape.", "Validation error tooltip for corner designations mode shortcut.");
+        public static LocStr SettingsApplied =
+            Loc.Str("settings.status.applied", "Applied", "Status message after applying a setting.");
+        public static LocStr SettingsInvalidKey =
+            Loc.Str("settings.status.invalid_key", "Invalid key", "Status message for an invalid shortcut key.");
+        public static LocStr SettingsSaveAsGlobal =
+            Loc.Str("settings.action.save_as_global", "Save as global", "Button label for saving settings globally.");
+        public static LocStr SettingsSaveAsGlobalTooltip =
+            Loc.Str("settings.action.save_as_global.tooltip", "Save these settings globally in ATDsettings.json.", "Tooltip for saving settings globally.");
+        public static LocStr SettingsRestoreDefaults =
+            Loc.Str("settings.action.restore_defaults", "Restore defaults", "Button label for restoring default settings.");
+        public static LocStr SettingsRestoreDefaultsTooltip =
+            Loc.Str("settings.action.restore_defaults.tooltip", "Restore the global mod defaults for all settings.", "Tooltip for restoring default settings.");
+        public static LocStr SettingsSavedToFile =
+            Loc.Str("settings.status.saved_to_file", "Saved to ATDsettings.json.", "Status message after settings are saved.");
+        public static LocStr SettingsSaveFailed =
+            Loc.Str("settings.status.save_failed", "Save failed; check the log.", "Status message after settings save fails.");
+        public static LocStr SettingsRestoredDefaults =
+            Loc.Str("settings.status.restored_defaults", "Restored built-in defaults in memory.", "Status message after settings are restored to defaults.");
+
+        // ------------------------------------------------------------------ //
         // Ore composition panel
         // ------------------------------------------------------------------ //
         public static LocStr OreTitle =

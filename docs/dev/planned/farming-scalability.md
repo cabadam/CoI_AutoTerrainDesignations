@@ -39,6 +39,6 @@ This should wait until lower-risk cache work is verified.
 
 ## Non-goals
 
-- Do not disable `reEnableFarmingOnLoad` by default.
+- Preserve per-tower farming automation state on load; do not infer automation from flat level designations alone.
 - Do not change user-facing farming behavior beyond reducing repeated expensive work.
 - Do not change designation semantics or tower dump-rule timing unless profiling proves it is needed.

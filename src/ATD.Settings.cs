@@ -89,6 +89,41 @@ namespace AutoTerrainDesignations
 
         internal static int PurityLevelCount => s_minOreHeightByLevel.Length;
 
+        internal static int BatchSize => s_batchSize;
+
+        internal static void SetBatchSize(int value)
+        {
+            s_batchSize = ClampBatchSize(value);
+        }
+
+        internal static float GetMinOreHeightForLevel(int level)
+        {
+            return level >= 0 && level < s_minOreHeightByLevel.Length
+                ? s_minOreHeightByLevel[level]
+                : 0f;
+        }
+
+        internal static float GetMinBottomOreDensityForLevel(int level)
+        {
+            return level >= 0 && level < s_minBottomOreDensityByLevel.Length
+                ? s_minBottomOreDensityByLevel[level]
+                : 0f;
+        }
+
+        internal static float GetMinOrePurityForLevel(int level)
+        {
+            return level >= 0 && level < s_minOrePurityByLevel.Length
+                ? s_minOrePurityByLevel[level]
+                : 0f;
+        }
+
+        internal static int GetMinComponentSizeForLevel(int level)
+        {
+            return level >= 0 && level < s_minComponentSizeByLevel.Length
+                ? s_minComponentSizeByLevel[level]
+                : 0;
+        }
+
         internal static string FormatPurityArrays()
         {
             var sb = new System.Text.StringBuilder();
@@ -412,10 +447,6 @@ namespace AutoTerrainDesignations
                 if (oreCompositionPanelCollapsed.HasValue && ShouldPreserveBool(oreCompositionPanelCollapsed.Value, migrateGeneratedDefaults, false))
                     AutoTerrainDesignationsMod.SetOreCompositionPanelCollapsed(oreCompositionPanelCollapsed.Value);
 
-                bool? reEnableFarmingOnLoad = ParseBool(json, "reEnableFarmingOnLoad");
-                if (reEnableFarmingOnLoad.HasValue && ShouldPreserveBool(reEnableFarmingOnLoad.Value, migrateGeneratedDefaults, true))
-                    AutoTerrainDesignationsMod.SetReEnableFarmingOnLoad(reEnableFarmingOnLoad.Value);
-
                 bool? excavatorCompletionNotifications = ParseBool(json, "excavatorCompletionNotifications");
                 if (excavatorCompletionNotifications.HasValue && ShouldPreserveBool(excavatorCompletionNotifications.Value, migrateGeneratedDefaults, true))
                     AutoTerrainDesignationsMod.SetExcavatorCompletionNotificationsEnabled(excavatorCompletionNotifications.Value);
@@ -719,9 +750,6 @@ namespace AutoTerrainDesignations
             sb.AppendLine();
             sb.AppendLine("  \"_comment_oreCompositionPanelCollapsed\": \"Default collapsed state for the Ore composition panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: false.\",");
             sb.AppendLine($"  \"oreCompositionPanelCollapsed\": {BoolToJsonStr(AutoTerrainDesignationsMod.OreCompositionPanelCollapsed)},");
-            sb.AppendLine();
-            sb.AppendLine("  \"_comment_reEnableFarmingOnLoad\": \"Whether ATD re-enables farming automation after loading a save for mine towers whose managed designations appear to be farmland work: non-empty, all flat level designations. This can also be changed at runtime with atd_set_re_enable_farming_on_load. Default: true.\",");
-            sb.AppendLine($"  \"reEnableFarmingOnLoad\": {BoolToJsonStr(AutoTerrainDesignationsMod.ReEnableFarmingOnLoad)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_excavatorCompletionNotifications\": \"Whether ATD shows a green one-time notification when any vehicle depot completes an excavator. This can also be changed at runtime with atd_set_excavator_completion_notifications. Default: true.\",");
             sb.AppendLine($"  \"excavatorCompletionNotifications\": {BoolToJsonStr(AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled)},");

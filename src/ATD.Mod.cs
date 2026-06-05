@@ -35,6 +35,10 @@ using UnityEngine;
 using CoI.AutoHelpers.Localization;
 using CoI.AutoHelpers.Logging;
 using CoI.AutoHelpers.Persistence;
+using CoI.AutoHelpers.Settings;
+using Mafi.Unity;
+using Mafi.Unity.Ui.Hud;
+using Mafi.Unity.UiToolkit;
 
 namespace AutoTerrainDesignations;
 
@@ -107,7 +111,6 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetTerrainDesignationsPanelCollapsed(false);
         SetOreCompositionPanelCollapsed(false);
         SetFarmingPanelCollapsed(true);
-        SetReEnableFarmingOnLoad(true);
         SetExcavatorCompletionNotificationsEnabled(true);
         SetRampNotificationsEnabled(true);
         SetAutoReleaseVehiclesWhenIdle(false);
@@ -209,14 +212,6 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         OreCompositionPanelCollapsed = value;
     }
 
-    /// <summary>Whether ATD re-enables farming automation on loaded towers that look like farmland work.</summary>
-    public static bool ReEnableFarmingOnLoad { get; private set; } = true;
-
-    public static void SetReEnableFarmingOnLoad(bool value)
-    {
-        ReEnableFarmingOnLoad = value;
-    }
-
     /// <summary>Whether ATD shows a green notification when a vehicle depot completes an excavator.</summary>
     public static bool ExcavatorCompletionNotificationsEnabled { get; private set; } = true;
 
@@ -289,7 +284,6 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, parkAndWaitJobFactory, notificationsManager, inputScheduler);
             m_towerSettingsStateStore = ModStateJsonStores.CreateDefault(JsonConfig, AutoDepthDesignation.TowerSettingsConfigKey);
             AutoDepthDesignation.LoadTowerSettingsFromJsonStore(m_towerSettingsStateStore);
-            AutoDepthDesignation.RequestFarmingReEnableOnLoad(gameWasLoaded);
 
             // Corner designation mode — TerrainCursor, TerrainDesignationsRenderer and
             // CursorManager may only be available on the Unity side; fail gracefully if not resolvable.
@@ -391,7 +385,27 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             AutoDepthDesignation.s_log.Info($"AutoTerrainDesignations v{ModVersion} | dll: {ModLogger.GetDllBuildTimestamp(typeof(AutoTerrainDesignationsMod).Assembly)}");
             AutoDepthDesignation.s_log.Info("Localization: late apply at renderer init state.");
             ApplyAutoHelpersLocalization();
+            RegisterSettingsTabs(resolver);
         });
+    }
+
+    private static void RegisterSettingsTabs(DependencyResolver resolver)
+    {
+        try
+        {
+            ModSettings.EnsureInitialized(
+                resolver.Resolve<HudController>(),
+                resolver.Resolve<UiRoot>(),
+                resolver.Resolve<IRootEscapeManager>());
+
+            ModSettings.RegisterTab(AtdModSettingsTab.BuildDefaultsTab());
+            ModSettings.RegisterTab(AtdModSettingsTab.BuildGameSettingsTab());
+            ModSettings.RegisterTab(AtdModSettingsTab.BuildOreQualityTab());
+        }
+        catch (Exception ex)
+        {
+            AutoDepthDesignation.s_log.Exception(ex, "ATD settings tab registration");
+        }
     }
 
     private void ApplyAutoHelpersLocalization()
