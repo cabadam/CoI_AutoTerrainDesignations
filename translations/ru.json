@@ -189,11 +189,11 @@
   ],
   [
     "settings.action.save_as_global",
-    "Сохранить глобально"
+    "Сохранить как конфиг"
   ],
   [
     "settings.action.save_as_global.tooltip",
-    "Сохраняет эти настройки глобально в ATDsettings.json."
+    "Сохраняет эти настройки в ATDsettings.json. Они будут использоваться как значения по умолчанию для всех новых игр."
   ],
   [
     "settings.batch_size.label",

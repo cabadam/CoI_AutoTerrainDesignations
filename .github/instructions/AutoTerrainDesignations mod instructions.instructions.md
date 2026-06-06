@@ -3,15 +3,26 @@ description: Load when working on AutoTerrainDesignations mod code, making chang
 applyTo: 'src/**/*.cs'
 ---
 
-<!-- Tip: Use /create-instructions in chat to generate content with agent assistance -->
+# ATD-specific instructions
 
-# Save removability — mandatory constraint
-**ATD must be safe to remove from an existing save.** The mod must not leave ATD-only proto IDs or runtime scaffolding in the game's save file.
+Read the shared workspace instructions first:
 
-This rules out:
-- Any permanent game-side serialization hooks (entity components, persisted mod records, custom save payloads, etc.).
-- Persisting ATD-owned notification instances into the save. A saved active notification that references an ATD-only proto causes a `CorruptedSaveException` when the mod is absent on next load.
-- Adding ad-hoc `INotificationsManager` / `NotifyOnce` calls outside the transient notification manager.
+- `../../../.github/instructions/coi-maintained-mods.instructions.md`
+
+The rules below are specific to AutoTerrainDesignations.
+
+# ATD notification save-removability pattern
+
+The shared workspace instructions require ATD, AFD, and DTK to remain safe to
+remove from existing saves. ATD additionally has mod-owned notification protos,
+so it must follow this concrete notification pattern.
+
+Do not persist ATD-owned notification instances into the save. A saved active
+notification that references an ATD-only proto causes a `CorruptedSaveException`
+when the mod is absent on next load.
+
+Do not add ad-hoc `INotificationsManager` / `NotifyOnce` calls outside the
+transient notification manager.
 
 Allowed notification pattern:
 - Register ATD notification protos only in `ATD.Notifications.cs`.
@@ -22,71 +33,18 @@ Allowed notification pattern:
 - `DoNotSaveAttribute` may be useful for ATD-owned runtime bookkeeping, but it does not hide notification instances already stored inside Mafi's `NotificationsManager`; those must be actively removed before save.
 - Vanilla notification protos may be used if their semantics match, because vanilla can deserialize them without the mod. ATD-owned protos require the purge-before-save path above.
 
-# Versioning and release model
-- **Local/alpha packages** (built via `build.ps1 -Package`): increment the letter suffix on each package — `0.2.5a`, `0.2.5b`, etc. Update both `manifest.json` and `changelog.txt` to the new letter version.
-- **Public releases** (CoI Hub): collate all lettered alpha changes into a single new version (e.g. `0.2.5a + 0.2.5b + 0.2.5c → 0.2.6`). Update both `manifest.json` and `changelog.txt`.
-- `manifest.json` version and the top `changelog.txt` entry must always match.
-- Major and minor version increments only on user's request.
-- Updated change log should always accompany a release package
-
-# Externalize constants to settings file
-If new constants or parameters are added to the mod, suggest that these be externalized into the settings file with clear descriptions, so power users can easily customize behavior without needing to modify code.
-
-# Update change log with new features and fixes
-After having added new features or fixes, suggest that the mod's change log be updated with clear descriptions of what was added or fixed, so users can easily see what's new in each version. If there is no entry for a new version, document unreleased changes in a new section at the end of the file for the upcoming version.
-
-# Review API implementation for breaking changes and new features
-After each major update, review the mod API implementation and suggest to update instructions with any new features, changes, or fixes that may impact users or modders. This ensures that the mod's documentation remains accurate and helpful for the community.
-
-# Documentation maintenance
-- ATD now uses an audience-split documentation tree under `docs/`:
-  - `docs/player/` for player-facing usage docs
-  - `docs/api/` for public API and modder-facing integration docs
-  - `docs/dev/done/` for implemented architecture and settled behavior
-  - `docs/dev/in-progress/` for systems that exist but are expected to change soon
-  - `docs/dev/planned/` for future design notes that are not yet implemented
-- When changing user-visible behavior, modder-facing APIs, or internal architecture, update the relevant docs in the same task when practical.
-- Prefer replacing outdated planning docs with current implementation docs once a feature is shipped enough to describe concretely.
-- Keep player docs free of internal-only implementation detail unless it directly affects player behavior.
-- Keep dev docs explicit about what is implemented today versus what is expected to change soon.
-- For file-specific doc maintenance rules, also load the docs instruction file in this repo when working under `docs/`.
-
-# MaFi modding API Reference
-Reference for general queries regarding e.g. the manifest file, mod structure, and API usage. For game-specific behavior, also check the Captain of Industry Wiki and Decompiled Source sections below.
-- Captain of Industry modding documentation: https://github.com/MaFi-Games/Captain-of-industry-modding
-
-# Captain of Industry Decompiled Source
-- Decompiled game source code is in the `%APPDATA%\Captain of Industry\Mafi` directory. In this workspace, that folder is shown as **CoI Decompiled Source** (display name only), and from the mod root (`%APPDATA%\Captain of Industry\Mods\AutoTerrainDesignations`) the relative path is usually `..\..\Mafi`, not `..\Mafi`.
-- When in doubt, resolve it with PowerShell instead of guessing a relative path:
-  ```powershell
-  Get-ChildItem -LiteralPath "$env:APPDATA\Captain of Industry" -Directory -Filter Mafi
-  ```
-- Use the decompiled source to inspect game logic, entity behavior, and API details when needed. Be mindful that decompiled code may not have original variable names or comments, so it may require some interpretation.
-
-# CoI game update — refresh decompiled source
-Whenever there is a new Captain of Industry release, run the decompile script from the mod root before making any code changes:
-```powershell
-.\tools\decompile-coi.ps1
-```
-This regenerates the decompiled source under `%APPDATA%\Captain of Industry\Mafi` so that all API references and game logic inspections reflect the latest game version. The script also reads the game version from `Mafi.dll` and automatically updates `max_verified_game_version` in `manifest.json` if the version has changed.
-
 # Build verification
-After every code change, run a Debug build to confirm the project compiles cleanly:
+
+For ATD-only changes, run:
+
 ```powershell
 dotnet build AutoTerrainDesignations.sln -c Debug
 ```
-Fix any errors before proceeding. Do not leave a change in a broken build state.
 
-# Logging and Debugging
-- To inspect the latest part of the newest Captain of Industry log, run:
-  ```powershell
-  Get-ChildItem -LiteralPath "$env:APPDATA\Captain of Industry\Logs" -Filter "*.log" | Sort-Object LastWriteTime -Descending | Select-Object -First 1 | ForEach-Object { Get-Content -LiteralPath $_.FullName -Tail 220 }
-  ```
+# ATD log helper scripts
 
-## Log analysis scripts
-
-### Confirm which mod build is loaded
 ATD and AFD each emit a version + DLL timestamp line early in every game session:
+
 ```
 I HH:MM:SS,mmm SNNNNNN ~Mai: [ATD] AutoTerrainDesignations vX.Y.Zn | dll: YYYY-MM-DD HH:MM:SS
 I HH:MM:SS,mmm SNNNNNN ~Mai: [AFD] AutoForestryDesignations vX.Y.Zn | dll: YYYY-MM-DD HH:MM:SS
@@ -111,8 +69,8 @@ To show only these version rows from the newest log:
 .\tools\get-mod-log.ps1 -LogPath "C:\...\26-05-17_08-56-26_5925.log"
 ```
 
-### Extract ATD farming performance rows only
 `tools/extract-atd-farming-perf.ps1` extracts only `[ATD Farming Perf]` lines:
+
 ```powershell
 # All perf rows in the newest log
 .\tools\extract-atd-farming-perf.ps1

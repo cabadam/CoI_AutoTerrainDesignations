@@ -279,9 +279,10 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
             ParkAndWaitJobFactory parkAndWaitJobFactory = resolver.Resolve<ParkAndWaitJobFactory>();
             INotificationsManager notificationsManager = resolver.Resolve<INotificationsManager>();
             IInputScheduler inputScheduler = resolver.Resolve<IInputScheduler>();
+            ConfigSerializationContext configSerializationContext = resolver.Resolve<ConfigSerializationContext>();
             AutoTerrainDesignationsTicker ticker = AutoTerrainDesignationsTicker.CreateForWorld(AutoDepthDesignation.CurrentWorldGeneration + 1);
             AutoDepthDesignation.SetModRootDirectoryPath(Manifest.RootDirectoryPath);
-            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, parkAndWaitJobFactory, notificationsManager, inputScheduler);
+            AutoDepthDesignation.Initialize(desigManager, protosDb, worldMapManager, ticker, entitiesManager, terrainPropsManager, vehiclePathFindingManager, parkAndWaitJobFactory, notificationsManager, inputScheduler, configSerializationContext);
             m_towerSettingsStateStore = ModStateJsonStores.CreateDefault(JsonConfig, AutoDepthDesignation.TowerSettingsConfigKey);
             AutoDepthDesignation.LoadTowerSettingsFromJsonStore(m_towerSettingsStateStore);
 

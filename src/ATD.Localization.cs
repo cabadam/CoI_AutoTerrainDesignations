@@ -168,9 +168,9 @@ namespace AutoTerrainDesignations
         public static LocStr SettingsInvalidKey =
             Loc.Str("settings.status.invalid_key", "Invalid key", "Status message for an invalid shortcut key.");
         public static LocStr SettingsSaveAsGlobal =
-            Loc.Str("settings.action.save_as_global", "Save as global", "Button label for saving settings globally.");
+            Loc.Str("settings.action.save_as_global", "Save as config", "Button label for saving settings as config default.");
         public static LocStr SettingsSaveAsGlobalTooltip =
-            Loc.Str("settings.action.save_as_global.tooltip", "Save these settings globally in ATDsettings.json.", "Tooltip for saving settings globally.");
+            Loc.Str("settings.action.save_as_global.tooltip", "Save these settings to ATDsettings.json. They will be used as the defaults for all new games.", "Tooltip for saving settings as config default.");
         public static LocStr SettingsRestoreDefaults =
             Loc.Str("settings.action.restore_defaults", "Restore defaults", "Button label for restoring default settings.");
         public static LocStr SettingsRestoreDefaultsTooltip =

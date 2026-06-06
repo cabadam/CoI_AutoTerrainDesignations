@@ -1,20 +1,11 @@
-# Codex Workspace Instructions
+# Codex Instructions for ATD
 
-When working in this Captain of Industry mods workspace, read and use the
-general instruction set under `AutoTerrainDesignations/.github/` before making
-changes or investigating game/mod behavior.
+The shared workspace instructions live at:
 
-In particular:
+- `../AGENTS.md`
+- `../.github/instructions/coi-maintained-mods.instructions.md`
 
-- Use `AutoTerrainDesignations/.github/instructions/AutoTerrainDesignations mod instructions.instructions.md`
-  for general Captain of Industry modding workflow guidance.
-- Use the documented decompiled-source location:
-  `%APPDATA%\Captain of Industry\Mafi`.
-- Treat ATD's `.github` instructions as workspace conventions when they
-  generalize to sibling mods such as Designer Toolkit, AutoHelpers, and AFD.
-- Do not blindly apply ATD-specific release, manifest, save-removability, or
-  notification rules to another mod unless that mod has the same requirement.
-- If a sibling mod has its own instructions, use those first and then apply the
-  ATD workspace guidance where compatible.
-- After code changes, build the active project or solution for the mod being
-  changed, not necessarily ATD's solution.
+Read those first. Then read ATD's local Copilot instruction file for the
+ATD-specific save-removability and notification constraints:
+
+- `.github/instructions/AutoTerrainDesignations mod instructions.instructions.md`

@@ -3,6 +3,12 @@ description: Instructions for maintaining AutoTerrainDesignations documentation 
 applyTo: 'docs/**/*.md'
 ---
 
+# ATD documentation instructions
+
+Read the shared workspace instructions first:
+
+- `../../../.github/instructions/coi-maintained-mods.instructions.md`
+
 # ATD documentation structure
 - `docs/player/` is for players. Focus on what the feature does, how to use it, relevant settings, and any console commands a normal player may reasonably use.
 - `docs/api/` is for modders integrating with ATD. Document only public or intentionally supported integration points.

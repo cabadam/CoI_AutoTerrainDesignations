@@ -285,9 +285,9 @@ When all origins reach `Done`:
 
 ### Intercept
 
-A Harmony prefix on `EntitiesCommandsProcessor.Invoke(BatchCreateStaticEntitiesCmd)` inspects each item in the batch. When an item's prototype is a `FarmProto` and its footprint origin falls inside a farming-enabled tower area, the item is captured into a `PlacementIntent` and the original command is consumed (returns `false`, calls `cmd.SetResultSuccess()`).
+A Harmony prefix on `EntitiesCommandsProcessor.Invoke(BatchCreateStaticEntitiesCmd)` inspects the batch. When any farm item's full footprint falls inside a farming-enabled tower area and it is not an ATD replay, the **entire original batch** is captured into a `PlacementIntentBatch` and the original command is consumed (returns `false`, calls `cmd.SetResultSuccess()`). This keeps mixed farm blueprints atomic: pipes, transports, and other non-farm items in the same placement command are not placed ahead of the farm terrain work.
 
-The `PlacementIntent` stores the **full `EntityConfigData`** from the intercepted batch item — not just proto and position. This preserves:
+The in-memory `PlacementIntentBatch` stores the **full original `ImmutableArray<EntityConfigData>`** from the intercepted command. During the same game session, this preserves:
 - `TileTransform` including `IsReflected` (reflection affects port positions even though it does not change tile occupation)
 - Recipe selections
 - Crop assignments
@@ -310,25 +310,27 @@ All three check `GetFarmingTowerForRequest` / `GetFarmingTowerForTile` and pass 
 
 ### Pending intent lifecycle
 
-1. `OnFarmPlacementIntercepted` computes covered cells and checks `AreCellsAlreadyFarmable`. If the site is already fully prepared, the placement is replayed immediately via `ReplayFarmPlacement` — no intent is created.
-2. Otherwise a `PlacementIntent` is registered in `s_pendingFarmPlacements` and a flat `LevelingDesignation` is injected for each covered cell that does not already have a designation (tracked in `intent.AtdInjectedCells` for cleanup on cancel).
-3. `TickFarmPlacementAssist` (called once per tick) iterates pending intents and calls `AreCellsDone` — which checks that every required cell has `FarmingOriginPhase.Done` in any active farming session. When all cells are done, the intent is removed and `ReplayFarmPlacement` fires.
+1. `OnFarmPlacementBatchIntercepted` computes the union of covered cells for every assisted farm in the intercepted batch and checks `AreCellsAlreadyFarmable`. If the site is already fully prepared, the whole batch is replayed immediately via `ReplayFarmPlacementBatch` — no intent is created.
+2. Otherwise a `PlacementIntentBatch` is registered in `s_pendingFarmPlacementBatches` and a flat `LevelingDesignation` is injected for each covered cell that does not already have a designation (tracked in `intent.AtdInjectedCells` for future cleanup/cancel support).
+3. `TickFarmPlacementAssist` (called once per tick) iterates pending batches and calls `AreCellsDone` — which checks that every required cell has `FarmingOriginPhase.Done` in any active farming session. When all cells are done, the intent is removed and `ReplayFarmPlacementBatch` fires.
 
 ### Replay
 
-`ReplayFarmPlacement(EntityConfigData, bool applyConfiguration)` schedules a new `BatchCreateStaticEntitiesCmd(ImmutableArray.Create(configData), ..., applyConfiguration)` via `s_inputScheduler.ScheduleInputCmd`. The validator suppression patches remain active so the replayed command passes validation.
+`ReplayFarmPlacementBatch(ImmutableArray<EntityConfigData>, bool applyConfiguration)` schedules a new `BatchCreateStaticEntitiesCmd(items, ..., applyConfiguration)` via `s_inputScheduler.ScheduleInputCmd`. Farm positions in the replay are registered in `s_farmPlacementReplayPositions`, so the intercept prefix lets ATD's own replay pass through. The validator suppression patches remain active so the replayed command passes validation.
 
 ---
 
 ## Save / load behavior
 
-ATD does **not** persist session state. On save:
+ATD does **not** persist farming session phase state. On save:
 
 1. A save-start hook iterates active sessions and restores all temporary preparation designations to their original level designations; ramps, shoulders, and rim designations are removed; dump rules and truck assignments are restored.
 2. `session.Active` is set to `session.Enabled`.
 3. After the save finishes, the ticker re-bootstraps sessions from the current visible state.
 
 This makes farming tolerant of partial progress, player edits between sessions, and save migrations. The cost is that a running session must redo preparation analysis after every reload.
+
+Farm Placement Assist pending batches are persisted separately in the config-backed ATD state blob under `pendingFarmPlacementBatches`. The persisted record stores proto ID, transform, reflection, `applyConfiguration`, and farm crop/fertility settings. During the same runtime the full `EntityConfigData` is kept; after save/load, non-farm items in the same deferred batch are reconstructed from proto and transform only until full `EntityConfigData` blob persistence is implemented.
 
 ---
 

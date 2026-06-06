@@ -189,11 +189,11 @@
   ],
   [
     "settings.action.save_as_global",
-    "Salva come globale"
+    "Salva come config"
   ],
   [
     "settings.action.save_as_global.tooltip",
-    "Salva queste impostazioni globalmente in ATDsettings.json."
+    "Salva queste impostazioni in ATDsettings.json. Verranno usate come predefiniti per tutte le nuove partite."
   ],
   [
     "settings.batch_size.label",

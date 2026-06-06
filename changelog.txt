@@ -1,3 +1,12 @@
+v0.4.3 | 2026-06-06
+* Added AutoHelpers shared **Mod Settings** tabs for ATD global defaults, game settings, and ore-quality thresholds, with localized labels/tooltips and shared-window tab icons
+* Added: Chinese translation
+* Changed: Farm Placement Assist now captures and replays the entire intercepted placement batch when a farm in the batch needs terrain preparation, so mixed farm blueprints stay atomic and non-farm blueprint pieces are not dropped or placed early
+* Added limited config-backed save/load recovery for pending Farm Placement Assist batches; pending farms retain proto, transform, reflection, crop schedule, and fertility target, but full blueprint/entity configuration persistence is not implemented yet
+* Fixed: Farm Placement Assist replayed intercepted placements with crop assignments, recipe selections, port configurations, and reflection lost; the original placement intent now stores the full entity configuration and replays it through the original batch command so blueprint-configured state is preserved
+* Added **bottomFlatteningStrength** global setting (1-10, default 5) to control the depth percentile used as the flattening target during the bottom-flattening pass; configurable via `ATDsettings.json` or **atd_set_bottom_flattening_strength**
+* Changed: farming access ramps to back-row farmland clusters now lay flat 1-cell bridges at the neighboring cluster's target height instead of wedging back up to surface
+
 v0.4.2 | 2026-05-29
 * Added: per-tower settings (max height diff, ramp width, max layers, max depth, ore quality, corridor clearance, auto-release, ore filter, mining priority, farmland preparation automation state) and the collapsed state of each tower's **Mining designations**, **Ore composition**, and **Farmland preparation** panels are now persisted into the vanilla save file via a `config.json` state blob; settings survive save/load cycles without any custom save format
 * Added three debug console commands: **atd_dump_pending_save_json**, **atd_dump_last_loaded_json**, **atd_dump_panel_state**

@@ -3,9 +3,13 @@ description: Instructions for maintaining the AutoTerrainDesignations change log
 applyTo: "changelog.{txt,md}"
 ---
 
-# Change Log Maintenance Rules
+# ATD changelog instructions
 
-The change log is split across two files:
+Read the shared workspace instructions first:
+
+- `../../../.github/instructions/coi-maintained-mods.instructions.md`
+
+ATD's change log is split across two files:
 
 - **`changelog.md`** — the detailed working change log. All changes go here, including alpha builds. This is the primary file for day-to-day editing and serves as a source for Discord announcements.
 - **`changelog.txt`** — the public CoI mod portal change log. Only non-alpha public releases are tracked here. It must remain a `.txt` file as required by the Mafi mod portal.

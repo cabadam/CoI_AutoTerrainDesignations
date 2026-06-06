@@ -44,6 +44,7 @@ namespace AutoTerrainDesignations
         private static WorldMapManager? s_worldMapManager;
         private static IEntitiesManager? s_entitiesManager;
         private static IInputScheduler? s_inputScheduler;
+        private static ConfigSerializationContext? s_configSerializationContext;
         private static TerrainPropsManager? s_terrainPropsManager;
         private static IVehiclePathFindingManager? s_vehiclePathFindingManager;
         private static ParkAndWaitJobFactory? s_parkAndWaitJobFactory;
@@ -327,6 +328,7 @@ namespace AutoTerrainDesignations
             s_parkAndWaitJobFactory = null;
             s_excavatorPathFindingParams = null;
             s_inputScheduler = null;
+            s_configSerializationContext = null;
             s_batchSize = BATCH_SIZE;
 
             s_selectedOrePerTower.Clear();
@@ -340,6 +342,7 @@ namespace AutoTerrainDesignations
 
             ResetTransientNotifications();
             ClearFarmingRuntimeState();
+            ClearFarmPlacementAssistRuntimeState();
             ClearIdleVehicleReleaseState();
         }
 
@@ -353,7 +356,8 @@ namespace AutoTerrainDesignations
             IVehiclePathFindingManager? vehiclePathFindingManager = null,
             ParkAndWaitJobFactory? parkAndWaitJobFactory = null,
             INotificationsManager? notificationsManager = null,
-            IInputScheduler? inputScheduler = null)
+            IInputScheduler? inputScheduler = null,
+            ConfigSerializationContext? configSerializationContext = null)
         {
             ResetWorldRuntimeState();
 
@@ -369,6 +373,7 @@ namespace AutoTerrainDesignations
             s_vehiclePathFindingManager = vehiclePathFindingManager;
             s_parkAndWaitJobFactory = parkAndWaitJobFactory;
             s_inputScheduler = inputScheduler;
+            s_configSerializationContext = configSerializationContext;
             s_excavatorPathFindingParams = FindExcavatorPathFindingParams(protosDb);
 
             if (protosDb.TryGetProto(new Proto.ID("MiningDesignator"), out TerrainDesignationProto proto))

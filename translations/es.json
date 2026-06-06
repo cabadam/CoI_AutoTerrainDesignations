@@ -189,11 +189,11 @@
   ],
   [
     "settings.action.save_as_global",
-    "Guardar como global"
+    "Guardar como config"
   ],
   [
     "settings.action.save_as_global.tooltip",
-    "Guarda estos ajustes globalmente en ATDsettings.json."
+    "Guarda estos ajustes en ATDsettings.json. Se usarán como valores predeterminados para todas las partidas nuevas."
   ],
   [
     "settings.batch_size.label",

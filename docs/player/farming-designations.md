@@ -28,6 +28,12 @@ Vehicle access ramps are added automatically when excavators or trucks cannot re
 
 6. To pause, disable the toggle. All temporary modifications are restored immediately: original level designations reappear and dump rules return to their previous state.
 
+## Farm Placement Assist
+
+When **Farmland preparation automation** is enabled for a mine tower, farms placed fully inside that tower's area can be placed on uneven or non-farmable ground. ATD intercepts the placement, prepares the covered terrain cells, then places the farm automatically once the site is ready.
+
+If the placement came from a blueprint, ATD holds the whole placement batch until the farm cells are ready, so related blueprint pieces are placed together instead of appearing early and blocking vehicle access.
+
 ## Status phases
 
 | Phase | Meaning |
@@ -46,6 +52,7 @@ Vehicle access ramps are added automatically when excavators or trucks cannot re
 - The tower's dump rules are modified only during filling, and only for that tower.
 - The mod never changes global (cross-tower) dump rules.
 - Automation state is saved per tower. After reloading a save, towers restore their own farmland preparation automation setting.
+- Pending Farm Placement Assist batches have limited save/load recovery while this feature is experimental. Pending farms restore crop schedules, fertility targets, rotation, and reflection; full blueprint configuration persistence is still planned.
 - If you manually remove or replace a tracked designation, the mod drops that tile from the session. Place a new flat level designation and the next scan will pick it up.
 - When extending a farming area adjacent to a previously completed area, the completed tiles are temporarily hidden to prevent dirt-spill conflicts with the new preparation work. They are restored together with the new tiles during the filling phase.
 - When extending a farming area, make sure new designations use the correct target height. If they do not match the adjacent area's height, new tiles may be treated as a separate session at the wrong elevation.

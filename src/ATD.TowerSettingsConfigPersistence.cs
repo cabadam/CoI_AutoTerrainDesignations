@@ -185,7 +185,9 @@ namespace AutoTerrainDesignations
                 sb.Append('}');
             }
 
-            sb.Append("]}");
+            sb.Append(']');
+            AppendPendingFarmPlacementBatchesJson(sb);
+            sb.Append('}');
             return sb.ToString();
         }
 
@@ -213,6 +215,18 @@ namespace AutoTerrainDesignations
                 string snippet = json.Length <= 120 ? json : json.Substring(0, 120) + "...";
                 s_log.Warning($"Persistence: tower settings JSON is missing or has an unexpected 'towerSettings' value; skipping. Content: {snippet}");
                 return false;
+            }
+
+            if (root.TryGetValue("pendingFarmPlacementBatches", out object rawPendingBatches))
+            {
+                if (rawPendingBatches is object[] pendingBatchEntries)
+                    RestorePendingFarmPlacementBatchesFromJsonEntries(pendingBatchEntries);
+                else
+                    s_log.Warning("Persistence: pendingFarmPlacementBatches exists but is not an array; skipped.");
+            }
+            else
+            {
+                RestorePendingFarmPlacementBatchesFromJsonEntries(Array.Empty<object>());
             }
 
             s_towerSettingsByEntityId.Clear();
@@ -378,6 +392,18 @@ namespace AutoTerrainDesignations
                     value = (int)doubleValue;
                     return Math.Abs(value - doubleValue) < 0.0001d;
                 }
+            }
+
+            return false;
+        }
+
+        private static bool TryGetString(Dict<string, object> dict, string key, out string value)
+        {
+            value = string.Empty;
+            if (dict.TryGetValue(key, out object rawValue) && rawValue is string stringValue)
+            {
+                value = stringValue;
+                return true;
             }
 
             return false;

@@ -24,7 +24,7 @@ namespace AutoTerrainDesignations
     internal static class AtdModSettingsTab
     {
         private const string MOD_ID = "auto-terrain-designations";
-        private const string MOD_ICON = "Assets/Unity/UserInterface/EntityIcons/Designation.png";
+        private const string MOD_ICON = "Assets/Unity/UserInterface/Toolbar/Flatten.svg";
         private const string DEFAULTS_ICON = "Assets/Unity/UserInterface/Toolbar/Copy.svg";
         private const string GAME_SETTINGS_ICON = "Assets/Unity/UserInterface/EntityIcons/Gears.png";
         private const string ORE_QUALITY_ICON = "Assets/Unity/UserInterface/General/SwapVertical.svg";

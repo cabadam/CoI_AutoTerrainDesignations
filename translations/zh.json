@@ -189,11 +189,11 @@
   ],
   [
     "settings.action.save_as_global",
-    "保存为全局"
+    "保存到配置"
   ],
   [
     "settings.action.save_as_global.tooltip",
-    "将这些设置全局保存到 ATDsettings.json。"
+    "将这些设置保存到 ATDsettings.json。它们将用作所有新游戏的默认值。"
   ],
   [
     "settings.batch_size.label",
