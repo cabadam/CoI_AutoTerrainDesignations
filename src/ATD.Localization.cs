@@ -98,7 +98,7 @@ namespace AutoTerrainDesignations
         public static LocStr SettingsTabOreQuality =
             Loc.Str("settings.tab.ore_quality", "Ore quality", "Settings tab title for ATD ore quality settings.");
         public static LocStr SettingsHeadingMiningDefaults =
-            Loc.Str("settings.heading.mining_defaults", "Mining defaults", "Settings section heading for mining defaults.");
+            Loc.Str("settings.heading.mining_defaults", "Mine control tower defaults", "Settings section heading for mine control tower defaults.");
         public static LocStr SettingsHeadingPanelDefaults =
             Loc.Str("settings.heading.panel_defaults", "Panel defaults", "Settings section heading for panel defaults.");
         public static LocStr SettingsHeadingDesignations =

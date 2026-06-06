@@ -1,4 +1,5 @@
 v0.4.4a | 2026-06-06 [unreleased]
+* Changed: renamed the Mod Settings **Mining defaults** heading to **Mine control tower defaults** to match the vanilla tower name
 
 v0.4.3 | 2026-06-06
 * Added AutoHelpers shared **Mod Settings** tabs for ATD global defaults, game settings, and ore-quality thresholds, with localized labels/tooltips and shared-window tab icons
