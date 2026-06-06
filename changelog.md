@@ -1,4 +1,6 @@
-v0.4.3 | 2026-06-06 [packaged]
+v0.4.4a | 2026-06-06 [unreleased]
+
+v0.4.3 | 2026-06-06
 * Added AutoHelpers shared **Mod Settings** tabs for ATD global defaults, game settings, and ore-quality thresholds, with localized labels/tooltips and shared-window tab icons
 * Added: Chinese translation
 * Changed: Farm Placement Assist now captures and replays the entire intercepted `BatchCreateStaticEntitiesCmd` when a farm in the batch needs terrain preparation, so mixed farm blueprints stay atomic and non-farm blueprint pieces are not dropped or placed early
