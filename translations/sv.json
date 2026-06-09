@@ -185,7 +185,7 @@
   ],
   [
     "settings.action.restore_defaults.tooltip",
-    "Återställer moddens globala standardvärden för alla inställningar."
+    "Återställer moddens globala standardvärden för alla inställningar. (Sparar dem inte automatiskt som konfig.)"
   ],
   [
     "settings.action.save_as_global",

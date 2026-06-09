@@ -185,7 +185,7 @@
   ],
   [
     "settings.action.restore_defaults.tooltip",
-    "恢复所有设置的全局模组默认值。"
+    "恢复所有设置的全局模组默认值。（不会自动保存到配置。）"
   ],
   [
     "settings.action.save_as_global",

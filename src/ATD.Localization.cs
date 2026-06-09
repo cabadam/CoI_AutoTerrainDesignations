@@ -174,7 +174,7 @@ namespace AutoTerrainDesignations
         public static LocStr SettingsRestoreDefaults =
             Loc.Str("settings.action.restore_defaults", "Restore defaults", "Button label for restoring default settings.");
         public static LocStr SettingsRestoreDefaultsTooltip =
-            Loc.Str("settings.action.restore_defaults.tooltip", "Restore the global mod defaults for all settings.", "Tooltip for restoring default settings.");
+            Loc.Str("settings.action.restore_defaults.tooltip", "Restore the global mod defaults for all settings. (Does not automatically save them as config.)", "Tooltip for restoring default settings.");
         public static LocStr SettingsSavedToFile =
             Loc.Str("settings.status.saved_to_file", "Saved to ATDsettings.json.", "Status message after settings are saved.");
         public static LocStr SettingsSaveFailed =

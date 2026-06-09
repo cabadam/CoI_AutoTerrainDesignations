@@ -185,7 +185,7 @@
   ],
   [
     "settings.action.restore_defaults.tooltip",
-    "Restaura os padrões globais do mod para todas as configurações."
+    "Restaura os padrões globais do mod para todas as configurações. (Não as salva automaticamente como config.)"
   ],
   [
     "settings.action.save_as_global",

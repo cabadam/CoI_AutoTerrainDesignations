@@ -185,7 +185,7 @@
   ],
   [
     "settings.action.restore_defaults.tooltip",
-    "Stellt die globalen Mod-Standardwerte für alle Einstellungen wieder her."
+    "Stellt die globalen Mod-Standardwerte für alle Einstellungen wieder her. (Speichert sie nicht automatisch als Konfig.)"
   ],
   [
     "settings.action.save_as_global",
