@@ -29,5 +29,9 @@ Can same vehicles be soft-assigned to several towers?
 
 See [building-leveling-assist.md](building-leveling-assist.md) for full implementation plan.
 
+## CornerDesignationKey Tooltip Global Scope clarification
+Ensure the settings UI tooltip for the CornerDesignationKey explicitly documents that it is a global setting persisted in ATDsettings.json rather than per-save.
+
 Check Wanderer's issues
+
 
