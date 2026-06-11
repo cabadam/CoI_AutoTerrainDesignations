@@ -20,7 +20,8 @@ $ErrorActionPreference = 'Stop'
 $ilspy = $null
 try {
     $ilspy = (Get-Command ilspycmd -ErrorAction Stop).Source
-} catch {
+}
+catch {
     Write-Error @'
 ilspycmd is not installed. Install it once with:
 
@@ -36,7 +37,8 @@ Then re-run this script.
 # ---------------------------------------------------------------------------
 $managedPath = if ($env:CAPTAIN_INDUSTRY_MANAGED_PATH) {
     $env:CAPTAIN_INDUSTRY_MANAGED_PATH
-} else {
+}
+else {
     Join-Path ${env:ProgramFiles(x86)} 'Steam\steamapps\common\Captain of Industry\Captain of Industry_Data\Managed'
 }
 
@@ -55,14 +57,14 @@ New-Item -ItemType Directory -Path $outputRoot -Force | Out-Null
 $gameVersion = $null
 $mafiDllPath = Join-Path $managedPath 'Mafi.dll'
 if (Test-Path -LiteralPath $mafiDllPath) {
-    $vi     = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($mafiDllPath)
-    $priv   = $vi.FilePrivatePart
+    $vi = [System.Diagnostics.FileVersionInfo]::GetVersionInfo($mafiDllPath)
+    $priv = $vi.FilePrivatePart
     $letter = if ($priv -gt 0) { [char](96 + $priv) } else { '' }
     $gameVersion = "$($vi.FileMajorPart).$($vi.FileMinorPart).$($vi.FileBuildPart)$letter"
 }
 
 # Build number is a uint literal in GameVersion.cs: string.Format("... (b{2})", ..., NNNu).AsLoc()
-$buildNumber  = $null
+$buildNumber = $null
 $gameVersionCsPath = Join-Path $outputRoot 'Mafi\Mafi\GameVersion.cs'
 if (Test-Path -LiteralPath $gameVersionCsPath) {
     $gvContent = Get-Content -LiteralPath $gameVersionCsPath -Raw
@@ -94,11 +96,11 @@ $dlls = @('Mafi', 'Mafi.Core', 'Mafi.Base', 'Mafi.Unity')
 # ---------------------------------------------------------------------------
 # 4. Decompile loop (with change detection)
 # ---------------------------------------------------------------------------
-$skipped  = @()
+$skipped = @()
 $decompiled = @()
 
 foreach ($name in $dlls) {
-    $dllPath   = Join-Path $managedPath "$name.dll"
+    $dllPath = Join-Path $managedPath "$name.dll"
     $outputDir = Join-Path $outputRoot $name
 
     if (-not (Test-Path -LiteralPath $dllPath)) {
@@ -107,10 +109,10 @@ foreach ($name in $dlls) {
     }
 
     if (-not $Force -and (Test-Path -LiteralPath $outputDir)) {
-        $dllTime    = (Get-Item -LiteralPath $dllPath).LastWriteTime
+        $dllTime = (Get-Item -LiteralPath $dllPath).LastWriteTime
         $newestFile = Get-ChildItem -LiteralPath $outputDir -Recurse -File -ErrorAction SilentlyContinue |
-                      Sort-Object LastWriteTime -Descending |
-                      Select-Object -First 1
+        Sort-Object LastWriteTime -Descending |
+        Select-Object -First 1
 
         if ($null -ne $newestFile -and $newestFile.LastWriteTime -ge $dllTime) {
             Write-Host "[skip] $name  (output is up to date)"
@@ -170,7 +172,8 @@ if ($useGit -and $decompiled.Count -gt 0) {
             Write-Host ''
             git diff HEAD~1 --stat
         }
-    } else {
+    }
+    else {
         Write-Host ''
         Write-Host '[git] Decompiled output unchanged from last commit.'
     }
@@ -191,7 +194,8 @@ if ($null -ne $gameVersion) {
             Set-Content -LiteralPath $manifestPath -Value $updated -NoNewline
             Write-Host ''
             Write-Host "manifest.json: max_verified_game_version  $current  ->  $gameVersion"
-        } else {
+        }
+        else {
             Write-Host ''
             Write-Host "manifest.json: max_verified_game_version already $gameVersion"
         }
