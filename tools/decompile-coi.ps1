@@ -164,7 +164,7 @@ if ($useGit -and $decompiled.Count -gt 0) {
     if ($LASTEXITCODE -ne 0) {
         $commitMsg = if ($versionLabel) { "CoI $versionLabel" } else { 'decompiled update' }
         git commit -m $commitMsg --quiet
-        if ($versionLabel) { git tag "v$versionLabel" 2>$null }
+        if ($versionLabel) { git tag -f "v$versionLabel" }
         $commitCount = [int](git rev-list --count HEAD 2>$null)
         Write-Host ''
         Write-Host "[git] Committed: $commitMsg  (tag: v$versionLabel)"
