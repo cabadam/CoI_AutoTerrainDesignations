@@ -6,6 +6,8 @@ Planned and candidate improvements for Kayser's Automatic Terrain Designations.
 * Climb cliff?
 * Cut/Copy/Paste/Blueprint designations?
 
+Auto-release vehicles also when tower paused.
+
 ## Ramp safety margin — low priority
 
 Review ramp building safety margin logic in more depth. Current margin is based on ramp planning depth rather than actual vertical drop relative to surrounding surface, so it may not fully reflect landslide/building risk in uneven terrain.
