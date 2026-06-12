@@ -248,10 +248,16 @@ namespace AutoTerrainDesignations
                 value => AutoTerrainDesignationsMod.SetFarmingPanelCollapsed(value),
                 refreshers));
             content.Add(BuildToggleRow(
-                AtdLocalization.FarmingIdleReleaseLabel.AsFormatted,
-                AtdLocalization.FarmingIdleReleaseTip.AsFormatted,
-                () => AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle,
-                value => AutoTerrainDesignationsMod.SetAutoReleaseVehiclesWhenIdle(value),
+                AtdLocalization.FarmingIdleReleaseExcavatorsLabel.AsFormatted,
+                AtdLocalization.FarmingIdleReleaseExcavatorsTip.AsFormatted,
+                () => AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle,
+                value => AutoTerrainDesignationsMod.SetAutoReleaseExcavatorsWhenIdle(value),
+                refreshers));
+            content.Add(BuildToggleRow(
+                AtdLocalization.FarmingIdleReleaseTrucksLabel.AsFormatted,
+                AtdLocalization.FarmingIdleReleaseTrucksTip.AsFormatted,
+                () => AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle,
+                value => AutoTerrainDesignationsMod.SetAutoReleaseTrucksWhenIdle(value),
                 refreshers));
         }
 

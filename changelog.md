@@ -1,5 +1,8 @@
 v0.4.3a | 2026-06-06 [unreleased]
 * Changed: renamed the Mod Settings **Mining defaults** heading to **Mine control tower defaults** to match the vanilla tower name
+* Changed: split **Auto-release when idle** into separate per-tower/global toggles for excavators and trucks; legacy `autoReleaseVehiclesWhenIdle` settings still migrate by setting both new defaults
+* Fixed: auto-release now treats paused mine towers as idle, so enabled vehicle classes are released while the tower is paused and restored when excavation work resumes
+* Added: the Farmland preparation panel now shows a compact assigned/ATD-released vehicle list for the selected tower
 
 v0.4.3 | 2026-06-06
 * Added AutoHelpers shared **Mod Settings** tabs for ATD global defaults, game settings, and ore-quality thresholds, with localized labels/tooltips and shared-window tab icons

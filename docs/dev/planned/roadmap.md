@@ -6,8 +6,6 @@ Planned and candidate improvements for Kayser's Automatic Terrain Designations.
 * Climb cliff?
 * Cut/Copy/Paste/Blueprint designations?
 
-Auto-release vehicles also when tower paused.
-
 ## Ramp safety margin — low priority
 
 Review ramp building safety margin logic in more depth. Current margin is based on ramp planning depth rather than actual vertical drop relative to surrounding surface, so it may not fully reflect landslide/building risk in uneven terrain.
@@ -27,9 +25,11 @@ Auto-prepare ground anywhere
 
 ## Issue?: Vehichles auto-released can be assigned to the tower again (or to something else)
 Maybe reverse meaning and make auto-assign instead of auto-unassign?
-Improve tower with an assigned list of vehichles.
-Can same vehicles be soft-assigned to several towers?
-Split soft-unassign into excavators and trucks.
+Handled in v0.4.3a:
+- Split soft-unassign into excavators and trucks.
+- Auto-release vehicles also when tower paused.
+- Improve tower with an assigned list of vehicles.
+- Same vehicles cannot be truly soft-assigned to several towers because vanilla vehicle assignment is single-owner; ATD restore skips vehicles already assigned elsewhere.
 
 ## Improve ramps? make them turn?
 

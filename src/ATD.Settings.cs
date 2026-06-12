@@ -463,6 +463,14 @@ namespace AutoTerrainDesignations
                 if (autoReleaseVehiclesWhenIdle.HasValue && ShouldPreserveBool(autoReleaseVehiclesWhenIdle.Value, migrateGeneratedDefaults, false))
                     AutoTerrainDesignationsMod.SetAutoReleaseVehiclesWhenIdle(autoReleaseVehiclesWhenIdle.Value);
 
+                bool? autoReleaseExcavatorsWhenIdle = ParseBool(json, "autoReleaseExcavatorsWhenIdle");
+                if (autoReleaseExcavatorsWhenIdle.HasValue && ShouldPreserveBool(autoReleaseExcavatorsWhenIdle.Value, migrateGeneratedDefaults, false))
+                    AutoTerrainDesignationsMod.SetAutoReleaseExcavatorsWhenIdle(autoReleaseExcavatorsWhenIdle.Value);
+
+                bool? autoReleaseTrucksWhenIdle = ParseBool(json, "autoReleaseTrucksWhenIdle");
+                if (autoReleaseTrucksWhenIdle.HasValue && ShouldPreserveBool(autoReleaseTrucksWhenIdle.Value, migrateGeneratedDefaults, false))
+                    AutoTerrainDesignationsMod.SetAutoReleaseTrucksWhenIdle(autoReleaseTrucksWhenIdle.Value);
+
                 string? cornerKeyStr = ParseString(json, "cornerDesignationKey");
                 if (!string.IsNullOrWhiteSpace(cornerKeyStr)
                     && System.Enum.TryParse<UnityEngine.KeyCode>(cornerKeyStr, true, out var cornerKey)
@@ -760,8 +768,11 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_farmingPanelCollapsed\": \"Default collapsed state for the Farming panel when a mine tower inspector is created. false = expanded by default, true = collapsed by default. Default: true.\",");
             sb.AppendLine($"  \"farmingPanelCollapsed\": {BoolToJsonStr(AutoTerrainDesignationsMod.FarmingPanelCollapsed)},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_autoReleaseVehiclesWhenIdle\": \"Default starting value for the Auto-release when idle toggle on each mine tower. When enabled, ATD automatically unassigns all excavators and trucks from the tower once no managed designation has pending excavation work (no mining or leveling tile above its target height). Vehicles are tracked and re-assigned when excavation work returns. Can be toggled per tower in-game. Default: false.\",");
-            sb.AppendLine($"  \"autoReleaseVehiclesWhenIdle\": {BoolToJsonStr(AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle)},");
+            sb.AppendLine("  \"_comment_autoReleaseExcavatorsWhenIdle\": \"Default starting value for the Auto-release excavators when idle toggle on each mine tower. When enabled, ATD automatically unassigns excavators from the tower once no managed designation has pending excavation work, or while the tower is paused. Vehicles are tracked and re-assigned when excavation work returns. Can be toggled per tower in-game. Default: false.\",");
+            sb.AppendLine($"  \"autoReleaseExcavatorsWhenIdle\": {BoolToJsonStr(AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_autoReleaseTrucksWhenIdle\": \"Default starting value for the Auto-release trucks when idle toggle on each mine tower. When enabled, ATD automatically unassigns trucks from the tower once no managed designation has pending excavation work, or while the tower is paused. Vehicles are tracked and re-assigned when excavation work returns. Can be toggled per tower in-game. Default: false.\",");
+            sb.AppendLine($"  \"autoReleaseTrucksWhenIdle\": {BoolToJsonStr(AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_cornerDesignationKey\": \"Key used to enter and toggle corner designation mode. Use a Unity KeyCode name (e.g. K, Alpha1, F1). Default: K.\",");
             sb.AppendLine($"  \"cornerDesignationKey\": \"{AutoTerrainDesignationsMod.CornerDesignationKey}\",");

@@ -236,12 +236,29 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         FarmingPanelCollapsed = value;
     }
 
-    /// <summary>Whether ATD automatically releases all vehicles from a tower when there are no pending excavation jobs.</summary>
-    public static bool AutoReleaseVehiclesWhenIdle { get; private set; } = false;
+    /// <summary>Whether ATD automatically releases excavators from a tower when there are no pending excavation jobs.</summary>
+    public static bool AutoReleaseExcavatorsWhenIdle { get; private set; } = false;
+
+    /// <summary>Whether ATD automatically releases trucks from a tower when there are no pending excavation jobs.</summary>
+    public static bool AutoReleaseTrucksWhenIdle { get; private set; } = false;
+
+    /// <summary>Legacy combined view retained for old console output and config migration.</summary>
+    public static bool AutoReleaseVehiclesWhenIdle => AutoReleaseExcavatorsWhenIdle || AutoReleaseTrucksWhenIdle;
+
+    public static void SetAutoReleaseExcavatorsWhenIdle(bool value)
+    {
+        AutoReleaseExcavatorsWhenIdle = value;
+    }
+
+    public static void SetAutoReleaseTrucksWhenIdle(bool value)
+    {
+        AutoReleaseTrucksWhenIdle = value;
+    }
 
     public static void SetAutoReleaseVehiclesWhenIdle(bool value)
     {
-        AutoReleaseVehiclesWhenIdle = value;
+        SetAutoReleaseExcavatorsWhenIdle(value);
+        SetAutoReleaseTrucksWhenIdle(value);
     }
 
     /// <summary>Key used to enter and toggle corner designation mode. Default: K.</summary>

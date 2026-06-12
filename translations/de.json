@@ -140,12 +140,24 @@
     "Bereitet flache Planierungsgebiete für Felder vor, indem ungeeignetes Oberflächenmaterial entfernt und anschließend die endgültigen Auffüllgebiete wiederhergestellt werden."
   ],
   [
-    "panel.farming.idle_release.label",
-    "Automatisch freigeben bei Leerlauf"
+    "panel.farming.idle_release_excavators.label",
+    "Bagger freigeben bei Leerlauf"
   ],
   [
-    "panel.farming.idle_release.tooltip",
-    "Hebt automatisch die Zuweisung aller Bagger und LKWs von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat.\nFahrzeuge werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Hebt automatisch die Zuweisung von Baggern von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat oder wenn der Turm pausiert ist.\nBagger werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
+  ],
+  [
+    "panel.farming.idle_release_trucks.label",
+    "LKWs freigeben bei Leerlauf"
+  ],
+  [
+    "panel.farming.idle_release_trucks.tooltip",
+    "Hebt automatisch die Zuweisung von LKWs von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat oder wenn der Turm pausiert ist.\nLKWs werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
+  ],
+  [
+    "panel.farming.assigned_vehicles.label",
+    "Zugewiesene Fahrzeuge"
   ],
   [
     "panel.ore.title",

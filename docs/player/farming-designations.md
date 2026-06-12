@@ -59,13 +59,15 @@ If the placement came from a blueprint, ATD holds the whole placement batch unti
 
 ## Settings
 
-### `Auto-release when idle`
+### Auto-release when idle
 
-When enabled, all excavators and trucks assigned to the tower are automatically unassigned while none of the tower's managed mining or leveling designations have pending excavation work.
+The tower panel has separate toggles for **Auto-release excavators when idle** and **Auto-release trucks when idle**.
+
+When enabled, the selected vehicle class is automatically unassigned while none of the tower's managed mining or leveling designations have pending excavation work, or while the tower is paused.
 
 - Released vehicles are tracked. When pending excavation work returns, ATD re-assigns those vehicles back to the tower.
-- Useful for sharing vehicles between multiple towers when excavation work is intermittent.
-- Default is off. The global default is controlled by **autoReleaseVehiclesWhenIdle** in `ATDsettings.json`.
+- Useful for sharing trucks between multiple towers while keeping excavators reserved, or for releasing both classes when excavation work is intermittent.
+- Defaults are off. The global defaults are controlled by **autoReleaseExcavatorsWhenIdle** and **autoReleaseTrucksWhenIdle** in `ATDsettings.json`.
 
 ### `farmingPanelCollapsed` (ATDsettings.json)
 

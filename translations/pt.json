@@ -140,12 +140,24 @@
     "Preparar designações de nível plano para terra agrícola limpando material superficial inadequado e restaurando as ordens finais de preenchimento."
   ],
   [
-    "panel.farming.idle_release.label",
-    "Liberar automaticamente quando ocioso"
+    "panel.farming.idle_release_excavators.label",
+    "Liberar escavadeiras quando ociosas"
   ],
   [
-    "panel.farming.idle_release.tooltip",
-    "Remove automaticamente a atribuição de todos os escavadores e caminhões desta torre quando nenhuma designação tiver trabalho de escavação pendente.\nOs veículos são rastreados e reatribuídos quando o trabalho de escavação retornar."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Remove automaticamente a atribuição de escavadeiras desta torre quando nenhuma designação tiver trabalho de escavação pendente, ou enquanto a torre estiver pausada.\nAs escavadeiras são rastreadas e reatribuídas quando o trabalho de escavação retornar."
+  ],
+  [
+    "panel.farming.idle_release_trucks.label",
+    "Liberar caminhões quando ociosos"
+  ],
+  [
+    "panel.farming.idle_release_trucks.tooltip",
+    "Remove automaticamente a atribuição de caminhões desta torre quando nenhuma designação tiver trabalho de escavação pendente, ou enquanto a torre estiver pausada.\nOs caminhões são rastreados e reatribuídos quando o trabalho de escavação retornar."
+  ],
+  [
+    "panel.farming.assigned_vehicles.label",
+    "Veículos atribuídos"
   ],
   [
     "panel.ore.title",

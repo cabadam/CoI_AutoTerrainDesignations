@@ -140,12 +140,24 @@
     "Förbered plana utjämningsanvisningar för odlingsmark genom att rensa olämpligt ytmaterial och sedan återställa de slutliga fyllningsanvisningarna."
   ],
   [
-    "panel.farming.idle_release.label",
-    "Släpp tillfälligt vid inaktivitet"
+    "panel.farming.idle_release_excavators.label",
+    "Släpp grävmaskiner vid inaktivitet"
   ],
   [
-    "panel.farming.idle_release.tooltip",
-    "Släpp tillfälligt alla grävmaskiner och lastbilar från detta torn när ingen anvisning har väntande grävarbete.\nFordon spåras och tilldelas igen när grävarbetet återkommer."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Släpp tillfälligt grävmaskiner från detta torn när ingen anvisning har väntande grävarbete, eller när tornet är pausat.\nGrävmaskiner spåras och tilldelas igen när grävarbetet återkommer."
+  ],
+  [
+    "panel.farming.idle_release_trucks.label",
+    "Släpp lastbilar vid inaktivitet"
+  ],
+  [
+    "panel.farming.idle_release_trucks.tooltip",
+    "Släpp tillfälligt lastbilar från detta torn när ingen anvisning har väntande grävarbete, eller när tornet är pausat.\nLastbilar spåras och tilldelas igen när grävarbetet återkommer."
+  ],
+  [
+    "panel.farming.assigned_vehicles.label",
+    "Tilldelade fordon"
   ],
   [
     "panel.ore.title",

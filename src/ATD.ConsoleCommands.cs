@@ -39,7 +39,8 @@ public sealed class AtdConsoleCommands
         sb.AppendLine($"  FarmingPanelCollapsed = {AutoTerrainDesignationsMod.FarmingPanelCollapsed}");
         sb.AppendLine($"  ExcavatorCompleteNtf  = {AutoTerrainDesignationsMod.ExcavatorCompletionNotificationsEnabled}");
         sb.AppendLine($"  RampNotifications     = {AutoTerrainDesignationsMod.RampNotificationsEnabled}");
-        sb.AppendLine($"  AutoReleaseWhenIdle   = {AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle}");
+        sb.AppendLine($"  AutoReleaseExcavators = {AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle}");
+        sb.AppendLine($"  AutoReleaseTrucks     = {AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle}");
         sb.AppendLine($"  CornerDesignationKey  = {AutoTerrainDesignationsMod.CornerDesignationKey}");
         sb.Append(AutoDepthDesignation.FormatPurityArrays());
         return sb.ToString();
@@ -199,14 +200,34 @@ public sealed class AtdConsoleCommands
         return $"[ATD] FarmingPanelCollapsed set to {AutoTerrainDesignationsMod.FarmingPanelCollapsed}.";
     }
 
-    [ConsoleCommand(false, false, "Sets the global default for the Auto-release when idle toggle on new towers (true/false, on/off, 1/0).", null)]
+    [ConsoleCommand(false, false, "Sets the global default for both Auto-release when idle toggles on new towers (true/false, on/off, 1/0).", null)]
     private string atdSetAutoReleaseVehiclesWhenIdle(string value)
     {
         if (!TryParseConsoleBool(value, out bool parsed))
             return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
 
         AutoTerrainDesignationsMod.SetAutoReleaseVehiclesWhenIdle(parsed);
-        return $"[ATD] AutoReleaseVehiclesWhenIdle set to {AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle}.";
+        return $"[ATD] AutoReleaseExcavatorsWhenIdle and AutoReleaseTrucksWhenIdle set to {parsed}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets the global default for Auto-release excavators when idle on new towers (true/false, on/off, 1/0).", null)]
+    private string atdSetAutoReleaseExcavatorsWhenIdle(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetAutoReleaseExcavatorsWhenIdle(parsed);
+        return $"[ATD] AutoReleaseExcavatorsWhenIdle set to {AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle}.";
+    }
+
+    [ConsoleCommand(false, false, "Sets the global default for Auto-release trucks when idle on new towers (true/false, on/off, 1/0).", null)]
+    private string atdSetAutoReleaseTrucksWhenIdle(string value)
+    {
+        if (!TryParseConsoleBool(value, out bool parsed))
+            return $"[ATD] Invalid value '{value}'. Use true/false, on/off, yes/no, or 1/0.";
+
+        AutoTerrainDesignationsMod.SetAutoReleaseTrucksWhenIdle(parsed);
+        return $"[ATD] AutoReleaseTrucksWhenIdle set to {AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle}.";
     }
 
     [ConsoleCommand(false, false, "Sets the key used to enter corner designation mode (Unity KeyCode name, e.g. K, Alpha1, F1).", null)]

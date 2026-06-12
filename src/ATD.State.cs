@@ -66,12 +66,13 @@ namespace AutoTerrainDesignations
             public int? MaxDepthToDigTo { get; private set; }
             public int OrePurityLevel { get; private set; }
             public int CorridorClearance { get; private set; }
-            public bool AutoReleaseVehiclesWhenIdle { get; private set; }
+            public bool AutoReleaseExcavatorsWhenIdle { get; private set; }
+            public bool AutoReleaseTrucksWhenIdle { get; private set; }
 
             /// <summary>Outcome of the most recent ramp generation attempt. Null = no scan run yet.</summary>
             public RampPlacementOutcome? LastRampOutcome { get; set; }
 
-            public ATDTowerSettings(int maxHeightDiff, int rampWidth, int maxLayersToExcavate, int? maxDepthToDigTo, int orePurityLevel, int corridorClearance, bool autoReleaseVehiclesWhenIdle = false)
+            public ATDTowerSettings(int maxHeightDiff, int rampWidth, int maxLayersToExcavate, int? maxDepthToDigTo, int orePurityLevel, int corridorClearance, bool autoReleaseExcavatorsWhenIdle = false, bool autoReleaseTrucksWhenIdle = false)
             {
                 SetMaxHeightDiff(maxHeightDiff);
                 SetRampWidth(rampWidth);
@@ -79,7 +80,8 @@ namespace AutoTerrainDesignations
                 SetMaxDepthToDigTo(maxDepthToDigTo);
                 SetOrePurityLevel(orePurityLevel);
                 SetCorridorClearance(corridorClearance);
-                SetAutoReleaseWhenIdle(autoReleaseVehiclesWhenIdle);
+                SetAutoReleaseExcavatorsWhenIdle(autoReleaseExcavatorsWhenIdle);
+                SetAutoReleaseTrucksWhenIdle(autoReleaseTrucksWhenIdle);
             }
 
             public static ATDTowerSettings FromGlobalDefaults() => new ATDTowerSettings(
@@ -89,7 +91,8 @@ namespace AutoTerrainDesignations
                 AutoTerrainDesignationsMod.MaxDepthToDigTo,
                 AutoTerrainDesignationsMod.OrePurityLevel,
                 AutoTerrainDesignationsMod.MinCorridorClearance,
-                AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle);
+                AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle,
+                AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle);
 
             public void SetMaxHeightDiff(int value) => MaxHeightDiff = Math.Max(1, Math.Min(3, value));
 
@@ -103,7 +106,15 @@ namespace AutoTerrainDesignations
 
             public void SetCorridorClearance(int value) => CorridorClearance = Math.Max(0, Math.Min(2, value));
 
-            public void SetAutoReleaseWhenIdle(bool value) => AutoReleaseVehiclesWhenIdle = value;
+            public void SetAutoReleaseExcavatorsWhenIdle(bool value) => AutoReleaseExcavatorsWhenIdle = value;
+
+            public void SetAutoReleaseTrucksWhenIdle(bool value) => AutoReleaseTrucksWhenIdle = value;
+
+            public void SetAutoReleaseWhenIdle(bool value)
+            {
+                SetAutoReleaseExcavatorsWhenIdle(value);
+                SetAutoReleaseTrucksWhenIdle(value);
+            }
 
             public bool MatchesGlobalDefaults()
             {
@@ -113,7 +124,8 @@ namespace AutoTerrainDesignations
                     && MaxDepthToDigTo == AutoTerrainDesignationsMod.MaxDepthToDigTo
                     && OrePurityLevel == AutoTerrainDesignationsMod.OrePurityLevel
                     && CorridorClearance == AutoTerrainDesignationsMod.MinCorridorClearance
-                    && AutoReleaseVehiclesWhenIdle == AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle;
+                    && AutoReleaseExcavatorsWhenIdle == AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle
+                    && AutoReleaseTrucksWhenIdle == AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle;
             }
         }
 
@@ -213,18 +225,47 @@ namespace AutoTerrainDesignations
         internal static int GetTowerCorridorClearance(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).CorridorClearance;
         internal static void SetTowerCorridorClearance(IAreaManagingTower tower, int value) => GetOrCreateTowerSettings(tower).SetCorridorClearance(value);
 
-        internal static bool GetTowerAutoReleaseWhenIdle(IAreaManagingTower tower)
+        internal static bool GetTowerAutoReleaseExcavatorsWhenIdle(IAreaManagingTower tower)
         {
             if (TryGetTowerEntityId(tower, out EntityId entityId) && s_towerSettingsByEntityId.TryGetValue(entityId, out ATDTowerSettings settings))
-                return settings.AutoReleaseVehiclesWhenIdle;
-            return AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle;
+                return settings.AutoReleaseExcavatorsWhenIdle;
+            return AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle;
+        }
+
+        internal static void SetTowerAutoReleaseExcavatorsWhenIdle(IAreaManagingTower tower, bool value)
+        {
+            ATDTowerSettings settings = GetOrCreateTowerSettings(tower);
+            settings.SetAutoReleaseExcavatorsWhenIdle(value);
+            if (!value)
+                TryRestoreIdleReleasedVehiclesForTower(tower, settings.AutoReleaseExcavatorsWhenIdle, settings.AutoReleaseTrucksWhenIdle);
+        }
+
+        internal static bool GetTowerAutoReleaseTrucksWhenIdle(IAreaManagingTower tower)
+        {
+            if (TryGetTowerEntityId(tower, out EntityId entityId) && s_towerSettingsByEntityId.TryGetValue(entityId, out ATDTowerSettings settings))
+                return settings.AutoReleaseTrucksWhenIdle;
+            return AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle;
+        }
+
+        internal static void SetTowerAutoReleaseTrucksWhenIdle(IAreaManagingTower tower, bool value)
+        {
+            ATDTowerSettings settings = GetOrCreateTowerSettings(tower);
+            settings.SetAutoReleaseTrucksWhenIdle(value);
+            if (!value)
+                TryRestoreIdleReleasedVehiclesForTower(tower, settings.AutoReleaseExcavatorsWhenIdle, settings.AutoReleaseTrucksWhenIdle);
+        }
+
+        internal static bool GetTowerAutoReleaseWhenIdle(IAreaManagingTower tower)
+        {
+            return GetTowerAutoReleaseExcavatorsWhenIdle(tower) || GetTowerAutoReleaseTrucksWhenIdle(tower);
         }
 
         internal static void SetTowerAutoReleaseWhenIdle(IAreaManagingTower tower, bool value)
         {
-            GetOrCreateTowerSettings(tower).SetAutoReleaseWhenIdle(value);
+            ATDTowerSettings settings = GetOrCreateTowerSettings(tower);
+            settings.SetAutoReleaseWhenIdle(value);
             if (!value)
-                TryRestoreIdleReleasedVehiclesForTower(tower);
+                TryRestoreIdleReleasedVehiclesForTower(tower, settings.AutoReleaseExcavatorsWhenIdle, settings.AutoReleaseTrucksWhenIdle);
         }
 
         internal static RampPlacementOutcome? GetTowerLastRampOutcome(IAreaManagingTower tower) => GetOrCreateTowerSettings(tower).LastRampOutcome;

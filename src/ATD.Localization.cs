@@ -213,13 +213,22 @@ namespace AutoTerrainDesignations
             Loc.Str("panel.farming.automation_toggle.label", "Farmland preparation automation", "Label on the farming automation toggle.");
         public static LocStr FarmingToggleTip =
             Loc.Str("panel.farming.automation_toggle.tooltip", "Prepare flat level designations for farmland by clearing unsuitable top material, then restoring the final fill orders.", "Tooltip on the farming automation toggle.");
-        public static LocStr FarmingIdleReleaseLabel =
-            Loc.Str("panel.farming.idle_release.label", "Auto-release when idle", "Label on the auto-release vehicles when idle toggle.");
-        public static LocStr FarmingIdleReleaseTip =
-            Loc.Str("panel.farming.idle_release.tooltip",
-                "Automatically unassign all excavators and trucks from this tower when no designation has pending excavation work.\n" +
-                "Vehicles are tracked and re-assigned when excavation work returns.",
-                "Tooltip on the auto-release vehicles when idle toggle.");
+        public static LocStr FarmingIdleReleaseExcavatorsLabel =
+            Loc.Str("panel.farming.idle_release_excavators.label", "Auto-release excavators when idle", "Label on the auto-release excavators when idle toggle.");
+        public static LocStr FarmingIdleReleaseExcavatorsTip =
+            Loc.Str("panel.farming.idle_release_excavators.tooltip",
+                "Automatically unassign excavators from this tower when no designation has pending excavation work, or while the tower is paused.\n" +
+                "Excavators are tracked and re-assigned when excavation work returns.",
+                "Tooltip on the auto-release excavators when idle toggle.");
+        public static LocStr FarmingIdleReleaseTrucksLabel =
+            Loc.Str("panel.farming.idle_release_trucks.label", "Auto-release trucks when idle", "Label on the auto-release trucks when idle toggle.");
+        public static LocStr FarmingIdleReleaseTrucksTip =
+            Loc.Str("panel.farming.idle_release_trucks.tooltip",
+                "Automatically unassign trucks from this tower when no designation has pending excavation work, or while the tower is paused.\n" +
+                "Trucks are tracked and re-assigned when excavation work returns.",
+                "Tooltip on the auto-release trucks when idle toggle.");
+        public static LocStr FarmingAssignedVehiclesLabel =
+            Loc.Str("panel.farming.assigned_vehicles.label", "Assigned vehicles", "Label above the assigned vehicle summary in the tower inspector.");
 
         // ------------------------------------------------------------------ //
         // Toolbox items

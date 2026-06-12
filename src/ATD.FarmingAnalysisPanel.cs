@@ -55,23 +55,47 @@ namespace AutoTerrainDesignations
 
                 contentCol.Add(automationToggle);
 
-                var idleReleaseToggle = new Toggle(standalone: true)
-                    .Label(AtdLocalization.FarmingIdleReleaseLabel)
+                var idleReleaseExcavatorsToggle = new Toggle(standalone: true)
+                    .Label(AtdLocalization.FarmingIdleReleaseExcavatorsLabel)
                     .ObserveValue(() =>
                     {
                         var tower = entityProp.GetValue(inspector) as IAreaManagingTower;
-                        if (tower == null) return AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle;
-                        return AutoDepthDesignation.GetTowerAutoReleaseWhenIdle(tower);
+                        if (tower == null) return AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle;
+                        return AutoDepthDesignation.GetTowerAutoReleaseExcavatorsWhenIdle(tower);
                     })
                     .OnValueChanged((Action<bool>)delegate(bool isOn)
                     {
                         var tower = entityProp.GetValue(inspector) as IAreaManagingTower;
                         if (tower == null) return;
-                        AutoDepthDesignation.SetTowerAutoReleaseWhenIdle(tower, isOn);
+                        AutoDepthDesignation.SetTowerAutoReleaseExcavatorsWhenIdle(tower, isOn);
                     })
-                    .Tooltip(AtdLocalization.FarmingIdleReleaseTip);
+                    .Tooltip(AtdLocalization.FarmingIdleReleaseExcavatorsTip);
 
-                contentCol.Add(idleReleaseToggle);
+                contentCol.Add(idleReleaseExcavatorsToggle);
+
+                var idleReleaseTrucksToggle = new Toggle(standalone: true)
+                    .Label(AtdLocalization.FarmingIdleReleaseTrucksLabel)
+                    .ObserveValue(() =>
+                    {
+                        var tower = entityProp.GetValue(inspector) as IAreaManagingTower;
+                        if (tower == null) return AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle;
+                        return AutoDepthDesignation.GetTowerAutoReleaseTrucksWhenIdle(tower);
+                    })
+                    .OnValueChanged((Action<bool>)delegate(bool isOn)
+                    {
+                        var tower = entityProp.GetValue(inspector) as IAreaManagingTower;
+                        if (tower == null) return;
+                        AutoDepthDesignation.SetTowerAutoReleaseTrucksWhenIdle(tower, isOn);
+                    })
+                    .Tooltip(AtdLocalization.FarmingIdleReleaseTrucksTip);
+
+                contentCol.Add(idleReleaseTrucksToggle);
+
+                var assignedVehiclesLabel = new Label(AtdLocalization.FarmingAssignedVehiclesLabel.AsFormatted)
+                    .MarginTop(1.pt());
+                var assignedVehiclesValue = new Label(new LocStrFormatted(AutoDepthDesignation.FormatTowerVehicleSummary(entityProp.GetValue(inspector) as IAreaManagingTower)));
+                contentCol.Add(assignedVehiclesLabel);
+                contentCol.Add(assignedVehiclesValue);
 
                 var farmingInitTower = entityProp.GetValue(inspector) as IAreaManagingTower;
                 var panel = new PanelWithHeader()
@@ -93,9 +117,13 @@ namespace AutoTerrainDesignations
                     var tower = entityProp.GetValue(inspector) as IAreaManagingTower;
                     AutoDepthDesignation.EnsureFarmingAutomationDefaultEnabledForTower(tower);
                     automationToggle.Value(AutoDepthDesignation.IsFarmingAutomationEnabledForTower(tower));
-                    idleReleaseToggle.Value(tower == null
-                        ? AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle
-                        : AutoDepthDesignation.GetTowerAutoReleaseWhenIdle(tower));
+                    idleReleaseExcavatorsToggle.Value(tower == null
+                        ? AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle
+                        : AutoDepthDesignation.GetTowerAutoReleaseExcavatorsWhenIdle(tower));
+                    idleReleaseTrucksToggle.Value(tower == null
+                        ? AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle
+                        : AutoDepthDesignation.GetTowerAutoReleaseTrucksWhenIdle(tower));
+                    assignedVehiclesValue.Value(new LocStrFormatted(AutoDepthDesignation.FormatTowerVehicleSummary(tower)));
                     if (tower != null)
                         panel.Collapsed(AutoDepthDesignation.GetTowerFarmingPanelCollapsed(tower));
                 };

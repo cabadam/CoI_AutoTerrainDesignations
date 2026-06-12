@@ -18,6 +18,8 @@ using Mafi.Core.Entities;
 using Mafi.Core.Entities.Dynamic;
 using Mafi.Core.Prototypes;
 using Mafi.Core.Terrain.Designation;
+using Mafi.Core.Vehicles.Excavators;
+using Mafi.Core.Vehicles.Trucks;
 
 namespace AutoTerrainDesignations
 {
@@ -69,7 +71,7 @@ namespace AutoTerrainDesignations
         /// Excavators have no role in filling and should be released once excavation is done.
         /// </summary>
         private static bool HasPendingWork(MineTower tower, EntityId towerId)
-            => HasPendingExcavationJobs(tower);
+            => !tower.IsPaused && HasPendingExcavationJobs(tower);
 
         /// <summary>
         /// Main per-tick entry point. Called by the ticker on the same 1-second game-time
@@ -88,11 +90,13 @@ namespace AutoTerrainDesignations
                 if (!TryGetTowerEntityId(tower, out EntityId towerId))
                     continue;
 
-                if (!IsIdleVehicleReleaseEnabledForId(towerId))
+                GetIdleVehicleReleaseFlagsForId(towerId, out bool releaseExcavators, out bool releaseTrucks);
+
+                if (!releaseExcavators && !releaseTrucks)
                 {
                     // Feature disabled — if we previously released vehicles for this tower, restore them.
                     if (s_idleReleasedVehiclesByTower.ContainsKey(towerId))
-                        RestoreIdleReleasedVehicles(tower, towerId);
+                        RestoreIdleReleasedVehicles(tower, towerId, releaseExcavators, releaseTrucks);
                     continue;
                 }
 
@@ -102,20 +106,20 @@ namespace AutoTerrainDesignations
                 {
                     // Work returned — restore any previously released vehicles.
                     if (s_idleReleasedVehiclesByTower.ContainsKey(towerId))
-                        RestoreIdleReleasedVehicles(tower, towerId);
+                        RestoreIdleReleasedVehicles(tower, towerId, releaseExcavators: false, releaseTrucks: false);
                 }
                 else
                 {
                     // No pending excavation — release vehicles if not already in released state.
                     if (!s_idleReleasedVehiclesByTower.ContainsKey(towerId))
                     {
-                        ReleaseIdleVehicles(tower, towerId);
+                        ReleaseIdleVehicles(tower, towerId, releaseExcavators, releaseTrucks);
                     }
                     else
                     {
                         // Already in released state, but the player may have manually assigned new
                         // vehicles since the last release pass. Evict any that aren't in our list.
-                        ReleaseStrayVehicles(tower, towerId);
+                        ReleaseStrayVehicles(tower, towerId, releaseExcavators, releaseTrucks);
                     }
                 }
             }
@@ -125,26 +129,32 @@ namespace AutoTerrainDesignations
         /// If vehicles were released for the given tower (e.g. because the setting was turned
         /// off), restores them immediately. Safe to call when tower is not a MineTower.
         /// </summary>
-        private static void TryRestoreIdleReleasedVehiclesForTower(IAreaManagingTower tower)
+        private static void TryRestoreIdleReleasedVehiclesForTower(IAreaManagingTower tower, bool releaseExcavators, bool releaseTrucks)
         {
             if (!TryGetTowerEntityId(tower, out EntityId towerId))
                 return;
             if (!s_idleReleasedVehiclesByTower.ContainsKey(towerId))
                 return;
             if (tower is MineTower mineTower)
-                RestoreIdleReleasedVehicles(mineTower, towerId);
+                RestoreIdleReleasedVehicles(mineTower, towerId, releaseExcavators, releaseTrucks);
             else
                 s_idleReleasedVehiclesByTower.Remove(towerId);
         }
 
-        private static bool IsIdleVehicleReleaseEnabledForId(EntityId towerId)
+        private static void GetIdleVehicleReleaseFlagsForId(EntityId towerId, out bool releaseExcavators, out bool releaseTrucks)
         {
             if (s_towerSettingsByEntityId.TryGetValue(towerId, out ATDTowerSettings settings))
-                return settings.AutoReleaseVehiclesWhenIdle;
-            return AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle;
+            {
+                releaseExcavators = settings.AutoReleaseExcavatorsWhenIdle;
+                releaseTrucks = settings.AutoReleaseTrucksWhenIdle;
+                return;
+            }
+
+            releaseExcavators = AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle;
+            releaseTrucks = AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle;
         }
 
-        private static void ReleaseIdleVehicles(MineTower tower, EntityId towerId)
+        private static void ReleaseIdleVehicles(MineTower tower, EntityId towerId, bool releaseExcavators, bool releaseTrucks)
         {
             var released = new List<Vehicle>();
             var snapshot = new List<Vehicle>();
@@ -156,6 +166,8 @@ namespace AutoTerrainDesignations
             foreach (Vehicle vehicle in snapshot)
             {
                 if (vehicle == null || vehicle.IsDestroyed)
+                    continue;
+                if (!ShouldReleaseVehicle(vehicle, releaseExcavators, releaseTrucks))
                     continue;
 
                 try
@@ -189,7 +201,7 @@ namespace AutoTerrainDesignations
         /// manually assigned after the initial release. Evicts any vehicle not already tracked
         /// in the released list and adds it to the list.
         /// </summary>
-        private static void ReleaseStrayVehicles(MineTower tower, EntityId towerId)
+        private static void ReleaseStrayVehicles(MineTower tower, EntityId towerId, bool releaseExcavators, bool releaseTrucks)
         {
             if (!s_idleReleasedVehiclesByTower.TryGetValue(towerId, out List<Vehicle> released))
                 return;
@@ -202,6 +214,8 @@ namespace AutoTerrainDesignations
             foreach (Vehicle vehicle in snapshot)
             {
                 if (vehicle == null || vehicle.IsDestroyed)
+                    continue;
+                if (!ShouldReleaseVehicle(vehicle, releaseExcavators, releaseTrucks))
                     continue;
                 if (released.Contains(vehicle))
                     continue; // already tracked
@@ -325,7 +339,10 @@ namespace AutoTerrainDesignations
 
                 towerIndex++;
                 bool hasEntityId = TryGetTowerEntityId(tower, out EntityId towerId) && towerId.IsValid;
-                bool releaseEnabled = hasEntityId && IsIdleVehicleReleaseEnabledForId(towerId);
+                bool releaseExcavators = false;
+                bool releaseTrucks = false;
+                if (hasEntityId)
+                    GetIdleVehicleReleaseFlagsForId(towerId, out releaseExcavators, out releaseTrucks);
                 List<Vehicle>? releasedList = null;
                 bool isReleased = hasEntityId && s_idleReleasedVehiclesByTower.TryGetValue(towerId, out releasedList);
 
@@ -333,7 +350,7 @@ namespace AutoTerrainDesignations
                 string towerId_str = hasEntityId ? towerId.ToString() : "unknown";
                 sb.AppendLine();
                 sb.AppendLine($"Tower {towerIndex}: id={towerId_str}, pos=({pos.X},{pos.Y})");
-                sb.AppendLine($"  AutoRelease={releaseEnabled} | ATD-released={isReleased} ({(isReleased ? releasedList!.Count : 0)} vehicles tracked)");
+                sb.AppendLine($"  AutoRelease excavators={releaseExcavators}, trucks={releaseTrucks} | ATD-released={isReleased} ({(isReleased ? releasedList!.Count : 0)} vehicles tracked)");
 
                 int assignedCount = 0;
                 foreach (Vehicle v in tower.AllVehicles)
@@ -364,7 +381,65 @@ namespace AutoTerrainDesignations
             return sb.ToString().TrimEnd();
         }
 
-        private static void RestoreIdleReleasedVehicles(MineTower tower, EntityId towerId)
+        internal static string FormatTowerVehicleSummary(IAreaManagingTower? tower)
+        {
+            if (!(tower is MineTower mineTower) || !TryGetTowerEntityId(mineTower, out EntityId towerId))
+                return string.Empty;
+
+            var sb = new StringBuilder();
+            int assignedCount = 0;
+            foreach (Vehicle vehicle in mineTower.AllVehicles)
+            {
+                if (vehicle == null || vehicle.IsDestroyed)
+                    continue;
+                if (assignedCount == 0)
+                    sb.Append("Assigned: ");
+                else
+                    sb.Append(", ");
+                sb.Append('[').Append(vehicle.Id).Append("] ").Append(vehicle.GetTitle());
+                assignedCount++;
+            }
+            if (assignedCount == 0)
+                sb.Append("Assigned: none");
+
+            if (s_idleReleasedVehiclesByTower.TryGetValue(towerId, out List<Vehicle> released) && released.Count > 0)
+            {
+                bool first = true;
+                foreach (Vehicle vehicle in released)
+                {
+                    if (vehicle == null)
+                        continue;
+                    if (first)
+                    {
+                        sb.AppendLine();
+                        sb.Append("ATD-released: ");
+                        first = false;
+                    }
+                    else
+                    {
+                        sb.Append(", ");
+                    }
+                    string title = vehicle.IsDestroyed ? "<destroyed>" : vehicle.GetTitle();
+                    sb.Append('[').Append(vehicle.Id).Append("] ").Append(title);
+                }
+            }
+
+            return sb.ToString();
+        }
+
+        private static bool ShouldReleaseVehicle(Vehicle vehicle, bool releaseExcavators, bool releaseTrucks)
+        {
+            if (vehicle is Excavator)
+                return releaseExcavators;
+            if (vehicle is Truck)
+                return releaseTrucks;
+            return false;
+        }
+
+        private static bool ShouldRestoreVehicle(Vehicle vehicle, bool releaseExcavators, bool releaseTrucks)
+            => !ShouldReleaseVehicle(vehicle, releaseExcavators, releaseTrucks);
+
+        private static void RestoreIdleReleasedVehicles(MineTower tower, EntityId towerId, bool releaseExcavators, bool releaseTrucks)
         {
             if (!s_idleReleasedVehiclesByTower.TryGetValue(towerId, out List<Vehicle> released))
                 return;
@@ -376,6 +451,11 @@ namespace AutoTerrainDesignations
             foreach (Vehicle vehicle in released)
             {
                 if (vehicle == null || vehicle.IsDestroyed)
+                {
+                    skipped++;
+                    continue;
+                }
+                if (!ShouldRestoreVehicle(vehicle, releaseExcavators, releaseTrucks))
                 {
                     skipped++;
                     continue;
@@ -424,7 +504,14 @@ namespace AutoTerrainDesignations
             // blocked; if some were blocked, keep the full list so already-restored vehicles
             // are skipped via AllVehicles.Contains and blocked ones are retried next tick.
             if (blocked == 0)
+            {
+                released.RemoveAll(v => v == null || v.IsDestroyed || ShouldRestoreVehicle(v, releaseExcavators, releaseTrucks));
+            }
+
+            if (blocked == 0 && released.Count == 0)
                 s_idleReleasedVehiclesByTower.Remove(towerId);
+            else if (blocked == 0)
+                s_idleReleasedVehiclesByTower[towerId] = released;
 
             if (restored > 0 || skipped > 0 || failed > 0 || blocked > 0)
             {

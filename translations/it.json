@@ -140,12 +140,24 @@
     "Preparare le piane di livellamento dei terreni agricoli rimuovendo il materiale di copertura non idoneo, quindi ripristinare gli strati di riempimento finali."
   ],
   [
-    "panel.farming.idle_release.label",
-    "Rilascio automatico quando inattivo"
+    "panel.farming.idle_release_excavators.label",
+    "Rilascio escavatori quando inattivi"
   ],
   [
-    "panel.farming.idle_release.tooltip",
-    "Annulla automaticamente l'assegnazione di tutti gli escavatori e camion da questa torre quando nessuna designazione ha lavori di scavo in sospeso.\nI veicoli vengono tracciati e riassegnati quando riprendono i lavori di scavo."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Annulla automaticamente l'assegnazione degli escavatori da questa torre quando nessuna designazione ha lavori di scavo in sospeso o quando la torre è in pausa.\nGli escavatori vengono tracciati e riassegnati quando riprendono i lavori di scavo."
+  ],
+  [
+    "panel.farming.idle_release_trucks.label",
+    "Rilascio camion quando inattivi"
+  ],
+  [
+    "panel.farming.idle_release_trucks.tooltip",
+    "Annulla automaticamente l'assegnazione dei camion da questa torre quando nessuna designazione ha lavori di scavo in sospeso o quando la torre è in pausa.\nI camion vengono tracciati e riassegnati quando riprendono i lavori di scavo."
+  ],
+  [
+    "panel.farming.assigned_vehicles.label",
+    "Veicoli assegnati"
   ],
   [
     "panel.ore.title",

@@ -197,27 +197,30 @@ Not public API:
 
 `TickIdleVehicleRelease()` is called in the farming-sync timer block inside `AutoTerrainDesignationsTicker`, once per `FARMING_SYNC_INTERVAL_GAME_SECONDS` (~1 s). For each live `MineTower`:
 
-1. If the feature is disabled for the tower and the tower is in the released state, vehicles are restored immediately.
-2. If the feature is enabled and there are no pending excavation jobs, `ReleaseIdleVehicles` is called.
-3. If the feature is enabled and pending excavation work exists, `RestoreIdleReleasedVehicles` is called.
+1. The tower's excavator and truck release flags are resolved separately from per-tower settings, falling back to global defaults.
+2. If both release flags are disabled and the tower is in the released state, vehicles are restored immediately.
+3. If either release flag is enabled and there are no pending excavation jobs, or the tower is paused, `ReleaseIdleVehicles` is called for the enabled vehicle classes.
+4. If pending excavation work exists on an unpaused tower, `RestoreIdleReleasedVehicles` is called for all tracked vehicles.
 
 ### Pending-work check
 
-`HasPendingExcavationJobs(MineTower)` iterates `ManagedDesignations`. A designation counts as pending when its proto matches the mining or leveling designator proto and `IsMiningNotFulfilled` is true. The method returns `true` (safe, do not release) if the proto references are not yet initialized.
+`HasPendingExcavationJobs(MineTower)` iterates `ManagedDesignations`. A designation counts as pending when its proto matches the mining or leveling designator proto and `IsMiningNotFulfilled` is true. The method returns `true` (safe, do not release) if the proto references are not yet initialized. `HasPendingWork` treats paused towers as having no active work, so auto-release also applies while the tower is paused.
 
 ### Release
 
-`ReleaseIdleVehicles` snapshots `AllVehicles`, calls `UnassignVehicle(vehicle, cancelJobs: true)` for each non-destroyed vehicle, and stores the list under the tower's entity ID. An empty list is stored if the tower had no vehicles, which still marks the tower as in the released state.
+`ReleaseIdleVehicles` snapshots `AllVehicles`, filters by the enabled release classes (`Excavator` and/or `Truck`), calls `UnassignVehicle(vehicle, cancelJobs: true)` for each non-destroyed matching vehicle, and stores the list under the tower's entity ID. An empty list is stored if the tower had no matching vehicles, which still marks the tower as in the released state.
 
 ### Restore
 
-`RestoreIdleReleasedVehicles` iterates the stored list and calls `AssignVehicle` for each vehicle that is not destroyed, not already assigned elsewhere (`vehicle.AssignedTo.HasValue`), and not already in `AllVehicles`. The dictionary entry is removed after restore regardless of how many vehicles were successfully re-assigned.
+`RestoreIdleReleasedVehicles` iterates the stored list and calls `AssignVehicle` for each vehicle that is not destroyed, not already assigned elsewhere (`vehicle.AssignedTo.HasValue`), and not already in `AllVehicles`. When only one release class is disabled, the restore pass restores that class and keeps the still-enabled class tracked as released. When work returns, all tracked vehicles are restored.
+
+Vehicles cannot be truly soft-assigned to several towers at once because the game-level `Vehicle.AssignedTo` is a single assignment. A released vehicle can appear in more than one ATD tracking list if the player manually reuses it between towers, but restore skips vehicles that are already assigned elsewhere, so the first eligible tower to restore wins and the others leave it alone.
 
 ### Per-tower vs global default
 
-`IsIdleVehicleReleaseEnabledForId(EntityId)` checks `s_towerSettingsByEntityId` first; if no per-tower entry exists it falls back to `AutoTerrainDesignationsMod.AutoReleaseVehiclesWhenIdle`. This means the global default applies to towers that have never been customized, and the inspector toggle writes a per-tower override that shadows the default for that specific tower.
+`GetIdleVehicleReleaseFlagsForId(EntityId, out bool, out bool)` checks `s_towerSettingsByEntityId` first; if no per-tower entry exists it falls back to `AutoTerrainDesignationsMod.AutoReleaseExcavatorsWhenIdle` and `AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle`. This means the global defaults apply to towers that have never been customized, and the inspector toggles write per-tower overrides that shadow the defaults for that specific tower.
 
-`SetTowerAutoReleaseWhenIdle(IAreaManagingTower, bool)` in `ATD.State.cs` calls `TryRestoreIdleReleasedVehiclesForTower` when the value is set to `false`, so disabling the toggle triggers an immediate restore.
+`SetTowerAutoReleaseExcavatorsWhenIdle` and `SetTowerAutoReleaseTrucksWhenIdle` in `ATD.State.cs` call `TryRestoreIdleReleasedVehiclesForTower` for the disabled class when a value is set to `false`, so disabling either toggle triggers an immediate class-specific restore. The legacy combined `SetTowerAutoReleaseWhenIdle` still exists for compatibility and sets/restores both classes.
 - ramp scoring internals
 - ore composition internals
 - priority bootstrap logic

@@ -140,12 +140,24 @@
     "Prepara designaciones planas para tierra de cultivo retirando el material superior no apto y restaurando después las órdenes finales de rellenado."
   ],
   [
-    "panel.farming.idle_release.label",
-    "Liberar automáticamente al estar inactivo"
+    "panel.farming.idle_release_excavators.label",
+    "Liberar excavadoras al estar inactivas"
   ],
   [
-    "panel.farming.idle_release.tooltip",
-    "Desasigna automáticamente todas las excavadoras y camiones de esta torre cuando ninguna designación tiene trabajos de excavación pendientes.\nLos vehículos se registran y se reasignan cuando vuelve a haber trabajos de excavación."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Desasigna automáticamente las excavadoras de esta torre cuando ninguna designación tiene trabajos de excavación pendientes o cuando la torre está pausada.\nLas excavadoras se registran y se reasignan cuando vuelve a haber trabajos de excavación."
+  ],
+  [
+    "panel.farming.idle_release_trucks.label",
+    "Liberar camiones al estar inactivos"
+  ],
+  [
+    "panel.farming.idle_release_trucks.tooltip",
+    "Desasigna automáticamente los camiones de esta torre cuando ninguna designación tiene trabajos de excavación pendientes o cuando la torre está pausada.\nLos camiones se registran y se reasignan cuando vuelve a haber trabajos de excavación."
+  ],
+  [
+    "panel.farming.assigned_vehicles.label",
+    "Vehículos asignados"
   ],
   [
     "panel.ore.title",

@@ -140,12 +140,24 @@
     "Prepare flat level designations for farmland by clearing unsuitable top material, then restoring the final fill orders."
   ],
   [
-    "panel.farming.idle_release.label",
-    "Auto-release when idle"
+    "panel.farming.idle_release_excavators.label",
+    "Auto-release excavators when idle"
   ],
   [
-    "panel.farming.idle_release.tooltip",
-    "Automatically unassign all excavators and trucks from this tower when no designation has pending excavation work.\nVehicles are tracked and re-assigned when excavation work returns."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Automatically unassign excavators from this tower when no designation has pending excavation work, or while the tower is paused.\nExcavators are tracked and re-assigned when excavation work returns."
+  ],
+  [
+    "panel.farming.idle_release_trucks.label",
+    "Auto-release trucks when idle"
+  ],
+  [
+    "panel.farming.idle_release_trucks.tooltip",
+    "Automatically unassign trucks from this tower when no designation has pending excavation work, or while the tower is paused.\nTrucks are tracked and re-assigned when excavation work returns."
+  ],
+  [
+    "panel.farming.assigned_vehicles.label",
+    "Assigned vehicles"
   ],
   [
     "panel.ore.title",

@@ -140,12 +140,24 @@
     "针对水平的[平整]指令，清除不可种植的顶层材料并自动请求回填以创建农地。"
   ],
   [
-    "panel.farming.idle_release.label",
-    "闲置时解除分配"
+    "panel.farming.idle_release_excavators.label",
+    "闲置时释放挖掘机"
   ],
   [
-    "panel.farming.idle_release.tooltip",
-    "在区域内无挖掘作业时自动解除所有挖掘机和卡车的分配。\n当有新增挖掘工作后会自动尝试重新分配车辆。"
+    "panel.farming.idle_release_excavators.tooltip",
+    "在区域内无挖掘作业或矿塔暂停时，自动解除挖掘机的分配。\n当有新增挖掘工作后会自动重新分配挖掘机。"
+  ],
+  [
+    "panel.farming.idle_release_trucks.label",
+    "闲置时释放卡车"
+  ],
+  [
+    "panel.farming.idle_release_trucks.tooltip",
+    "在区域内无挖掘作业或矿塔暂停时，自动解除卡车的分配。\n当有新增挖掘工作后会自动重新分配卡车。"
+  ],
+  [
+    "panel.farming.assigned_vehicles.label",
+    "已分配车辆"
   ],
   [
     "panel.ore.title",
