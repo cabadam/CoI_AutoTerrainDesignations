@@ -297,7 +297,7 @@ The `bool ApplyConfiguration` flag from the original `BatchCreateStaticEntitiesC
 
 ### Footprint computation
 
-`ComputeCoveredDesignationCells(FarmProto, TileTransform)` calls `proto.Layout.GetOccupiedTilesRelative(transform)` with the full `TileTransform` (rotation + reflection) and snaps each occupied tile to the 4×4 designation grid. Farm sizes (T1 = 4×4, T2 = 8×8, T3 = 12×12) align cleanly to the grid.
+`ComputeCoveredDesignationCells(FarmProto, TileTransform)` calls `proto.Layout.GetOccupiedTilesRelative(transform)` with the full `TileTransform` (rotation + reflection) and snaps each occupied tile to the 4×4 designation grid.
 
 ### Validator suppression
 
