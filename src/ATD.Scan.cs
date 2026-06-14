@@ -319,28 +319,81 @@ namespace AutoTerrainDesignations
 
             IPathabilityProvider pathabilityProvider = s_vehiclePathFindingManager.PathabilityProvider;
             VehiclePathFindingParams pfParams = s_excavatorPathFindingParams;
-            Tile2i towerPosition = GetTowerPosition(tower, bbMin, bbMax);
-
-            if (!TryFindNearestPathableTile(pathabilityProvider, pfParams, towerPosition, out Tile2i start))
-            {
-                return false;
-            }
 
             HashSet<Tile2i> targetTiles = BuildRampMouthTargetTiles(rampMouthOrigin, pathabilityProvider, pfParams);
+            return IsReachableFromTowerInternal(tower, targetTiles, bbMin, bbMax);
+        }
+
+        private static bool IsClusterOriginReadyAndPathable(IAreaManagingTower tower, Tile2i origin)
+        {
+            if (s_desigManager == null) return false;
+            Option<TerrainDesignation> existing = s_desigManager.GetDesignationAt(origin);
+            if (!existing.HasValue) return false;
+
+            if (!existing.Value.IsReadyToMineNonAmphibious()) return false;
+
+            if (s_vehiclePathFindingManager == null || s_excavatorPathFindingParams == null) return true;
+            IPathabilityProvider pathabilityProvider = s_vehiclePathFindingManager.PathabilityProvider;
+            VehiclePathFindingParams pfParams = s_excavatorPathFindingParams;
+
+            var targetTiles = new HashSet<Tile2i>();
+            for (int y = 0; y < 4; y++)
+            {
+                for (int x = 0; x < 4; x++)
+                {
+                    Tile2i target = origin + new RelTile2i(x, y);
+                    if (pathabilityProvider.IsPathable(target, pfParams.PathabilityQueryMask))
+                    {
+                        targetTiles.Add(target);
+                    }
+                }
+            }
+
+            return IsReachableFromTowerInternal(tower, targetTiles, tower.Area.BoundingBoxMin, tower.Area.BoundingBoxMax);
+        }
+
+        private static bool IsReachableFromTowerInternal(
+            IAreaManagingTower tower,
+            HashSet<Tile2i> targetTiles,
+            Tile2i bbMin,
+            Tile2i bbMax)
+        {
+            if (s_vehiclePathFindingManager == null || s_excavatorPathFindingParams == null)
+            {
+                return true;
+            }
+
             if (targetTiles.Count == 0)
             {
                 return false;
             }
 
+            IPathabilityProvider pathabilityProvider = s_vehiclePathFindingManager.PathabilityProvider;
+            VehiclePathFindingParams pfParams = s_excavatorPathFindingParams;
+            Tile2i towerPosition = GetTowerPosition(tower, bbMin, bbMax);
+
+            if (!TryFindNearestPathableTile(pathabilityProvider, pfParams, towerPosition, out Tile2i start))
+            {
+                s_log.Info($"[ATD Reachability Debug] Cannot find pathable tile near tower {towerPosition}");
+                return false;
+            }
+
+            var terrMgr = s_desigManager?.TerrainManager;
+            int startHeight = terrMgr != null ? GetSurfaceHeight(terrMgr, start) : -1;
+            string targetsStr = terrMgr != null ? string.Join(", ", targetTiles.Select(t => $"{t} (h={GetSurfaceHeight(terrMgr, t)})")) : string.Join(", ", targetTiles);
+
+            s_log.Info($"[ATD Reachability Debug] Start search from tower={towerPosition} -> start={start} (h={startHeight}) to targets=[{targetsStr}]");
+
             if (targetTiles.Contains(start))
             {
+                s_log.Info($"[ATD Reachability Debug] Reachable immediately: target contains start");
                 return true;
             }
 
-            int minX = Math.Min(Math.Min(bbMin.X, towerPosition.X), rampMouthOrigin.X) - RAMP_ACCESS_SEARCH_MARGIN_TILES;
-            int minY = Math.Min(Math.Min(bbMin.Y, towerPosition.Y), rampMouthOrigin.Y) - RAMP_ACCESS_SEARCH_MARGIN_TILES;
-            int maxX = Math.Max(Math.Max(bbMax.X, towerPosition.X), rampMouthOrigin.X + 3) + RAMP_ACCESS_SEARCH_MARGIN_TILES;
-            int maxY = Math.Max(Math.Max(bbMax.Y, towerPosition.Y), rampMouthOrigin.Y + 3) + RAMP_ACCESS_SEARCH_MARGIN_TILES;
+            int minX = Math.Min(Math.Min(bbMin.X, towerPosition.X), targetTiles.Min(t => t.X)) - RAMP_ACCESS_SEARCH_MARGIN_TILES;
+            int minY = Math.Min(Math.Min(bbMin.Y, towerPosition.Y), targetTiles.Min(t => t.Y)) - RAMP_ACCESS_SEARCH_MARGIN_TILES;
+            int maxX = Math.Max(Math.Max(bbMax.X, towerPosition.X), targetTiles.Max(t => t.X)) + RAMP_ACCESS_SEARCH_MARGIN_TILES;
+            int maxY = Math.Max(Math.Max(bbMax.Y, towerPosition.Y), targetTiles.Max(t => t.Y)) + RAMP_ACCESS_SEARCH_MARGIN_TILES;
 
             var visited = new HashSet<Tile2i>();
             var queue = new Queue<Tile2i>();
@@ -361,13 +414,17 @@ namespace AutoTerrainDesignations
                     if (!pathabilityProvider.IsPathable(next, pfParams.PathabilityQueryMask))
                         continue;
                     if (targetTiles.Contains(next))
+                    {
+                        s_log.Info($"[ATD Reachability Debug] Reachable via path: reached target {next}");
                         return true;
+                    }
 
                     visited.Add(next);
                     queue.Enqueue(next);
                 }
             }
 
+            s_log.Info($"[ATD Reachability Debug] Not reachable: searched {visited.Count} tiles");
             return false;
         }
 

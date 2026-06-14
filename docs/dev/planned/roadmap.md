@@ -51,6 +51,7 @@ See [../in-progress/construction-assist.md](../in-progress/construction-assist.m
 ## CornerDesignationKey Tooltip Global Scope clarification
 Ensure the settings UI tooltip for the CornerDesignationKey explicitly documents that it is a global setting persisted in ATDsettings.json rather than per-save.
 
+## Topsoil Optimization
+Investigate placing only the minimum required soil to satisfy farmability (e.g., 95% thickness) instead of a full topsoil band. Deferred during the access framework rewrite.
+
 Check Wanderer's issues
-
-

@@ -18,6 +18,7 @@ using Mafi.Core.Entities.Static;
 using Mafi.Core.Terrain;
 using Mafi.Core.Terrain.Designation;
 using UnityEngine;
+using AutoTerrainDesignations.Access;
 
 namespace AutoTerrainDesignations
 {
@@ -1662,23 +1663,89 @@ namespace AutoTerrainDesignations
             try { s_vehiclePathFindingManager.PathabilityProvider.UpdateChangedTiles(); }
             catch { }
 
-            List<List<Tile2i>> clusters = BuildDesignationOriginClusters(tileDepths);
-            if (clusters.Count == 0)
+            List<List<Tile2i>> rawClusters = BuildDesignationOriginClusters(tileDepths, terrMgr);
+            if (rawClusters.Count == 0)
                 return false;
 
+            var miningIntent = new GenericWorkIntent("mining");
+            var originClusters = new List<AccessOriginCluster>();
+            int clusterId = 0;
+            
+            foreach (var rawCluster in rawClusters)
+            {
+                var accessOrigins = new List<AccessWorkOrigin>(rawCluster.Count);
+                foreach (var origin in rawCluster)
+                {
+                    accessOrigins.Add(new AccessWorkOrigin(origin, miningIntent, false));
+                }
+                originClusters.Add(new AccessOriginCluster(++clusterId, accessOrigins, new[] { miningIntent }));
+            }
+
+            var existingProviders = new List<AccessProvider>();
             var accessibleAccessOrigins = new HashSet<Tile2i>();
             var inaccessibleAccessOrigins = new HashSet<Tile2i>();
 
-            foreach (List<Tile2i> cluster in clusters)
+            foreach (var origin in s_designationOriginsInArea)
             {
-                if (!ClusterHasTowerReachableAccess(tower, tileDepths, cluster, accessProto, terrMgr, accessibleAccessOrigins, inaccessibleAccessOrigins))
+                if (tileDepths.ContainsKey(origin))
+                    continue;
+
+                Option<TerrainDesignation> existingDesignation = s_desigManager.GetDesignationAt(origin);
+                if (existingDesignation.HasValue && existingDesignation.Value.Prototype == accessProto)
+                {
+                    // Existing ramps are mapped as providers. ReachesGround defines if they connect to tower.
+                    bool reachesTower = ExistingAccessOriginConnectsToTower(tower, origin, tileDepths, accessProto, accessibleAccessOrigins, inaccessibleAccessOrigins);
+                    existingProviders.Add(new AccessProvider(new[] { origin, origin.AddX(4), origin.AddY(4), origin.AddXy(4) }, reachesTower));
+                }
+            }
+
+            var states = AccessReachability.EvaluateReachability(
+                originClusters,
+                existingProviders,
+                tower,
+                terrMgr,
+                tile => IsClusterOriginReadyAndPathable(tower, tile),
+                (origin, direction) => 
+                {
+                    Tile2i neighbor = new Tile2i(origin.X + direction.X, origin.Y + direction.Y);
+                    return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, accessProto, terrMgr, out _);
+                });
+
+            foreach (var cluster in originClusters)
+            {
+                var state = states[cluster];
+                AccessDiagnostics.LogClusterState(new AccessAnalysisResult(cluster, state, AccessNeed.Mining, null, null, BlockedReason.None, 0f));
+                
+                if (state != AccessClusterState.AccessibleDirect && state != AccessClusterState.AccessibleViaProvider)
+                {
                     return false;
+                }
             }
 
             return true;
         }
 
-        private static List<List<Tile2i>> BuildDesignationOriginClusters(Dict<Tile2i, int> tileDepths)
+        private static bool IsTileTransitionTraversable(Tile2i t1, Tile2i t2, Dict<Tile2i, int> tileDepths, TerrainManager terrMgr)
+        {
+            int h1 = GetSurfaceHeight(terrMgr, t1 + new RelTile2i(2, 2));
+            int h2 = GetSurfaceHeight(terrMgr, t2 + new RelTile2i(2, 2));
+            if (Math.Abs(h1 - h2) > 2)
+            {
+                return false;
+            }
+
+            if (tileDepths.TryGetValue(t1, out int target1) && tileDepths.TryGetValue(t2, out int target2))
+            {
+                if (Math.Abs(target1 - target2) > 2)
+                {
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
+        private static List<List<Tile2i>> BuildDesignationOriginClusters(Dict<Tile2i, int> tileDepths, TerrainManager terrMgr)
         {
             var clusters = new List<List<Tile2i>>();
             var unvisited = new HashSet<Tile2i>(tileDepths.Keys);
@@ -1699,8 +1766,12 @@ namespace AutoTerrainDesignations
                     foreach (Tile2i direction in s_cardinalDirections)
                     {
                         Tile2i next = Offset(current, direction);
-                        if (!unvisited.Remove(next))
+                        if (!unvisited.Contains(next))
                             continue;
+                        if (!IsTileTransitionTraversable(current, next, tileDepths, terrMgr))
+                            continue;
+
+                        unvisited.Remove(next);
                         queue.Enqueue(next);
                     }
                 }
