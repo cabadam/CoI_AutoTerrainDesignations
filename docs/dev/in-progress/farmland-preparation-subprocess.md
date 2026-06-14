@@ -348,8 +348,9 @@ terrain has been prepared, so building ghosts never block vehicle access to the
 terrain being worked. A given blueprint may contain no farms, some farms, or only
 farms. This section describes the **farm facet**: what Construction Assist does
 when the deferred blueprint contains one or more farms, which is the part that
-drives the farmland sub-process. The non-farm leveling facet is tracked in
-[docs/dev/planned/building-leveling-assist.md](../planned/building-leveling-assist.md).
+drives the farmland sub-process. The non-farm leveling facet, and the generic
+feature as a whole, are described in
+[docs/dev/in-progress/construction-assist.md](construction-assist.md).
 
 1. **Intercept.** A Harmony prefix on
    `EntitiesCommandsProcessor.Invoke(BatchCreateStaticEntitiesCmd)` captures the

@@ -43,7 +43,7 @@ Handled in v0.4.3a:
 
 ## Level ground for ANY entity/blueprint /MrTammy
 
-See [building-leveling-assist.md](building-leveling-assist.md) for full implementation plan.
+See [../in-progress/construction-assist.md](../in-progress/construction-assist.md) for the design; the non-farm leveling facet is the remaining work.
 
 ## CornerDesignationKey Tooltip Global Scope clarification
 Ensure the settings UI tooltip for the CornerDesignationKey explicitly documents that it is a global setting persisted in ATDsettings.json rather than per-save.
