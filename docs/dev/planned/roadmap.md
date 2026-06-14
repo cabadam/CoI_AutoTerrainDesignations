@@ -23,6 +23,12 @@ Auto-prepare ground anywhere
 
 ## Make corridors go up then down if they are long
 
+## Tighten access generation framework
+
+Define shared access-generation language, helpers, diagnostics, and regression scenarios for mining designations and farmland preparation.
+
+See [../in-progress/access-framework.md](../in-progress/access-framework.md) for the working glossary and architecture notes.
+
 ## Issue?: Vehichles auto-released can be assigned to the tower again (or to something else)
 Maybe reverse meaning and make auto-assign instead of auto-unassign?
 Handled in v0.4.3a:
