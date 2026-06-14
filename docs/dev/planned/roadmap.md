@@ -41,9 +41,12 @@ Handled in v0.4.3a:
 
 ## Saddle designation?
 
-## Level ground for ANY entity/blueprint /MrTammy
+## Prepare ground for ANY entity/blueprint /MrTammy
 
 See [../in-progress/construction-assist.md](../in-progress/construction-assist.md) for the design; the non-farm leveling facet is the remaining work.
+
+### Long term: Support underground pipe construction both for modded and unmodded games
+* Highly complicated if unmodded: must dig trench, place pipes, build pipes, prepare remaining ground, place rest of BP.
 
 ## CornerDesignationKey Tooltip Global Scope clarification
 Ensure the settings UI tooltip for the CornerDesignationKey explicitly documents that it is a global setting persisted in ATDsettings.json rather than per-save.

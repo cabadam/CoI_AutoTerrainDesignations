@@ -227,9 +227,6 @@ namespace AutoTerrainDesignations
                 "Automatically unassign trucks from this tower when no designation has pending excavation work, or while the tower is paused.\n" +
                 "Trucks are tracked and re-assigned when excavation work returns.",
                 "Tooltip on the auto-release trucks when idle toggle.");
-        public static LocStr FarmingAssignedVehiclesLabel =
-            Loc.Str("panel.farming.assigned_vehicles.label", "Assigned vehicles", "Label above the assigned vehicle summary in the tower inspector.");
-
         // ------------------------------------------------------------------ //
         // Toolbox items
         // ------------------------------------------------------------------ //

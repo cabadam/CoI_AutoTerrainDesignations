@@ -2,7 +2,8 @@ v0.4.3a | 2026-06-06 [unreleased]
 * Changed: renamed the Mod Settings **Mining defaults** heading to **Mine control tower defaults** to match the vanilla tower name
 * Changed: split **Auto-release when idle** into separate per-tower/global toggles for excavators and trucks; legacy `autoReleaseVehiclesWhenIdle` settings still migrate by setting both new defaults
 * Fixed: auto-release now treats paused mine towers as idle, so enabled vehicle classes are released while the tower is paused and restored when excavation work resumes
-* Added: the Farmland preparation panel now shows a compact assigned/ATD-released vehicle list for the selected tower
+* Added: the Farmland preparation panel auto-release tooltips now include a compact assigned/ATD-released vehicle list for the selected tower
+* Fixed: ramp generation could incorrectly skip with "existing planned ramp designation(s) already provide surface access" when an unrelated reachable accessway existed in the tower area; the duplicate-access shortcut now requires every disconnected excavation cluster to have height-compatible access to tower-reachable ground or to a connected existing accessway
 * Updated: translations for German, Spanish, Italian, Portuguese, Russian, Swedish, and Chinese to support the split auto-release toggles and assigned vehicles list
 
 v0.4.3 | 2026-06-06

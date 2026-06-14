@@ -282,17 +282,18 @@ namespace AutoTerrainDesignations
             BuildBuildingOccupiedTiles(tower);
             BuildDesignationOriginsInArea(tower);
 
-            // If any non-ore designation already in this area has a surface-pathable tile
-            // reachable from the tower, it is a ramp placed in a prior scan that hasn't been
-            // physically excavated yet.  Placing another ramp in a new direction would be
-            // redundant.  Skip generation so we don't accumulate surplus ramps on re-scans.
+            // If every disconnected excavation cluster already touches tower-reachable ground
+            // or a tower-reachable planned accessway, ramp generation would be redundant. This
+            // is deliberately a cluster coverage check rather than a "some ramp exists" check:
+            // an unrelated reachable accessway elsewhere in the tower area must not suppress a
+            // ramp for a separate inaccessible cluster.
             // This guard only applies to the standard mine-ramp path (useLocalSurfaceReference
             // is false); farming filling ramps use their own duplicate-prevention mechanism.
             if (allowExistingPlannedRampShortcut
                 && !useLocalSurfaceReference
-                && ExistingPlannedRampProvidesAccess(tower, tileDepths))
+                && ExistingPlannedAccessProvidesAccessToAllClusters(tower, tileDepths, rampProto, terrMgr))
             {
-                LogDebug("Skipping ramp generation: existing planned ramp designation(s) already provide surface access from the tower.");
+                LogDebug("Skipping ramp generation: every excavation cluster already has tower-reachable access.");
                 topRowTile = default;
                 return RampPlacementOutcome.Crested;
             }
@@ -1651,31 +1652,265 @@ namespace AutoTerrainDesignations
             return false;
         }
 
-        /// <summary>
-        /// Returns true if any designation currently in <see cref="s_designationOriginsInArea"/>
-        /// that is NOT an ore tile (i.e. not present in <paramref name="tileDepths"/>) has at
-        /// least one currently-pathable surface tile in its 4×4 area that is reachable from the
-        /// tower via BFS. Such designations are ramps placed by a prior scan that haven't been
-        /// physically excavated yet; placing another ramp would create a redundant duplicate.
-        /// </summary>
-        private static bool ExistingPlannedRampProvidesAccess(IAreaManagingTower tower, Dict<Tile2i, int> tileDepths)
+        private static bool ExistingPlannedAccessProvidesAccessToAllClusters(IAreaManagingTower tower, Dict<Tile2i, int> tileDepths, TerrainDesignationProto accessProto, TerrainManager terrMgr)
         {
             if (s_vehiclePathFindingManager == null || s_excavatorPathFindingParams == null)
+                return false;
+            if (s_desigManager == null)
                 return false;
 
             try { s_vehiclePathFindingManager.PathabilityProvider.UpdateChangedTiles(); }
             catch { }
 
-            foreach (Tile2i existingOrigin in s_designationOriginsInArea)
-            {
-                if (tileDepths.ContainsKey(existingOrigin))
-                    continue; // Ore tile — not a planned ramp.
+            List<List<Tile2i>> clusters = BuildDesignationOriginClusters(tileDepths);
+            if (clusters.Count == 0)
+                return false;
 
-                if (IsRampMouthReachableFromTower(tower, existingOrigin))
-                    return true;
+            var accessibleAccessOrigins = new HashSet<Tile2i>();
+            var inaccessibleAccessOrigins = new HashSet<Tile2i>();
+
+            foreach (List<Tile2i> cluster in clusters)
+            {
+                if (!ClusterHasTowerReachableAccess(tower, tileDepths, cluster, accessProto, terrMgr, accessibleAccessOrigins, inaccessibleAccessOrigins))
+                    return false;
+            }
+
+            return true;
+        }
+
+        private static List<List<Tile2i>> BuildDesignationOriginClusters(Dict<Tile2i, int> tileDepths)
+        {
+            var clusters = new List<List<Tile2i>>();
+            var unvisited = new HashSet<Tile2i>(tileDepths.Keys);
+            var queue = new Queue<Tile2i>();
+
+            while (unvisited.Count > 0)
+            {
+                Tile2i seed = unvisited.First();
+                unvisited.Remove(seed);
+                queue.Enqueue(seed);
+
+                var cluster = new List<Tile2i>();
+                while (queue.Count > 0)
+                {
+                    Tile2i current = queue.Dequeue();
+                    cluster.Add(current);
+
+                    foreach (Tile2i direction in s_cardinalDirections)
+                    {
+                        Tile2i next = Offset(current, direction);
+                        if (!unvisited.Remove(next))
+                            continue;
+                        queue.Enqueue(next);
+                    }
+                }
+
+                clusters.Add(cluster);
+            }
+
+            return clusters;
+        }
+
+        private static bool ClusterHasTowerReachableAccess(
+            IAreaManagingTower tower,
+            Dict<Tile2i, int> tileDepths,
+            List<Tile2i> cluster,
+            TerrainDesignationProto accessProto,
+            TerrainManager terrMgr,
+            HashSet<Tile2i> accessibleAccessOrigins,
+            HashSet<Tile2i> inaccessibleAccessOrigins)
+        {
+            var clusterSet = new HashSet<Tile2i>(cluster);
+
+            foreach (Tile2i origin in cluster)
+            {
+                foreach (Tile2i direction in s_cardinalDirections)
+                {
+                    Tile2i neighbor = Offset(origin, direction);
+                    if (clusterSet.Contains(neighbor) || tileDepths.ContainsKey(neighbor))
+                        continue;
+
+                    if (!TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, accessProto, terrMgr, out bool connectsToExistingAccess))
+                        continue;
+
+                    if (!connectsToExistingAccess)
+                    {
+                        if (IsRampMouthReachableFromTower(tower, neighbor))
+                            return true;
+                        continue;
+                    }
+
+                    if (ExistingAccessOriginConnectsToTower(tower, neighbor, tileDepths, accessProto, accessibleAccessOrigins, inaccessibleAccessOrigins))
+                        return true;
+                }
             }
 
             return false;
+        }
+
+        private static bool TryClusterEdgeConnectsToAccess(
+            Tile2i clusterOrigin,
+            Tile2i accessOrigin,
+            Tile2i direction,
+            Dict<Tile2i, int> tileDepths,
+            TerrainDesignationProto accessProto,
+            TerrainManager terrMgr,
+            out bool connectsToExistingAccess)
+        {
+            connectsToExistingAccess = false;
+            if (s_desigManager == null)
+                return false;
+
+            Option<TerrainDesignation> clusterDesignation = s_desigManager.GetDesignationAt(clusterOrigin);
+            if (!clusterDesignation.HasValue)
+                return false;
+
+            if (!TryGetEdgeTargetHeights(clusterDesignation.Value, direction, out float clusterA, out float clusterB))
+                return false;
+
+            Tile2i alignedAccessOrigin = new Tile2i(accessOrigin.X & -4, accessOrigin.Y & -4);
+            Option<TerrainDesignation> accessDesignation = s_desigManager.GetDesignationAt(alignedAccessOrigin);
+            if (accessDesignation.HasValue)
+            {
+                if (tileDepths.ContainsKey(alignedAccessOrigin))
+                    return false;
+                if (accessDesignation.Value.Prototype != accessProto)
+                    return false;
+                if (!TryGetEdgeTargetHeights(accessDesignation.Value, Scale(direction, -1), out float accessA, out float accessB))
+                    return false;
+
+                connectsToExistingAccess = true;
+                return Math.Abs(clusterA - accessA) <= 1f && Math.Abs(clusterB - accessB) <= 1f;
+            }
+
+            GetSharedEdgeSurfaceHeights(clusterOrigin, direction, terrMgr, out int surfaceA, out int surfaceB);
+            return Math.Abs(clusterA - surfaceA) <= 1f && Math.Abs(clusterB - surfaceB) <= 1f;
+        }
+
+        private static bool TryGetEdgeTargetHeights(TerrainDesignation designation, Tile2i direction, out float first, out float second)
+        {
+            first = 0f;
+            second = 0f;
+            int ax, ay, bx, by;
+            if (direction.X > 0)
+            {
+                ax = 4; ay = 0; bx = 4; by = 4;
+            }
+            else if (direction.X < 0)
+            {
+                ax = 0; ay = 0; bx = 0; by = 4;
+            }
+            else if (direction.Y > 0)
+            {
+                ax = 0; ay = 4; bx = 4; by = 4;
+            }
+            else if (direction.Y < 0)
+            {
+                ax = 0; ay = 0; bx = 4; by = 0;
+            }
+            else
+            {
+                return false;
+            }
+
+            first = GetDesignationTargetHeightAt(designation.Data, ax, ay).Value.ToFloat();
+            second = GetDesignationTargetHeightAt(designation.Data, bx, by).Value.ToFloat();
+            return true;
+        }
+
+        private static void GetSharedEdgeSurfaceHeights(Tile2i origin, Tile2i direction, TerrainManager terrMgr, out int first, out int second)
+        {
+            Tile2i a;
+            Tile2i b;
+            if (direction.X > 0)
+            {
+                a = origin.AddX(4);
+                b = origin.AddXy(4);
+            }
+            else if (direction.X < 0)
+            {
+                a = origin;
+                b = origin.AddY(4);
+            }
+            else if (direction.Y > 0)
+            {
+                a = origin.AddY(4);
+                b = origin.AddXy(4);
+            }
+            else
+            {
+                a = origin;
+                b = origin.AddX(4);
+            }
+
+            first = GetSurfaceHeight(terrMgr, a);
+            second = GetSurfaceHeight(terrMgr, b);
+        }
+
+        private static bool ExistingAccessOriginConnectsToTower(
+            IAreaManagingTower tower,
+            Tile2i origin,
+            Dict<Tile2i, int> tileDepths,
+            TerrainDesignationProto accessProto,
+            HashSet<Tile2i> accessibleAccessOrigins,
+            HashSet<Tile2i> inaccessibleAccessOrigins)
+        {
+            Tile2i alignedOrigin = new Tile2i(origin.X & -4, origin.Y & -4);
+
+            if (IsRampMouthReachableFromTower(tower, alignedOrigin))
+                return true;
+
+            if (accessibleAccessOrigins.Contains(alignedOrigin))
+                return true;
+            if (inaccessibleAccessOrigins.Contains(alignedOrigin))
+                return false;
+
+            if (!IsExistingAccessDesignation(alignedOrigin, tileDepths, accessProto))
+                return false;
+
+            var component = new List<Tile2i>();
+            var visited = new HashSet<Tile2i>();
+            var queue = new Queue<Tile2i>();
+            visited.Add(alignedOrigin);
+            queue.Enqueue(alignedOrigin);
+
+            bool connects = false;
+            while (queue.Count > 0)
+            {
+                Tile2i current = queue.Dequeue();
+                component.Add(current);
+
+                if (IsRampMouthReachableFromTower(tower, current))
+                    connects = true;
+
+                foreach (Tile2i direction in s_cardinalDirections)
+                {
+                    Tile2i next = Offset(current, direction);
+                    if (visited.Contains(next))
+                        continue;
+                    if (!IsExistingAccessDesignation(next, tileDepths, accessProto))
+                        continue;
+                    visited.Add(next);
+                    queue.Enqueue(next);
+                }
+            }
+
+            HashSet<Tile2i> cache = connects ? accessibleAccessOrigins : inaccessibleAccessOrigins;
+            foreach (Tile2i accessOrigin in component)
+                cache.Add(accessOrigin);
+
+            return connects;
+        }
+
+        private static bool IsExistingAccessDesignation(Tile2i origin, Dict<Tile2i, int> tileDepths, TerrainDesignationProto accessProto)
+        {
+            if (s_desigManager == null)
+                return false;
+            if (tileDepths.ContainsKey(origin))
+                return false;
+
+            Option<TerrainDesignation> existingDesignation = s_desigManager.GetDesignationAt(origin);
+            return existingDesignation.HasValue && existingDesignation.Value.Prototype == accessProto;
         }
 
         private static bool IsFreeRampTile(IAreaManagingTower tower, Tile2i tile, Dict<Tile2i, int> tileDepths, int rampDepth, Tile2i rampDirection, HashSet<Tile2i>? reservedRampTiles)

@@ -69,7 +69,7 @@ namespace AutoTerrainDesignations
                         if (tower == null) return;
                         AutoDepthDesignation.SetTowerAutoReleaseExcavatorsWhenIdle(tower, isOn);
                     })
-                    .Tooltip(AtdLocalization.FarmingIdleReleaseExcavatorsTip);
+                    .Tooltip(BuildVehicleSummaryTooltip(AtdLocalization.FarmingIdleReleaseExcavatorsTip, entityProp.GetValue(inspector) as IAreaManagingTower));
 
                 contentCol.Add(idleReleaseExcavatorsToggle);
 
@@ -87,15 +87,9 @@ namespace AutoTerrainDesignations
                         if (tower == null) return;
                         AutoDepthDesignation.SetTowerAutoReleaseTrucksWhenIdle(tower, isOn);
                     })
-                    .Tooltip(AtdLocalization.FarmingIdleReleaseTrucksTip);
+                    .Tooltip(BuildVehicleSummaryTooltip(AtdLocalization.FarmingIdleReleaseTrucksTip, entityProp.GetValue(inspector) as IAreaManagingTower));
 
                 contentCol.Add(idleReleaseTrucksToggle);
-
-                var assignedVehiclesLabel = new Label(AtdLocalization.FarmingAssignedVehiclesLabel.AsFormatted)
-                    .MarginTop(1.pt());
-                var assignedVehiclesValue = new Label(new LocStrFormatted(AutoDepthDesignation.FormatTowerVehicleSummary(entityProp.GetValue(inspector) as IAreaManagingTower)));
-                contentCol.Add(assignedVehiclesLabel);
-                contentCol.Add(assignedVehiclesValue);
 
                 var farmingInitTower = entityProp.GetValue(inspector) as IAreaManagingTower;
                 var panel = new PanelWithHeader()
@@ -123,7 +117,8 @@ namespace AutoTerrainDesignations
                     idleReleaseTrucksToggle.Value(tower == null
                         ? AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle
                         : AutoDepthDesignation.GetTowerAutoReleaseTrucksWhenIdle(tower));
-                    assignedVehiclesValue.Value(new LocStrFormatted(AutoDepthDesignation.FormatTowerVehicleSummary(tower)));
+                    idleReleaseExcavatorsToggle.Tooltip(BuildVehicleSummaryTooltip(AtdLocalization.FarmingIdleReleaseExcavatorsTip, tower));
+                    idleReleaseTrucksToggle.Tooltip(BuildVehicleSummaryTooltip(AtdLocalization.FarmingIdleReleaseTrucksTip, tower));
                     if (tower != null)
                         panel.Collapsed(AutoDepthDesignation.GetTowerFarmingPanelCollapsed(tower));
                 };
@@ -135,6 +130,15 @@ namespace AutoTerrainDesignations
             {
                 Log.Warning($"[ATD] FarmingAnalysisPanel.Inject EXCEPTION: {ex}");
             }
+        }
+
+        private static LocStrFormatted BuildVehicleSummaryTooltip(LocStr baseTooltip, IAreaManagingTower? tower)
+        {
+            string vehicleSummary = AutoDepthDesignation.FormatTowerVehicleSummary(tower);
+            if (string.IsNullOrWhiteSpace(vehicleSummary))
+                return baseTooltip.AsFormatted;
+
+            return new LocStrFormatted(baseTooltip.TranslatedString + "\n\n" + vehicleSummary);
         }
 
     }

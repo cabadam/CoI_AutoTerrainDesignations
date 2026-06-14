@@ -156,10 +156,6 @@
     "Automatically unassign trucks from this tower when no designation has pending excavation work, or while the tower is paused.\nTrucks are tracked and re-assigned when excavation work returns."
   ],
   [
-    "panel.farming.assigned_vehicles.label",
-    "Assigned vehicles"
-  ],
-  [
     "panel.ore.title",
     "Ore composition"
   ],
