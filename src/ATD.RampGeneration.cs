@@ -283,181 +283,376 @@ namespace AutoTerrainDesignations
             BuildBuildingOccupiedTiles(tower);
             BuildDesignationOriginsInArea(tower);
 
-            // If every disconnected excavation cluster already touches tower-reachable ground
-            // or a tower-reachable planned accessway, ramp generation would be redundant. This
-            // is deliberately a cluster coverage check rather than a "some ramp exists" check:
-            // an unrelated reachable accessway elsewhere in the tower area must not suppress a
-            // ramp for a separate inaccessible cluster.
-            // This guard only applies to the standard mine-ramp path (useLocalSurfaceReference
-            // is false); farming filling ramps use their own duplicate-prevention mechanism.
+            // 1. Group active designations into origin clusters
+            List<List<Tile2i>> rawClusters = BuildDesignationOriginClusters(tileDepths, terrMgr);
+            if (rawClusters.Count == 0)
+            {
+                topRowTile = default;
+                return RampPlacementOutcome.Crested;
+            }
+
+            var miningIntent = new GenericWorkIntent("mining");
+            var originClusters = new List<AccessOriginCluster>();
+            int nextClusterId = 0;
+            foreach (var rawCluster in rawClusters)
+            {
+                var accessOrigins = new List<AccessWorkOrigin>(rawCluster.Count);
+                foreach (var origin in rawCluster)
+                {
+                    accessOrigins.Add(new AccessWorkOrigin(origin, miningIntent, false));
+                }
+                originClusters.Add(new AccessOriginCluster(++nextClusterId, accessOrigins, new[] { miningIntent }));
+            }
+
+            // 2. Identify existing access providers
+            var existingProviders = new List<AccessProvider>();
+            var accessibleAccessOrigins = new HashSet<Tile2i>();
+            var inaccessibleAccessOrigins = new HashSet<Tile2i>();
+
+            foreach (var origin in s_designationOriginsInArea)
+            {
+                if (tileDepths.ContainsKey(origin))
+                    continue;
+
+                Option<TerrainDesignation> existingDesignation = s_desigManager.GetDesignationAt(origin);
+                if (existingDesignation.HasValue && existingDesignation.Value.Prototype == rampProto)
+                {
+                    bool reachesTower = ExistingAccessOriginConnectsToTower(tower, origin, tileDepths, rampProto, accessibleAccessOrigins, inaccessibleAccessOrigins);
+                    existingProviders.Add(new AccessProvider(new[] { origin, origin.AddX(4), origin.AddY(4), origin.AddXy(4) }, reachesTower));
+                }
+            }
+
+            // 3. Evaluate initial reachability
+            var states = AccessReachability.EvaluateReachability(
+                originClusters,
+                existingProviders,
+                tower,
+                terrMgr,
+                tile => IsClusterOriginReadyAndPathable(tower, tile),
+                (origin, direction) => 
+                {
+                    Tile2i neighbor = new Tile2i(origin.X + direction.X, origin.Y + direction.Y);
+                    return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, rampProto, terrMgr, out _);
+                });
+
+            // Log initial states
+            foreach (var cluster in originClusters)
+            {
+                var state = states[cluster];
+                AccessDiagnostics.LogClusterState(new AccessAnalysisResult(cluster, state, AccessNeed.Mining, null, null, BlockedReason.None, 0f));
+            }
+
+            // If everything is already reachable, we can skip ramp generation
             if (allowExistingPlannedRampShortcut
                 && !useLocalSurfaceReference
-                && ExistingPlannedAccessProvidesAccessToAllClusters(tower, tileDepths, rampProto, terrMgr))
+                && originClusters.All(c => states[c] == AccessClusterState.AccessibleDirect || states[c] == AccessClusterState.AccessibleViaProvider))
             {
                 LogDebug("Skipping ramp generation: every excavation cluster already has tower-reachable access.");
                 topRowTile = default;
                 return RampPlacementOutcome.Crested;
             }
 
-            int rampWidth = Math.Max(1, Math.Min(5, configuredRampWidth));
-            List<RampCandidate> candidates = CollectRampCandidates(tower, tileDepths, rampWidth, reservedRampTiles: reservedRampTiles);
-            if (candidates.Count == 0)
-            {
-                LogDebug(string.Format("No usable {0}-wide ramp space found inside the tower area.", rampWidth));
-            }
+            // 4. Sort unreachable clusters closest-to-tower first
+            Tile2i towerPos;
+            if (tower is IEntityWithPosition posEntity)
+                towerPos = posEntity.Position2f.Tile2i;
+            else
+                towerPos = new Tile2i((tower.Area.BoundingBoxMin.X + tower.Area.BoundingBoxMax.X) / 2, (tower.Area.BoundingBoxMin.Y + tower.Area.BoundingBoxMax.Y) / 2);
 
-            RampPlacementOutcome outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, candidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile, forbiddenApproachClusterOrigins);
-            if (outcome != RampPlacementOutcome.Failed)
+            var unreachableClusters = originClusters.Where(c => states[c] == AccessClusterState.NeedsAccessway).ToList();
+            unreachableClusters.Sort((left, right) =>
             {
-                return outcome;
-            }
+                int leftMinDist = left.Origins.Min(o => (o.Origin.X - towerPos.X) * (o.Origin.X - towerPos.X) + (o.Origin.Y - towerPos.Y) * (o.Origin.Y - towerPos.Y));
+                int rightMinDist = right.Origins.Min(o => (o.Origin.X - towerPos.X) * (o.Origin.X - towerPos.X) + (o.Origin.Y - towerPos.Y) * (o.Origin.Y - towerPos.Y));
+                return leftMinDist.CompareTo(rightMinDist);
+            });
 
-            int lateralRetryOffset = rampWidth / 2;
-            if (rampWidth > 1 && lateralRetryOffset > 0)
+            RampPlacementOutcome worstOutcome = RampPlacementOutcome.Crested;
+            bool placedAny = false;
+
+            // 5. Generate missing providers closest-first
+            foreach (var cluster in unreachableClusters)
             {
-                LogDebug(string.Format("Retrying ramp search with a sideways offset of {0} lane(s).", lateralRetryOffset));
-                List<RampCandidate> shiftedCandidates = CollectRampCandidates(tower, tileDepths, rampWidth, lateralRetryOffset, reservedRampTiles);
-                outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, shiftedCandidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile, forbiddenApproachClusterOrigins);
-                if (outcome != RampPlacementOutcome.Failed)
+                // Re-evaluate state in case a previous loop iteration's placement connected this cluster
+                if (states[cluster] == AccessClusterState.AccessibleDirect || states[cluster] == AccessClusterState.AccessibleViaProvider)
                 {
-                    return outcome;
+                    LogDebug($"Skipping generation for cluster {cluster.ClusterId} because it is now reachable via provider.");
+                    continue;
+                }
+
+                var clusterTileDepths = new Dict<Tile2i, int>();
+                foreach (var origin in cluster.Origins)
+                {
+                    clusterTileDepths[origin.Origin] = tileDepths[origin.Origin];
+                }
+
+                int rampWidth = Math.Max(1, Math.Min(5, configuredRampWidth));
+                List<EvaluatedAccessCandidate> allEvaluated;
+                
+                // Retry 1: Configured width, no offset
+                var bestCandidate = FindBestCandidateForCluster(
+                    tower,
+                    towerPos,
+                    clusterTileDepths,
+                    cornerHeights,
+                    terrMgr,
+                    rampProto,
+                    rampWidth,
+                    lateralRetryOffset: 0,
+                    reservedRampTiles,
+                    useLocalSurfaceReference,
+                    forbiddenApproachClusterOrigins,
+                    out allEvaluated);
+
+                // Retry 2: Configured width, lateral offset
+                if (bestCandidate == null && rampWidth > 1)
+                {
+                    int lateralRetryOffset = rampWidth / 2;
+                    LogDebug($"Retrying ramp search for cluster {cluster.ClusterId} with sideways offset of {lateralRetryOffset}.");
+                    bestCandidate = FindBestCandidateForCluster(
+                        tower,
+                        towerPos,
+                        clusterTileDepths,
+                        cornerHeights,
+                        terrMgr,
+                        rampProto,
+                        rampWidth,
+                        lateralRetryOffset,
+                        reservedRampTiles,
+                        useLocalSurfaceReference,
+                        forbiddenApproachClusterOrigins,
+                        out allEvaluated);
+                }
+
+                // Retry 3: Width 1, no offset
+                if (bestCandidate == null && rampWidth > 1)
+                {
+                    LogDebug($"Retrying ramp search for cluster {cluster.ClusterId} with width 1.");
+                    bestCandidate = FindBestCandidateForCluster(
+                        tower,
+                        towerPos,
+                        clusterTileDepths,
+                        cornerHeights,
+                        terrMgr,
+                        rampProto,
+                        1,
+                        lateralRetryOffset: 0,
+                        reservedRampTiles,
+                        useLocalSurfaceReference,
+                        forbiddenApproachClusterOrigins,
+                        out allEvaluated);
+                }
+
+                if (bestCandidate != null)
+                {
+                    var rampCand = (RampCandidate)bestCandidate.SourceCandidate;
+                    var localPlacedOrigins = new List<Tile2i>();
+                    RampPlacementOutcome placementOutcome = TryPlaceRamp(
+                        tower,
+                        rampCand,
+                        tileDepths,
+                        cornerHeights,
+                        terrMgr,
+                        rampProto,
+                        localPlacedOrigins,
+                        reservedRampTiles,
+                        useLocalSurfaceReference,
+                        dryRun: false,
+                        out Tile2i topTile,
+                        out _);
+
+                    if (placementOutcome != RampPlacementOutcome.Failed)
+                    {
+                        topRowTile = topTile;
+                        placedAny = true;
+                        placedRampOrigins?.AddRange(localPlacedOrigins);
+
+                        // Keep track of worst outcome
+                        if (placementOutcome == RampPlacementOutcome.NotAccessible)
+                        {
+                            if (worstOutcome != RampPlacementOutcome.Failed && worstOutcome != RampPlacementOutcome.NotAccessible)
+                                worstOutcome = RampPlacementOutcome.NotAccessible;
+                        }
+                        else if (placementOutcome == RampPlacementOutcome.Truncated)
+                        {
+                            if (worstOutcome != RampPlacementOutcome.Failed && worstOutcome != RampPlacementOutcome.NotAccessible && worstOutcome != RampPlacementOutcome.Truncated)
+                                worstOutcome = RampPlacementOutcome.Truncated;
+                        }
+
+                        // Determine decidedBy dominant criterion
+                        string decidedBy = "default";
+                        var nextBest = allEvaluated.FirstOrDefault(c => c != bestCandidate && c.IsValid);
+                        if (nextBest != null)
+                        {
+                            decidedBy = EvaluatedAccessCandidate.GetDecidedBy(bestCandidate, nextBest);
+                        }
+                        else if (allEvaluated.Any(c => c == bestCandidate))
+                        {
+                            decidedBy = "single-candidate";
+                        }
+
+                        AccessDiagnostics.LogAccessProvided(
+                            cluster.ClusterId,
+                            "generated-ramp",
+                            rampProto.Id.ToString(),
+                            rampCand.OreTiles[0],
+                            rampCand.Direction.ToString(),
+                            decidedBy);
+
+                        // Fold new ramp tiles into existingProviders and re-flood
+                        existingProviders.Add(new AccessProvider(localPlacedOrigins, reachesGround: bestCandidate.IsReachableNow));
+
+                        states = AccessReachability.EvaluateReachability(
+                            originClusters,
+                            existingProviders,
+                            tower,
+                            terrMgr,
+                            tile => IsClusterOriginReadyAndPathable(tower, tile),
+                            (origin, direction) => 
+                            {
+                                Tile2i neighbor = new Tile2i(origin.X + direction.X, origin.Y + direction.Y);
+                                return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, rampProto, terrMgr, out _);
+                            });
+                    }
+                    else
+                    {
+                        worstOutcome = RampPlacementOutcome.Failed;
+                        AccessDiagnostics.LogClusterState(new AccessAnalysisResult(cluster, AccessClusterState.Blocked, AccessNeed.Mining, null, null, BlockedReason.NoCandidate, 0f));
+                        Log.Warning($"[ATD Access] warning tower={towerPos} originCluster={cluster.ClusterId} reason=no valid accessway candidate; work cannot progress");
+                    }
+                }
+                else
+                {
+                    worstOutcome = RampPlacementOutcome.Failed;
+                    AccessDiagnostics.LogClusterState(new AccessAnalysisResult(cluster, AccessClusterState.Blocked, AccessNeed.Mining, null, null, BlockedReason.NoCandidate, 0f));
+                    Log.Warning($"[ATD Access] warning tower={towerPos} originCluster={cluster.ClusterId} reason=no valid accessway candidate; work cannot progress");
                 }
             }
 
-            if (rampWidth > 1)
+            if (!placedAny && worstOutcome == RampPlacementOutcome.Crested)
             {
-                LogDebug("Retrying ramp search with width 1 as last resort.");
-                List<RampCandidate> narrowCandidates = CollectRampCandidates(tower, tileDepths, 1, 0, reservedRampTiles);
-                outcome = TryPlaceRampCandidates(tower, tileDepths, cornerHeights, terrMgr, narrowCandidates, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, out topRowTile, forbiddenApproachClusterOrigins);
-                if (outcome != RampPlacementOutcome.Failed)
-                {
-                    return outcome;
-                }
-            }
-
-            LogDebug("No valid ramp corridor satisfied the slope and surface rules.");
-            s_lastRampFailureReason =
-                candidates.Count == 0
-                    ? "No valid ramp corridor was found in the tower area. Try lowering ramp width, clearing nearby obstacles, or extending the tower area."
-                    : "Ramp candidates were found but none satisfied slope or clearance constraints. Try lowering ramp width, clearing nearby obstacles, or extending the tower area.";
-            return RampPlacementOutcome.Failed;
-        }
-
-        private static RampPlacementOutcome TryPlaceRampCandidates(IAreaManagingTower tower, Dict<Tile2i, int> tileDepths, Dict<Tile2i, int> cornerHeights, TerrainManager terrMgr, List<RampCandidate> candidates, TerrainDesignationProto rampProto, List<Tile2i>? placedRampOrigins, HashSet<Tile2i>? reservedRampTiles, bool useLocalSurfaceReference, out Tile2i topRowTile, HashSet<Tile2i>? forbiddenApproachClusterOrigins = null)
-        {
-            topRowTile = default;
-            if (candidates.Count == 0)
-            {
+                s_lastRampFailureReason = "No valid ramp corridor satisfied the slope and surface rules.";
                 return RampPlacementOutcome.Failed;
             }
 
-            candidates.Sort((left, right) => left.Score.CompareTo(right.Score));
+            return worstOutcome;
+        }
 
-            // Update pathability state once before the loop so every per-candidate reachability
-            // check sees a consistent bitmap without paying the update cost N times over.
+        private static EvaluatedAccessCandidate? FindBestCandidateForCluster(
+            IAreaManagingTower tower,
+            Tile2i towerPos,
+            Dict<Tile2i, int> clusterTileDepths,
+            Dict<Tile2i, int> cornerHeights,
+            TerrainManager terrMgr,
+            TerrainDesignationProto rampProto,
+            int rampWidth,
+            int lateralRetryOffset,
+            HashSet<Tile2i>? reservedRampTiles,
+            bool useLocalSurfaceReference,
+            HashSet<Tile2i>? forbiddenApproachClusterOrigins,
+            out List<EvaluatedAccessCandidate> allEvaluated)
+        {
+            allEvaluated = new List<EvaluatedAccessCandidate>();
+
+            List<RampCandidate> candidates = CollectRampCandidates(tower, clusterTileDepths, rampWidth, lateralRetryOffset, reservedRampTiles);
+            if (candidates.Count == 0)
+            {
+                return null;
+            }
+
             if (s_vehiclePathFindingManager != null)
             {
                 try { s_vehiclePathFindingManager.PathabilityProvider.UpdateChangedTiles(); }
                 catch { }
             }
 
-            bool hasFallback = false;
-            RampCandidate fallbackCandidate = default;
-            Tile2i fallbackTopRowTile = default;
-
-            // Cache BFS results by ramp-mouth position: many candidates generated from adjacent
-            // ore tiles share the same exit tile, so we avoid redundant BFS calls.
             var testedMouthReachability = new Dictionary<Tile2i, bool>();
             int reachabilityChecks = 0;
 
             foreach (RampCandidate candidate in candidates)
             {
-                RampPlacementOutcome dryOutcome = TryPlaceRamp(tower, candidate, tileDepths, cornerHeights, terrMgr, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, dryRun: true, out Tile2i dryTopRowTile);
+                RampPlacementOutcome dryOutcome = TryPlaceRamp(
+                    tower,
+                    candidate,
+                    clusterTileDepths,
+                    cornerHeights,
+                    terrMgr,
+                    rampProto,
+                    null,
+                    reservedRampTiles,
+                    useLocalSurfaceReference,
+                    dryRun: true,
+                    out Tile2i dryTopRowTile,
+                    out List<RampTilePlan> plannedTiles);
+
                 if (dryOutcome == RampPlacementOutcome.Failed)
                 {
                     continue;
                 }
 
-                // If the mouth exits onto a non-ramp designation, the approach terrain will be
-                // modified after placement. That's fine when the designation's TARGET z at the
-                // shared edge matches the mouth's surface z (a "bridge" between designations) —
-                // such candidates are first-class. It's only a problem when the target z differs
-                // by more than 1 step from the mouth, which would strand the mouth above a cliff
-                // or below a mound after excavation/dumping completes. Those go to fallback.
-                if (RampMouthApproachTargetMismatches(terrMgr, dryTopRowTile, candidate.Direction,
-                        candidate.OreTiles.Length, rampProto))
-                {
-                    if (!hasFallback)
-                    {
-                        hasFallback = true;
-                        fallbackCandidate = candidate;
-                        fallbackTopRowTile = dryTopRowTile;
-                    }
-                    continue;
-                }
+                bool approachMismatch = RampMouthApproachTargetMismatches(terrMgr, dryTopRowTile, candidate.Direction, candidate.OreTiles.Length, rampProto);
+                bool approachForbidden = forbiddenApproachClusterOrigins != null && forbiddenApproachClusterOrigins.Count > 0
+                    && RampMouthApproachInForbiddenCluster(dryTopRowTile, candidate.Direction, candidate.OreTiles.Length, rampProto, forbiddenApproachClusterOrigins);
 
-                // Reject candidates whose mouth approach lands inside a designation belonging to
-                // a cluster that itself isn't yet connected to the tower. The BFS pathability
-                // check below traverses undug terrain inside such designations and falsely reports
-                // them reachable; once that cluster is excavated the approach becomes a cliff.
-                // Bridges to ALREADY-connected clusters (or to vanilla terrain) are still allowed.
-                if (forbiddenApproachClusterOrigins != null && forbiddenApproachClusterOrigins.Count > 0
-                    && RampMouthApproachInForbiddenCluster(dryTopRowTile, candidate.Direction,
-                        candidate.OreTiles.Length, rampProto, forbiddenApproachClusterOrigins))
+                bool isMouthReachable = false;
+                if (!approachMismatch && !approachForbidden)
                 {
-                    if (!hasFallback)
+                    if (!testedMouthReachability.TryGetValue(dryTopRowTile, out isMouthReachable))
                     {
-                        hasFallback = true;
-                        fallbackCandidate = candidate;
-                        fallbackTopRowTile = dryTopRowTile;
-                    }
-                    continue;
-                }
-
-                if (!testedMouthReachability.TryGetValue(dryTopRowTile, out bool isMouthReachable))
-                {
-                    if (reachabilityChecks >= MAX_RAMP_REACHABILITY_CHECKS)
-                    {
-                        // Budget exhausted — treat remaining untested mouths as unreachable so the
-                        // best-scoring fallback (already recorded) will be used.
-                        if (!hasFallback)
+                        if (reachabilityChecks < MAX_RAMP_REACHABILITY_CHECKS)
                         {
-                            hasFallback = true;
-                            fallbackCandidate = candidate;
-                            fallbackTopRowTile = dryTopRowTile;
+                            isMouthReachable = IsRampMouthReachableFromTower(tower, dryTopRowTile);
+                            testedMouthReachability[dryTopRowTile] = isMouthReachable;
+                            reachabilityChecks++;
                         }
-                        continue;
+                        else
+                        {
+                            isMouthReachable = false;
+                        }
                     }
-
-                    isMouthReachable = IsRampMouthReachableFromTower(tower, dryTopRowTile);
-                    testedMouthReachability[dryTopRowTile] = isMouthReachable;
-                    reachabilityChecks++;
                 }
 
-                if (!isMouthReachable)
+                // Mouth distance
+                int dx = towerPos.X - dryTopRowTile.X;
+                int dy = towerPos.Y - dryTopRowTile.Y;
+                int mouthDistance = dx * dx + dy * dy;
+
+                // Material moved
+                int materialMoved = 0;
+                foreach (var plan in plannedTiles)
                 {
-                    if (!hasFallback)
-                    {
-                        hasFallback = true;
-                        fallbackCandidate = candidate;
-                        fallbackTopRowTile = dryTopRowTile;
-                    }
+                    int nwS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile + new RelTile2i(0, 4)).Value.ToFloat());
+                    int neS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile + new RelTile2i(4, 4)).Value.ToFloat());
+                    int seS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile + new RelTile2i(4, 0)).Value.ToFloat());
+                    int swS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile).Value.ToFloat());
 
-                    continue;
+                    materialMoved += Math.Abs(plan.NwHeight - nwS)
+                                   + Math.Abs(plan.NeHeight - neS)
+                                   + Math.Abs(plan.SeHeight - seS)
+                                   + Math.Abs(plan.SwHeight - swS);
                 }
 
-                TryPlaceRamp(tower, candidate, tileDepths, cornerHeights, terrMgr, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, dryRun: false, out topRowTile);
-                return dryOutcome;
+                int designationCount = plannedTiles.Count;
+
+                var evaluated = new EvaluatedAccessCandidate(
+                    dryTopRowTile,
+                    isValid: true,
+                    isReachableNow: isMouthReachable,
+                    mouthDistance: mouthDistance,
+                    materialMoved: materialMoved,
+                    designationCount: designationCount,
+                    sourceCandidate: candidate);
+
+                allEvaluated.Add(evaluated);
             }
 
-            if (hasFallback)
+            if (allEvaluated.Count == 0)
             {
-                TryPlaceRamp(tower, fallbackCandidate, tileDepths, cornerHeights, terrMgr, rampProto, placedRampOrigins, reservedRampTiles, useLocalSurfaceReference, dryRun: false, out topRowTile);
-                return RampPlacementOutcome.NotAccessible;
+                return null;
             }
 
-            topRowTile = default;
-            return RampPlacementOutcome.Failed;
+            allEvaluated.Sort(EvaluatedAccessCandidate.Compare);
+            return allEvaluated.FirstOrDefault(c => c.IsValid);
         }
 
         private static List<RampCandidate> CollectRampCandidates(
@@ -848,9 +1043,10 @@ namespace AutoTerrainDesignations
             return bestDepthSpread <= maxAllowedDepthSpread;
         }
 
-        private static RampPlacementOutcome TryPlaceRamp(IAreaManagingTower tower, RampCandidate candidate, Dict<Tile2i, int> tileDepths, Dict<Tile2i, int> cornerHeights, TerrainManager terrMgr, TerrainDesignationProto rampProto, List<Tile2i>? placedRampOrigins, HashSet<Tile2i>? reservedRampTiles, bool useLocalSurfaceReference, bool dryRun, out Tile2i topRowTile)
+        private static RampPlacementOutcome TryPlaceRamp(IAreaManagingTower tower, RampCandidate candidate, Dict<Tile2i, int> tileDepths, Dict<Tile2i, int> cornerHeights, TerrainManager terrMgr, TerrainDesignationProto rampProto, List<Tile2i>? placedRampOrigins, HashSet<Tile2i>? reservedRampTiles, bool useLocalSurfaceReference, bool dryRun, out Tile2i topRowTile, out List<RampTilePlan> plannedTiles)
         {
             topRowTile = default;
+            plannedTiles = new List<RampTilePlan>();
             int laneCount = candidate.OreTiles.Length;
             int[] laneFirstEdgeHeights = new int[laneCount];
             int[] laneSecondEdgeHeights = new int[laneCount];
@@ -925,7 +1121,6 @@ namespace AutoTerrainDesignations
 
             int[] currentBoundaryHeights = BuildEdgeBoundaryHeights(laneFirstEdgeHeights, laneSecondEdgeHeights);
             Tile2i[] currentTiles = (Tile2i[])candidate.RampTiles.Clone();
-            List<RampTilePlan> plannedTiles = new List<RampTilePlan>();
             int maxSteps = Mathf.Max(tileDepths.Count + 32, 32);
             int maxAttachmentDepth = candidate.LaneAttachmentDepths.Max();
 

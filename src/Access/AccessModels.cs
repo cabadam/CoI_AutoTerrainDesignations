@@ -137,6 +137,90 @@ namespace AutoTerrainDesignations.Access
         }
     }
 
+    public class EvaluatedAccessCandidate
+    {
+        public Tile2i Mouth { get; }
+        public bool IsValid { get; }
+        public bool IsReachableNow { get; }
+        public int MouthDistance { get; }
+        public int MaterialMoved { get; }
+        public int DesignationCount { get; }
+        public object SourceCandidate { get; }
+
+        public EvaluatedAccessCandidate(
+            Tile2i mouth,
+            bool isValid,
+            bool isReachableNow,
+            int mouthDistance,
+            int materialMoved,
+            int designationCount,
+            object sourceCandidate)
+        {
+            Mouth = mouth;
+            IsValid = isValid;
+            IsReachableNow = isReachableNow;
+            MouthDistance = mouthDistance;
+            MaterialMoved = materialMoved;
+            DesignationCount = designationCount;
+            SourceCandidate = sourceCandidate;
+        }
+
+        public static int Compare(EvaluatedAccessCandidate left, EvaluatedAccessCandidate right)
+        {
+            if (left.IsValid != right.IsValid)
+            {
+                return left.IsValid ? -1 : 1;
+            }
+
+            if (left.IsReachableNow != right.IsReachableNow)
+            {
+                return left.IsReachableNow ? -1 : 1;
+            }
+
+            if (left.MouthDistance != right.MouthDistance)
+            {
+                return left.MouthDistance.CompareTo(right.MouthDistance);
+            }
+
+            if (left.MaterialMoved != right.MaterialMoved)
+            {
+                return left.MaterialMoved.CompareTo(right.MaterialMoved);
+            }
+
+            if (left.DesignationCount != right.DesignationCount)
+            {
+                return left.DesignationCount.CompareTo(right.DesignationCount);
+            }
+
+            return 0;
+        }
+
+        public static string GetDecidedBy(EvaluatedAccessCandidate best, EvaluatedAccessCandidate other)
+        {
+            if (best.IsValid != other.IsValid)
+            {
+                return "validity";
+            }
+            if (best.IsReachableNow != other.IsReachableNow)
+            {
+                return "reachable-now";
+            }
+            if (best.MouthDistance != other.MouthDistance)
+            {
+                return "mouth-distance";
+            }
+            if (best.MaterialMoved != other.MaterialMoved)
+            {
+                return "material-moved";
+            }
+            if (best.DesignationCount != other.DesignationCount)
+            {
+                return "designation-count";
+            }
+            return "default";
+        }
+    }
+
     public class AccessAnalysisResult
     {
         public AccessOriginCluster Cluster { get; }
