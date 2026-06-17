@@ -200,7 +200,7 @@ The access framework can be described as these phases:
    Compute accessibility as **one forward reachability fixpoint per pass**, starting at tower-reachable ground and expanding outward across slope-traversable, corridor-wide edges to every provider and in-scope origin cluster it can reach. Repeat until no new element becomes reachable. This *evaluation* step is order-independent: it only reads existing terrain and existing/planned providers, so it does not matter which cluster is examined first, and a provider that became reachable earlier in the same flood is immediately usable by clusters downstream of it. Each in-scope cluster the flood reaches is `AccessibleDirect` (touches ground) or `AccessibleViaProvider` (reached through providers); clusters the flood does not reach are `NotAccessible`.
 
 8. **Generate missing providers (closest-first, interleaved with re-flood)**
-   For clusters still `NotAccessible`, ATD *creates* new providers, and unlike evaluation this **generation step is order-dependent**: each provider it places changes the graph for the clusters processed after it. Process the not-yet-accessible clusters in **ascending distance from tower-reachable ground - closest first**. For the current cluster, search candidate provider chains and rank them by the lexicographic criteria in *Candidate Selection*; the best action may be a ramp, flat cut, bridge-like accessway, waiting for a partially built provider chain, or reporting the cluster as blocked. After placing a provider, **fold it into the access set and re-flood** (extend the step 7 flood) before moving to the next cluster, so a farther cluster can branch off the freshly placed provider instead of digging its own duplicate ramp back to the tower. This yields a natural trunk-and-branch topology: the nearest cluster anchors a ramp close to the tower, and others connect onto it. Closest-first is a deliberate greedy heuristic - predictable and cheap, not provably optimal.
+   For clusters still `NotAccessible`, ATD *creates* new providers, and unlike evaluation this **generation step is order-dependent**: each provider it places changes the graph for the clusters processed after it. Process the not-yet-accessible clusters in **ascending distance from tower-reachable ground - closest first**. For the current cluster, **route** candidate accessways (see *Accessway Routing*) and rank them by the lexicographic criteria in *Candidate Selection*; the best action may be a ramp, flat cut, bridge-like accessway, waiting for a partially built provider chain, or reporting the cluster as blocked. After placing a provider, **fold it into the access set and re-flood** (extend the step 7 flood) before moving to the next cluster, so a farther cluster can branch off the freshly placed provider instead of digging its own duplicate ramp back to the tower. This yields a natural trunk-and-branch topology: the nearest cluster anchors a ramp close to the tower, and others connect onto it. Closest-first is a deliberate greedy heuristic - predictable and cheap, not provably optimal.
 
 9. **Provide access**
    Create the selected provider chain when ATD can act immediately. A link is valid only if it is edge-compatible by definition. If the chain cannot be formed, search for a different solution such as a separate accessway to ground. If the selected provider chain already exists but is not yet built, classify the origin cluster as `WaitingForProviderCompletion` instead of generating duplicates.
@@ -311,21 +311,59 @@ Completion is measured **per origin as a boolean, rolled up by count**. There is
 * **Display only.** The percentage exists for human diagnosis of "work is not being completed" reports. It is never used as a control signal, and rounding never decides behavior.
 * **The gate is an exact boolean.** Phase advancement and the "100.0% complete" invariant key off the exact predicate *every in-scope origin is complete* (equivalently, every cluster is `CompleteNoAction` on the same pass; see *Phase Gating*) - not the displayed percentage. A pass that rounds to `100.0%` while one origin is still incomplete does **not** advance the phase.
 
+## Accessway Routing
+
+Candidate Selection ranks accessways but does not invent their geometry. **Routing** is the step that turns "this cluster needs a provider, from somewhere over there" into concrete candidate accessways - the sequence of designation tiles a vehicle would actually drive. It runs inside Provision Pipeline step 8, once per not-yet-accessible cluster, and hands its output to Candidate Selection. Routing produces *shape*; the fixpoint flood confirms *grounding*; selection picks the *winner*.
+
+The routing engine described below is the current straight-corridor enumerator. A planned alternative replaces it with a least-work corridor search over the heightfield (turning and switchbacks fall out for free, and the path cost subsumes selection); see [accessway-pathfinding.md](../planned/accessway-pathfinding.md). Both are intended to live behind the same `AccessCandidate` contract and be A/B compared.
+
+### What a routed candidate is
+
+A candidate accessway is a **corridor**: a band `corridorWidth` lanes wide (see *Corridor width*) made of one or more parallel lanes of designation tiles. Each candidate has:
+
+* an **attachment edge** - the cluster border tiles the corridor grows out of (must end up slope-traversable, see *Edge-compatible*);
+* a **direction** - one of the four cardinal directions the corridor runs along;
+* a **mouth** - the outer end that must reach an upstream provider (tower-reachable ground or an already-reachable accessway/cluster);
+* a per-lane **attachment depth** and target heights for every cell, so the whole band shares one consistent grade even when the cluster edge is uneven.
+
+### Two routed families
+
+Routing emits two shapes, matching the *Accessway* / *Ramp* / *Bridge* vocabulary:
+
+* **Sloped corridor (ramp).** Grown outward from the attachment edge, each successive cell steps one depth increment shallower than the last, sized so every internal edge stays slope-traversable (`<= 0.5` per step; a full level change needs at least two cells, see *Edge-compatible*). The corridor ends where it surfaces to existing terrain. Per-lane attachment depth lets an uneven edge still yield a single coherent grade across the band.
+* **Flat connector (bridge).** A depth-flat one-step join at the cluster perimeter - the level-to-level family used to link a cluster to adjacent reachable ground or to a neighbouring cluster across a `< 0.1`-tile seam.
+
+### How candidates are enumerated
+
+Routing is a **local, exhaustive enumeration**, not a long-range path search. For each perimeter origin of the cluster (interior origins are skipped - they cannot produce a shorter valid exit), for each of the four cardinal directions, and for each lateral lane offset that keeps the band `corridorWidth` wide, ATD attempts to grow one straight corridor of that family. An attempt is discarded the moment any cell is obstructed by terrain, a building, another entity, or a tile already reserved by an accessway placed earlier this pass. When the preferred corridor is blocked, a **lateral retry** shifts the band sideways and tries again before giving up on that edge/direction.
+
+Each surviving corridor is a candidate only if its mouth actually reaches an upstream provider. That is **not** re-derived inside routing: routing emits the geometry, and the same step-7 reachability flood (a capped BFS from the mouth) decides whether the mouth grounds out. A corridor whose mouth never reaches a provider is dropped before selection; if a cluster has no surviving candidate it is `Blocked` with `NoCandidate` (or `MouthUnreachable` when geometry existed but never grounded).
+
+The full surviving set is then handed to *Candidate Selection*, which ranks it by Valid -> Useless material moved -> Mouth distance.
+
+### Current limitations
+
+Routing today emits **straight, single-segment** corridors only. It does not:
+
+* **turn or switchback** - there is no L-shaped or zig-zag ramp, so a cluster that can only be reached by a bend is routed as separate segments across passes (closest-first re-flooding lets one straight segment attach onto a previously placed one) rather than as a single planned dog-leg;
+* **route a multi-bend chain in one pass** - chaining is an emergent product of closest-first generation, not a path ATD plans end-to-end;
+* **prefer simpler geometry** - a saddle and a long ramp compete purely on the cost criteria in *Candidate Selection*.
+
+Turning/switchback routing is a known follow-up (the roadmap's "make ramps turn?" item). The planned least-work corridor search in [accessway-pathfinding.md](../planned/accessway-pathfinding.md) removes all three limitations at once - turns, dog-legs, and cheaper-geometry preference are inherent to a path search. Construction Assist deliberately relies on this section: it states the work type and lets the framework route the accessway, rather than picking a ramp shape itself.
+
 ## Candidate Selection
 
-When a cluster reaches decision-order rule 6 (`Need = NeedsAccessNow`, `NotAccessible`, no existing chain), ATD must choose the **best** candidate access action. "Best" is defined as a **lexicographic comparison over named criteria**, not a single opaque number. Earlier criteria dominate later ones; later criteria only break ties. This keeps the choice diagnosable: a report like "it built a silly ramp" can be traced to the criterion that decided it.
+When a cluster reaches decision-order rule 6 (`Need = NeedsAccessNow`, `NotAccessible`, no existing chain), ATD must choose the **best** candidate access action from the set that *Accessway Routing* produced. "Best" is defined as a **lexicographic comparison over named criteria**, not a single opaque number. Earlier criteria dominate later ones; later criteria only break ties. This keeps the choice diagnosable: a report like "it built a silly ramp" can be traced to the criterion that decided it.
 
 Criteria, in priority order:
 
 1. **Valid** (hard filter, not a score). A candidate is eligible only if it is slope-traversable (`<= 0.5` per step), fits the required corridor width, connects to a real provider chain, and is not obstructed by terrain, buildings, or other entities. Ineligible candidates are discarded before scoring; if none remain the cluster is `Blocked` with the appropriate `BlockedReason`.
-2. **Reachable-now over deferred.** Prefer a candidate whose access mouth is reachable on the current terrain now over one that depends on other work finishing first. A candidate that can start moving immediately beats one that can only start later.
+2. **Useless material moved.** Prefer the candidate that moves the least useless terrain volume (dig + fill) to build the accessway. For digging, any excavated volume of useful products is discounted.
 3. **Mouth distance.** Prefer the shorter distance from the candidate's mouth to the upstream provider edge it attaches to (the next provider toward the tower, or tower-reachable ground directly). Shorter connections are cheaper and less fragile.
-4. **Material moved.** Prefer the candidate that moves the least terrain volume (dig + fill) to build the accessway.
-5. **Designation count / length.** Prefer fewer designations / a shorter accessway footprint.
 
 Geometry simplicity is deliberately **not** a ranking criterion: a compact saddle and a long straight ramp compete purely on the cost criteria above, so ATD may pick a saddle when it genuinely moves less material or covers less distance.
 
-These criteria rank candidates *for a single cluster*. The **order in which clusters are processed** is separate and matters because each placed provider becomes a candidate target for later clusters: clusters are generated **closest-to-tower first**, re-flooding after each placement (see Provision Pipeline step 8). The two interact constructively - once the near cluster's ramp exists, the *Reachable-now* and *Mouth distance* criteria naturally make "connect to that ramp" the winning candidate for farther clusters.
+These criteria rank candidates *for a single cluster*. The **order in which clusters are processed** is separate and matters because each placed provider becomes a candidate target for later clusters: clusters are generated **closest-to-tower first**, re-flooding after each placement (see Provision Pipeline step 8). The two interact constructively - once the near cluster's ramp exists, the *Mouth distance* and *Useless material moved* criteria naturally make "connect to that ramp" the winning candidate for farther clusters.
 
 The authoritative, diagnosable output is the **dominant criterion** that decided the choice, logged as `decidedBy=<criterion>`. There is no opaque numeric score in the log.
 
@@ -402,7 +440,7 @@ This does not need to become a large public abstraction. The value is in making 
    Centralize current-terrain-height vs target-designation-height edge checks so mining and farming do not diverge.
 
 5. **Provider scoring**
-   Make candidate choice explicit using the **lexicographic named criteria** in *Candidate Selection* (validity filter -> reachable-now over deferred -> mouth distance -> material moved -> designation count), not a weighted numeric score and not a "best next action / best eventually" blend. Cluster processing order is closest-to-tower first (Provision Pipeline step 8); the per-candidate ranking is what these criteria decide. Material moved can be approximated from the difference between current ground elevation and candidate target elevation across the provider's origins:
+   Make candidate choice explicit using the **lexicographic named criteria** in *Candidate Selection* (validity filter -> useless material moved -> mouth distance), not a weighted numeric score and not a "best next action / best eventually" blend. Cluster processing order is closest-to-tower first (Provision Pipeline step 8); the per-candidate ranking is what these criteria decide. Material moved can be approximated from the difference between current ground elevation and candidate target elevation across the provider's origins:
 
    * positive delta means material must be dumped
    * negative delta means material must be mined
@@ -443,7 +481,7 @@ This does not need to become a large public abstraction. The value is in making 
 * **Blocked Warning Aggregation**: Emit blocked warnings per origin cluster. Notification-manager aggregation may still combine repeated warnings.
 * **Notification Save-Safety**: Blocked warnings are **transient and derived from live runtime state**, never serialized. ATD must stay safe to add to and remove from saves, so it must not own notification instances that persist in the vanilla save. Because `Blocked` is recomputed every pass, the warning is just a render of the current state: recompute it each pass, purge any mod-owned notifications before save, and restore them after load from runtime state only.
 * **Logging**: Potentially verbose logging (for example `atd_debug_log_ramp_scores true|false`, candidate dumps, and cluster evaluations) must be guarded by console toggles. To persist a toggle across reloads, store it through the published game-settings / state-blob path (config.json-seeded), which lives safely in the vanilla save and cannot orphan mod-owned serialized data if ATD is removed. Do **not** store toggles in a mod-owned save blob.
-* **Provider Scoring**: Candidate choice is a **lexicographic comparison over named criteria**, not a weighted numeric score (see *Candidate Selection*): validity (hard filter) -> reachable-now over deferred -> mouth distance -> material moved -> designation count. The diagnosable output is the dominant `decidedBy` criterion; there is no opaque score and no separate "best eventually" bonus term.
+* **Provider Scoring**: Candidate choice is a **lexicographic comparison over named criteria**, not a weighted numeric score (see *Candidate Selection*): validity (hard filter) -> useless material moved -> mouth distance. The diagnosable output is the dominant `decidedBy` criterion; there is no opaque score and no separate "best eventually" bonus term.
 * **Completion Percentage**: Calculated per origin for simplicity and consistency across modes (see *Completion*).
 
 ## Bug Report Checklist

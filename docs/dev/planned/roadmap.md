@@ -39,6 +39,8 @@ Handled in v0.4.3a:
 
 ## Improve ramps? make them turn?
 
+Proposed approach: treat accessway generation as a least-work corridor search over the heightfield (turning/switchbacks fall out for free). See [accessway-pathfinding.md](accessway-pathfinding.md).
+
 ## Saddle designation?
 
 ## Prepare ground for ANY entity/blueprint /MrTammy
