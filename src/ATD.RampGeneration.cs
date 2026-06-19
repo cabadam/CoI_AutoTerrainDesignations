@@ -19,6 +19,8 @@ using Mafi.Core.Terrain;
 using Mafi.Core.Terrain.Designation;
 using UnityEngine;
 using AutoTerrainDesignations.Access;
+using Mafi.Core.Products;
+using Mafi.Core.Prototypes;
 
 namespace AutoTerrainDesignations
 {
@@ -569,8 +571,9 @@ namespace AutoTerrainDesignations
             var testedMouthReachability = new Dictionary<Tile2i, bool>();
             int reachabilityChecks = 0;
 
-            foreach (RampCandidate candidate in candidates)
+            for (int candidateOrder = 0; candidateOrder < candidates.Count; candidateOrder++)
             {
+                RampCandidate candidate = candidates[candidateOrder];
                 RampPlacementOutcome dryOutcome = TryPlaceRamp(
                     tower,
                     candidate,
@@ -618,29 +621,18 @@ namespace AutoTerrainDesignations
                 int mouthDistance = dx * dx + dy * dy;
 
                 // Material moved
-                int materialMoved = 0;
-                foreach (var plan in plannedTiles)
-                {
-                    int nwS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile + new RelTile2i(0, 4)).Value.ToFloat());
-                    int neS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile + new RelTile2i(4, 4)).Value.ToFloat());
-                    int seS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile + new RelTile2i(4, 0)).Value.ToFloat());
-                    int swS = (int)Math.Floor(terrMgr.GetHeight(plan.Tile).Value.ToFloat());
-
-                    materialMoved += Math.Abs(plan.NwHeight - nwS)
-                                   + Math.Abs(plan.NeHeight - neS)
-                                   + Math.Abs(plan.SeHeight - seS)
-                                   + Math.Abs(plan.SwHeight - swS);
-                }
+                int materialMoved = CalculateUselessMaterialMoved(plannedTiles, terrMgr);
 
                 int designationCount = plannedTiles.Count;
 
                 var evaluated = new EvaluatedAccessCandidate(
                     dryTopRowTile,
-                    isValid: true,
+                    isValid: isMouthReachable,
                     isReachableNow: isMouthReachable,
                     mouthDistance: mouthDistance,
                     materialMoved: materialMoved,
                     designationCount: designationCount,
+                    stableOrder: candidateOrder,
                     sourceCandidate: candidate);
 
                 allEvaluated.Add(evaluated);
@@ -653,6 +645,80 @@ namespace AutoTerrainDesignations
 
             allEvaluated.Sort(EvaluatedAccessCandidate.Compare);
             return allEvaluated.FirstOrDefault(c => c.IsValid);
+        }
+
+        private static bool IsUsefulProduct(LooseProductProto product)
+        {
+            if (product == null) return false;
+            if (product == LooseProductProto.Phantom) return false;
+            if (!product.CanBeOnTerrain && product.TerrainMaterial == null) return false;
+
+            string idStr = product.Id.ToString();
+            if (idStr.IndexOf("rock", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+            if (idStr.IndexOf("dirt", StringComparison.OrdinalIgnoreCase) >= 0) return false;
+
+            return true;
+        }
+
+        private static int CalculateUselessMaterialMoved(
+            IEnumerable<RampTilePlan> plannedTiles,
+            TerrainManager terrMgr)
+        {
+            float totalUseless = 0f;
+            foreach (var plan in plannedTiles)
+            {
+                Tile2i centerTile = plan.Tile + new RelTile2i(2, 2);
+                float currentSurfaceH = terrMgr.GetHeight(centerTile).Value.ToFloat();
+                float targetH = (plan.NwHeight + plan.NeHeight + plan.SeHeight + plan.SwHeight) / 4.0f;
+
+                if (targetH > currentSurfaceH)
+                {
+                    // Fill (target > surface): All filled volume is useless (soil/rock).
+                    totalUseless += (targetH - currentSurfaceH);
+                }
+                else
+                {
+                    // Dig (target <= surface): Excavated volume minus the thickness of any useful product layers
+                    float digDepth = currentSurfaceH - targetH;
+                    float usefulDepth = 0f;
+                    float cumulativeDepth = 0f;
+
+                    TerrainLayerEnumerator enumerator = terrMgr.EnumerateLayers(terrMgr.GetTileIndex(centerTile));
+                    while (enumerator.MoveNext())
+                    {
+                        TerrainMaterialThicknessSlim layer = enumerator.Current;
+                        float thickness = layer.Thickness.Value.ToFloat();
+                        if (cumulativeDepth >= digDepth)
+                        {
+                            break;
+                        }
+                        if (s_bedrockTerrainMaterial != null && layer.SlimId == s_bedrockTerrainMaterial.SlimId)
+                        {
+                            break;
+                        }
+
+                        TerrainMaterialProto mat = layer.SlimId.ToFull(terrMgr);
+                        LooseProductProto minedProduct = mat.MinedProduct;
+                        if (IsUsefulProduct(minedProduct))
+                        {
+                            float overlap = Math.Min(cumulativeDepth + thickness, digDepth) - cumulativeDepth;
+                            if (overlap > 0f)
+                            {
+                                usefulDepth += overlap;
+                            }
+                        }
+                        cumulativeDepth += thickness;
+                    }
+
+                    float uselessDepth = digDepth - usefulDepth;
+                    if (uselessDepth > 0f)
+                    {
+                        totalUseless += uselessDepth;
+                    }
+                }
+            }
+            // Scale by 4 to match the 4-vertex height sum scale of the original calculation.
+            return (int)Math.Round(totalUseless * 4f);
         }
 
         private static List<RampCandidate> CollectRampCandidates(
@@ -2181,18 +2247,44 @@ namespace AutoTerrainDesignations
 
         private static bool IsFreeRampTile(IAreaManagingTower tower, Tile2i tile, Dict<Tile2i, int> tileDepths, int rampDepth, Tile2i rampDirection, HashSet<Tile2i>? reservedRampTiles)
         {
+            return IsFreeRampTile(tower, tile, tileDepths, rampDepth, rampDirection, reservedRampTiles, out _);
+        }
+
+        private static bool IsFreeRampTile(
+            IAreaManagingTower tower,
+            Tile2i tile,
+            Dict<Tile2i, int> tileDepths,
+            int rampDepth,
+            Tile2i rampDirection,
+            HashSet<Tile2i>? reservedRampTiles,
+            out string reason)
+        {
+            reason = "";
             if (!IsInsideTowerArea(tower, tile))
+            {
+                reason = "NotInsideTowerArea";
                 return false;
+            }
             if (tileDepths.ContainsKey(tile))
+            {
+                reason = "InTileDepths";
                 return false;
+            }
             if (reservedRampTiles != null && reservedRampTiles.Contains(tile))
+            {
+                reason = "ReservedRampTiles";
                 return false;
+            }
             if (DoesTileOverlapBuildingFootprint(tile, rampDepth, rampDirection))
+            {
+                reason = "OverlapBuildingFootprint";
                 return false;
-            // Reject tiles that already have any designation (e.g. ramps placed by other sessions,
-            // or in a previous tick by this session that weren't in reservedRampTiles yet).
+            }
             if (s_designationOriginsInArea.Contains(new Tile2i(tile.X & -4, tile.Y & -4)))
+            {
+                reason = "HasExistingDesignation";
                 return false;
+            }
             return true;
         }
 

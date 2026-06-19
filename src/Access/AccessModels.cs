@@ -145,6 +145,7 @@ namespace AutoTerrainDesignations.Access
         public int MouthDistance { get; }
         public int MaterialMoved { get; }
         public int DesignationCount { get; }
+        public int StableOrder { get; }
         public object SourceCandidate { get; }
 
         public EvaluatedAccessCandidate(
@@ -154,6 +155,7 @@ namespace AutoTerrainDesignations.Access
             int mouthDistance,
             int materialMoved,
             int designationCount,
+            int stableOrder,
             object sourceCandidate)
         {
             Mouth = mouth;
@@ -162,6 +164,7 @@ namespace AutoTerrainDesignations.Access
             MouthDistance = mouthDistance;
             MaterialMoved = materialMoved;
             DesignationCount = designationCount;
+            StableOrder = stableOrder;
             SourceCandidate = sourceCandidate;
         }
 
@@ -172,9 +175,9 @@ namespace AutoTerrainDesignations.Access
                 return left.IsValid ? -1 : 1;
             }
 
-            if (left.IsReachableNow != right.IsReachableNow)
+            if (left.MaterialMoved != right.MaterialMoved)
             {
-                return left.IsReachableNow ? -1 : 1;
+                return left.MaterialMoved.CompareTo(right.MaterialMoved);
             }
 
             if (left.MouthDistance != right.MouthDistance)
@@ -182,17 +185,7 @@ namespace AutoTerrainDesignations.Access
                 return left.MouthDistance.CompareTo(right.MouthDistance);
             }
 
-            if (left.MaterialMoved != right.MaterialMoved)
-            {
-                return left.MaterialMoved.CompareTo(right.MaterialMoved);
-            }
-
-            if (left.DesignationCount != right.DesignationCount)
-            {
-                return left.DesignationCount.CompareTo(right.DesignationCount);
-            }
-
-            return 0;
+            return left.StableOrder.CompareTo(right.StableOrder);
         }
 
         public static string GetDecidedBy(EvaluatedAccessCandidate best, EvaluatedAccessCandidate other)
@@ -201,21 +194,13 @@ namespace AutoTerrainDesignations.Access
             {
                 return "validity";
             }
-            if (best.IsReachableNow != other.IsReachableNow)
+            if (best.MaterialMoved != other.MaterialMoved)
             {
-                return "reachable-now";
+                return "useless-material-moved";
             }
             if (best.MouthDistance != other.MouthDistance)
             {
                 return "mouth-distance";
-            }
-            if (best.MaterialMoved != other.MaterialMoved)
-            {
-                return "material-moved";
-            }
-            if (best.DesignationCount != other.DesignationCount)
-            {
-                return "designation-count";
             }
             return "default";
         }
