@@ -412,7 +412,7 @@ namespace AutoTerrainDesignations
                     AutoTerrainDesignationsMod.SetMaxHeightDiff(slopeDefault.Value);
 
                 int? rampWidth = ParseInt(json, "rampWidth");
-                if (rampWidth.HasValue && ShouldPreserveInt(rampWidth.Value, migrateGeneratedDefaults, 2))
+                if (rampWidth.HasValue && ShouldPreserveInt(rampWidth.Value, migrateGeneratedDefaults, 1))
                     AutoTerrainDesignationsMod.SetRampWidth(rampWidth.Value);
 
                 int? maxLayers = ParseInt(json, "maxLayersToExcavate");
@@ -472,7 +472,7 @@ namespace AutoTerrainDesignations
                     AutoTerrainDesignationsMod.SetAutoReleaseTrucksWhenIdle(autoReleaseTrucksWhenIdle.Value);
 
                 bool? turningRampsExperimental = ParseBool(json, "turningRampsExperimental");
-                if (turningRampsExperimental.HasValue && ShouldPreserveBool(turningRampsExperimental.Value, migrateGeneratedDefaults, false))
+                if (turningRampsExperimental.HasValue && ShouldPreserveBool(turningRampsExperimental.Value, migrateGeneratedDefaults, true))
                     AutoTerrainDesignationsMod.SetTurningRampsExperimental(turningRampsExperimental.Value);
 
                 bool? experimentalAccessUseAStar = ParseBool(json, "experimentalAccessUseAStar");
@@ -769,7 +769,7 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_maxSlopeHeightDiff\": \"Default starting value for the Max Slope setting on each mine tower. Controls the maximum allowed height difference between adjacent designation corners during slope smoothing. Lower values produce flatter designations; higher values allow steeper steps. Can be adjusted per tower in-game. Min 1, max 3. Default: 1.\",");
             sb.AppendLine($"  \"maxSlopeHeightDiff\": {AutoTerrainDesignationsMod.MaxHeightDiff},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_rampWidth\": \"Default starting value for the Ramp Width setting on each mine tower. Width of access ramps generated at the edge of designations, in tiles. 0 disables ramp generation entirely. Can be adjusted per tower in-game. Allowed range: 0-5. Default: 2.\",");
+            sb.AppendLine("  \"_comment_rampWidth\": \"Default starting value for the Ramp Width setting on each mine tower. Width of access ramps generated at the edge of designations, in tiles. 0 disables ramp generation entirely. Can be adjusted per tower in-game. Allowed range: 0-5. Default: 1.\",");
             sb.AppendLine($"  \"rampWidth\": {AutoTerrainDesignationsMod.RampWidth},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_maxLayersToExcavate\": \"Default starting value for the Max Layers setting on each mine tower. Maximum number of terrain layers to excavate from the surface downward. 0 = no limit. Can be adjusted per tower in-game. Default: 30.\",");
@@ -811,7 +811,7 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_autoReleaseTrucksWhenIdle\": \"Default starting value for the Auto-release trucks when idle toggle on each mine tower. When enabled, ATD automatically unassigns trucks from the tower once no managed designation has pending excavation work, or while the tower is paused. Vehicles are tracked and re-assigned when excavation work returns. Can be toggled per tower in-game. Default: false.\",");
             sb.AppendLine($"  \"autoReleaseTrucksWhenIdle\": {BoolToJsonStr(AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle)},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_turningRampsExperimental\": \"When enabled, ATD may select and place experimental V1 turning or switchback accessways using vanilla flat and slope designations. Requires ramp width 1; corridor clearance is independent. Default: false.\",");
+            sb.AppendLine("  \"_comment_turningRampsExperimental\": \"When enabled, ATD may select and place experimental V1 turning or switchback accessways using vanilla flat and slope designations. Requires ramp width 1; corridor clearance is independent. Default: true.\",");
             sb.AppendLine($"  \"turningRampsExperimental\": {BoolToJsonStr(AutoTerrainDesignationsMod.TurningRampsExperimental)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_experimentalAccessUseAStar\": \"Use A* instead of reference Dijkstra for experimental turning ramps. Default: false.\",");

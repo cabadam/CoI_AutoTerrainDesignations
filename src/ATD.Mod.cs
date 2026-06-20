@@ -114,7 +114,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetExcavatorCompletionNotificationsEnabled(true);
         SetRampNotificationsEnabled(true);
         SetAutoReleaseVehiclesWhenIdle(false);
-        SetTurningRampsExperimental(false);
+        SetTurningRampsExperimental(true);
         SetExperimentalAccessUseAStar(false);
         SetAccessWorkDistanceScale(1f);
         SetAccessLandslideRunPerHeight(1f);
@@ -127,7 +127,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     }
 
     /// <summary>Ramp width in tiles. Allowed range: 0..5. 0 disables ramp generation.</summary>
-    public static int RampWidth { get; private set; } = 2;
+    public static int RampWidth { get; private set; } = 1;
 
     public static void SetRampWidth(int value)
     {
