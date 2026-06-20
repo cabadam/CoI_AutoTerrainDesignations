@@ -471,6 +471,22 @@ namespace AutoTerrainDesignations
                 if (autoReleaseTrucksWhenIdle.HasValue && ShouldPreserveBool(autoReleaseTrucksWhenIdle.Value, migrateGeneratedDefaults, false))
                     AutoTerrainDesignationsMod.SetAutoReleaseTrucksWhenIdle(autoReleaseTrucksWhenIdle.Value);
 
+                bool? turningRampsExperimental = ParseBool(json, "turningRampsExperimental");
+                if (turningRampsExperimental.HasValue && ShouldPreserveBool(turningRampsExperimental.Value, migrateGeneratedDefaults, false))
+                    AutoTerrainDesignationsMod.SetTurningRampsExperimental(turningRampsExperimental.Value);
+
+                bool? experimentalAccessUseAStar = ParseBool(json, "experimentalAccessUseAStar");
+                if (experimentalAccessUseAStar.HasValue && ShouldPreserveBool(experimentalAccessUseAStar.Value, migrateGeneratedDefaults, false))
+                    AutoTerrainDesignationsMod.SetExperimentalAccessUseAStar(experimentalAccessUseAStar.Value);
+
+                float? accessWorkDistanceScale = ParseFloat(json, "accessWorkDistanceScale");
+                if (accessWorkDistanceScale.HasValue && ShouldPreserveFloat(accessWorkDistanceScale.Value, migrateGeneratedDefaults, 1f))
+                    AutoTerrainDesignationsMod.SetAccessWorkDistanceScale(accessWorkDistanceScale.Value);
+
+                float? accessLandslideRunPerHeight = ParseFloat(json, "accessLandslideRunPerHeight");
+                if (accessLandslideRunPerHeight.HasValue && ShouldPreserveFloat(accessLandslideRunPerHeight.Value, migrateGeneratedDefaults, 1f))
+                    AutoTerrainDesignationsMod.SetAccessLandslideRunPerHeight(accessLandslideRunPerHeight.Value);
+
                 string? cornerKeyStr = ParseString(json, "cornerDesignationKey");
                 if (!string.IsNullOrWhiteSpace(cornerKeyStr)
                     && System.Enum.TryParse<UnityEngine.KeyCode>(cornerKeyStr, true, out var cornerKey)
@@ -491,6 +507,9 @@ namespace AutoTerrainDesignations
             => !migrateGeneratedDefaults || Array.IndexOf(knownDefaults, value) < 0;
 
         private static bool ShouldPreserveBool(bool value, bool migrateGeneratedDefaults, params bool[] knownDefaults)
+            => !migrateGeneratedDefaults || Array.IndexOf(knownDefaults, value) < 0;
+
+        private static bool ShouldPreserveFloat(float value, bool migrateGeneratedDefaults, params float[] knownDefaults)
             => !migrateGeneratedDefaults || Array.IndexOf(knownDefaults, value) < 0;
 
         private static bool ShouldPreserveString(string? value, bool migrateGeneratedDefaults, params string?[] knownDefaults)
@@ -660,6 +679,24 @@ namespace AutoTerrainDesignations
             catch { return null; }
         }
 
+        private static float? ParseFloat(string json, string key)
+        {
+            try
+            {
+                int idx = json.IndexOf($"\"{key}\":", StringComparison.Ordinal);
+                if (idx < 0) return null;
+                int valStart = json.IndexOf(':', idx) + 1;
+                while (valStart < json.Length && char.IsWhiteSpace(json[valStart])) valStart++;
+                int valEnd = valStart;
+                while (valEnd < json.Length && "-+0123456789.eE".IndexOf(json[valEnd]) >= 0) valEnd++;
+                if (valEnd == valStart) return null;
+                return float.TryParse(json.Substring(valStart, valEnd - valStart), NumberStyles.Float, CultureInfo.InvariantCulture, out float value)
+                    ? value
+                    : (float?)null;
+            }
+            catch { return null; }
+        }
+
         private static string? ParseString(string json, string key)
         {
             try
@@ -773,6 +810,18 @@ namespace AutoTerrainDesignations
             sb.AppendLine();
             sb.AppendLine("  \"_comment_autoReleaseTrucksWhenIdle\": \"Default starting value for the Auto-release trucks when idle toggle on each mine tower. When enabled, ATD automatically unassigns trucks from the tower once no managed designation has pending excavation work, or while the tower is paused. Vehicles are tracked and re-assigned when excavation work returns. Can be toggled per tower in-game. Default: false.\",");
             sb.AppendLine($"  \"autoReleaseTrucksWhenIdle\": {BoolToJsonStr(AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_turningRampsExperimental\": \"Experimental V1 accessway search. Allows turning and switchback ramps using vanilla flat and slope designations with clearance 1 only. Default: false.\",");
+            sb.AppendLine($"  \"turningRampsExperimental\": {BoolToJsonStr(AutoTerrainDesignationsMod.TurningRampsExperimental)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_experimentalAccessUseAStar\": \"Use A* instead of reference Dijkstra for experimental turning ramps. Default: false.\",");
+            sb.AppendLine($"  \"experimentalAccessUseAStar\": {BoolToJsonStr(AutoTerrainDesignationsMod.ExperimentalAccessUseAStar)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_accessWorkDistanceScale\": \"Tile-distance cost assigned to one unit of center-height terrain work in experimental access search. Range: 0-100. Default: 1.\",");
+            sb.AppendLine($"  \"accessWorkDistanceScale\": {FloatToJsonStr(AutoTerrainDesignationsMod.AccessWorkDistanceScale)},");
+            sb.AppendLine();
+            sb.AppendLine("  \"_comment_accessLandslideRunPerHeight\": \"Horizontal exclusion distance per vertical terrain level for the experimental landslide hourglass. 1 = 45 degrees; higher values are wider and more conservative, lower values are narrower. Range: 0.05-4. Default: 1.\",");
+            sb.AppendLine($"  \"accessLandslideRunPerHeight\": {FloatToJsonStr(AutoTerrainDesignationsMod.AccessLandslideRunPerHeight)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_cornerDesignationKey\": \"Key used to enter and toggle corner designation mode. Use a Unity KeyCode name (e.g. K, Alpha1, F1). Default: K.\",");
             sb.AppendLine($"  \"cornerDesignationKey\": \"{AutoTerrainDesignationsMod.CornerDesignationKey}\",");

@@ -114,6 +114,10 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetExcavatorCompletionNotificationsEnabled(true);
         SetRampNotificationsEnabled(true);
         SetAutoReleaseVehiclesWhenIdle(false);
+        SetTurningRampsExperimental(false);
+        SetExperimentalAccessUseAStar(false);
+        SetAccessWorkDistanceScale(1f);
+        SetAccessLandslideRunPerHeight(1f);
         SetCornerDesignationKey(KeyCode.K);
     }
 
@@ -259,6 +263,38 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
     {
         SetAutoReleaseExcavatorsWhenIdle(value);
         SetAutoReleaseTrucksWhenIdle(value);
+    }
+
+    /// <summary>Enables the V1 turning-ramp search. Experimental and off by default.</summary>
+    public static bool TurningRampsExperimental { get; private set; }
+
+    public static void SetTurningRampsExperimental(bool value)
+    {
+        TurningRampsExperimental = value;
+    }
+
+    /// <summary>Uses A* instead of reference Dijkstra for the experimental access search.</summary>
+    public static bool ExperimentalAccessUseAStar { get; private set; }
+
+    public static void SetExperimentalAccessUseAStar(bool value)
+    {
+        ExperimentalAccessUseAStar = value;
+    }
+
+    /// <summary>Tile-distance cost assigned to one unit of center-height terrain work.</summary>
+    public static float AccessWorkDistanceScale { get; private set; } = 1f;
+
+    public static void SetAccessWorkDistanceScale(float value)
+    {
+        AccessWorkDistanceScale = Math.Max(0f, Math.Min(100f, value));
+    }
+
+    /// <summary>Horizontal landslide-envelope run per vertical terrain level. 1 = 45 degrees.</summary>
+    public static float AccessLandslideRunPerHeight { get; private set; } = 1f;
+
+    public static void SetAccessLandslideRunPerHeight(float value)
+    {
+        AccessLandslideRunPerHeight = Math.Max(0.05f, Math.Min(4f, value));
     }
 
     /// <summary>Key used to enter and toggle corner designation mode. Default: K.</summary>

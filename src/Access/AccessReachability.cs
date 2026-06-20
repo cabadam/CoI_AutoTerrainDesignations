@@ -39,7 +39,7 @@ namespace AutoTerrainDesignations.Access
                     clusterTileLookup[origin.Origin] = cluster;
                     if (states[cluster] != AccessClusterState.AccessibleDirect && isReachableFromTower(origin.Origin))
                     {
-                        Log.Info($"[ATD Access Debug] Cluster {cluster.ClusterId} determined AccessibleDirect via origin tile {origin.Origin}");
+                        AccessDiagnostics.LogDebug($"[ATD Access Debug] Cluster {cluster.ClusterId} determined AccessibleDirect via origin tile {origin.Origin}");
                         states[cluster] = AccessClusterState.AccessibleDirect;
                     }
                 }
@@ -115,7 +115,7 @@ namespace AutoTerrainDesignations.Access
                     // 2. Is it touching a connected AccessProvider?
                     if (providerTiles.Contains(neighbor))
                     {
-                        Log.Info($"[ATD Access Debug] Cluster {cluster.ClusterId} accessible via provider tile {neighbor} from origin {origin.Origin}");
+                        AccessDiagnostics.LogDebug($"[ATD Access Debug] Cluster {cluster.ClusterId} accessible via provider tile {neighbor} from origin {origin.Origin}");
                         return true;
                     }
 
@@ -125,7 +125,7 @@ namespace AutoTerrainDesignations.Access
                         if (states[neighborCluster] == AccessClusterState.AccessibleDirect || 
                             states[neighborCluster] == AccessClusterState.AccessibleViaProvider)
                         {
-                            Log.Info($"[ATD Access Debug] Cluster {cluster.ClusterId} accessible via neighbor cluster {neighborCluster.ClusterId} at tile {neighbor} from origin {origin.Origin}");
+                            AccessDiagnostics.LogDebug($"[ATD Access Debug] Cluster {cluster.ClusterId} accessible via neighbor cluster {neighborCluster.ClusterId} at tile {neighbor} from origin {origin.Origin}");
                             return true; // Connected via another cluster
                         }
                     }

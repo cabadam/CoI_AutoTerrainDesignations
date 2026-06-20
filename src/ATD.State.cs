@@ -154,8 +154,29 @@ namespace AutoTerrainDesignations
         private static bool s_startupTowerPrioritySyncCompleted;
         private static int s_startupTowerPrioritySyncAttempts;
 
+        // Reserved for a future public diagnostics toggle. Keep command-scoped
+        // tracing off by default without suppressing warnings or unrelated logs.
+        private const bool CreateDesignationsVerboseLoggingEnabled = false;
+        private static bool s_createDesignationsDebugContext;
+
         [System.Diagnostics.Conditional("DEBUG")]
         private static void LogDebug(string message)
+        {
+            if (s_createDesignationsDebugContext && !CreateDesignationsVerboseLoggingEnabled)
+                return;
+
+            s_log.Info(message);
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        private static void LogLegacyAccessDebug(string message)
+        {
+            if (Access.AccessDiagnostics.VerboseLoggingEnabled)
+                s_log.Info(message);
+        }
+
+        [System.Diagnostics.Conditional("DEBUG")]
+        private static void LogExperimentalAccessDebug(string message)
         {
             s_log.Info(message);
         }

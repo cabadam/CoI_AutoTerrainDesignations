@@ -29,6 +29,36 @@ namespace AutoTerrainDesignations
 {
     public static partial class AutoDepthDesignation
     {
+        private static IEnumerator RunCreateDesignationsWithDebugGate(IEnumerator routine)
+        {
+            while (true)
+            {
+                bool movedNext;
+                object? current = null;
+
+                s_createDesignationsDebugContext = true;
+                try
+                {
+                    movedNext = routine.MoveNext();
+                    if (movedNext)
+                        current = routine.Current;
+                }
+                finally
+                {
+                    s_createDesignationsDebugContext = false;
+                }
+
+                if (!movedNext)
+                    yield break;
+
+                // Unity advances nested enumerators separately. Wrap them as well
+                // so the gate covers the complete Create Designations operation.
+                yield return current is IEnumerator nested
+                    ? RunCreateDesignationsWithDebugGate(nested)
+                    : current;
+            }
+        }
+
         private static IEnumerator CreateDesignationsCoroutine(IAreaManagingTower tower, bool generateRamps, object? inspectorInstance = null)
         {
             if (s_desigManager == null || s_miningProto == null) yield break;
@@ -374,7 +404,7 @@ namespace AutoTerrainDesignations
 
             if (!TryFindNearestPathableTile(pathabilityProvider, pfParams, towerPosition, out Tile2i start))
             {
-                s_log.Info($"[ATD Reachability Debug] Cannot find pathable tile near tower {towerPosition}");
+                LogLegacyAccessDebug($"[ATD Reachability Debug] Cannot find pathable tile near tower {towerPosition}");
                 return false;
             }
 
@@ -382,11 +412,11 @@ namespace AutoTerrainDesignations
             int startHeight = terrMgr != null ? GetSurfaceHeight(terrMgr, start) : -1;
             string targetsStr = terrMgr != null ? string.Join(", ", targetTiles.Select(t => $"{t} (h={GetSurfaceHeight(terrMgr, t)})")) : string.Join(", ", targetTiles);
 
-            s_log.Info($"[ATD Reachability Debug] Start search from tower={towerPosition} -> start={start} (h={startHeight}) to targets=[{targetsStr}]");
+            LogLegacyAccessDebug($"[ATD Reachability Debug] Start search from tower={towerPosition} -> start={start} (h={startHeight}) to targets=[{targetsStr}]");
 
             if (targetTiles.Contains(start))
             {
-                s_log.Info($"[ATD Reachability Debug] Reachable immediately: target contains start");
+                LogLegacyAccessDebug($"[ATD Reachability Debug] Reachable immediately: target contains start");
                 return true;
             }
 
@@ -415,7 +445,7 @@ namespace AutoTerrainDesignations
                         continue;
                     if (targetTiles.Contains(next))
                     {
-                        s_log.Info($"[ATD Reachability Debug] Reachable via path: reached target {next}");
+                        LogLegacyAccessDebug($"[ATD Reachability Debug] Reachable via path: reached target {next}");
                         return true;
                     }
 
@@ -424,7 +454,7 @@ namespace AutoTerrainDesignations
                 }
             }
 
-            s_log.Info($"[ATD Reachability Debug] Not reachable: searched {visited.Count} tiles");
+            LogLegacyAccessDebug($"[ATD Reachability Debug] Not reachable: searched {visited.Count} tiles");
             return false;
         }
 
@@ -508,7 +538,8 @@ namespace AutoTerrainDesignations
         internal static void CreateDesignationsForTower(IAreaManagingTower tower)
         {
             var towerSettings = GetOrCreateTowerSettings(tower);
-            s_coroutineHost?.StartCoroutine(CreateDesignationsCoroutine(tower, towerSettings.RampWidth > 0, null));
+            s_coroutineHost?.StartCoroutine(RunCreateDesignationsWithDebugGate(
+                CreateDesignationsCoroutine(tower, towerSettings.RampWidth > 0, null)));
         }
 
         /// <summary>
@@ -519,7 +550,8 @@ namespace AutoTerrainDesignations
         internal static void CreateDesignationsForTower(IAreaManagingTower tower, object? panelKey)
         {
             var towerSettings = GetOrCreateTowerSettings(tower);
-            s_coroutineHost?.StartCoroutine(CreateDesignationsCoroutine(tower, towerSettings.RampWidth > 0, panelKey));
+            s_coroutineHost?.StartCoroutine(RunCreateDesignationsWithDebugGate(
+                CreateDesignationsCoroutine(tower, towerSettings.RampWidth > 0, panelKey)));
         }
 
         internal static void MarkDebrisForRemovalForTower(IAreaManagingTower tower)

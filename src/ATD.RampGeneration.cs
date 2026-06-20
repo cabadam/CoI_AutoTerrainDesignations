@@ -306,6 +306,21 @@ namespace AutoTerrainDesignations
                 originClusters.Add(new AccessOriginCluster(++nextClusterId, accessOrigins, new[] { miningIntent }));
             }
 
+            AccessSearchSnapshot? experimentalSnapshot = null;
+            LastExperimentalAccessSearch = null;
+            if (AutoTerrainDesignationsMod.TurningRampsExperimental && configuredRampWidth == 1)
+            {
+                if (!TryBuildExperimentalAccessSnapshot(tower, tileDepths, cornerHeights, terrMgr,
+                    out experimentalSnapshot, out string snapshotFailure))
+                {
+                    LogExperimentalAccessDebug($"[ATD Experimental Access] snapshot unavailable: {snapshotFailure}");
+                }
+            }
+            else if (AutoTerrainDesignationsMod.TurningRampsExperimental)
+            {
+                LogExperimentalAccessDebug($"[ATD Experimental Access] V1 dry run skipped because tower ramp width is {configuredRampWidth}; V1 requires 1.");
+            }
+
             // 2. Identify existing access providers
             var existingProviders = new List<AccessProvider>();
             var accessibleAccessOrigins = new HashSet<Tile2i>();
@@ -386,6 +401,11 @@ namespace AutoTerrainDesignations
                 foreach (var origin in cluster.Origins)
                 {
                     clusterTileDepths[origin.Origin] = tileDepths[origin.Origin];
+                }
+
+                if (experimentalSnapshot != null)
+                {
+                    RunExperimentalAccessDryRun(experimentalSnapshot, cluster);
                 }
 
                 int rampWidth = Math.Max(1, Math.Min(5, configuredRampWidth));

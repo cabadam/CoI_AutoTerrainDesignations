@@ -390,10 +390,17 @@ For "work not being completed" reports, include both completion and workability:
 
 Current files involved:
 
+* `src/Access/AccessModels.cs` - shared access states, needs, intents, origins, clusters, providers, candidates, and results.
+* `src/Access/AccessReachability.cs` - grounded fixpoint reachability over origin clusters and providers.
+* `src/Access/AccessDiagnostics.cs` - shared cluster/provider decision logging.
+* `src/Access/AccessSearchModels.cs` - immutable V1/G search state, profiles, snapshot, durability inputs, and result trace.
+* `src/Access/AccessPathSearch.cs` - deterministic Dijkstra/A* dry-run engine and transition fixtures.
+* `src/ATD.ExperimentalAccessPathfinding.cs` - gated CoI-world snapshot builder and per-cluster dry-run adapter.
 * `src/ATD.RampGeneration.cs` - mining access generation and duplicate-access checks.
 * `src/ATD.Scan.cs` - mining designation scan and execution flow.
 * `src/ATD.FarmingAccess.cs` - farmland access and reachability helpers.
 * `src/ATD.FarmingPreparationSession.cs` - farmland preparation session state and completion behavior.
+* `src/ATD.Settings.cs`, `src/ATD.ModSettingsTab.cs` - Phase 3 public feature/search settings and persistence surface.
 
 Current helper family to refine:
 
@@ -404,7 +411,7 @@ Current helper family to refine:
 * `ExistingAccessOriginConnectsToTower`
 * `IsExistingAccessDesignation`
 
-These helpers are a good starting point, but the long-term shape should be a small shared access-analysis model rather than mining-only helpers that farming duplicates in parallel.
+The shared model and reachability core now exist, but these mining-local helpers remain migration points. Move them only behind regression fixtures; the long-term shape is a small shared access-analysis/search library rather than mining-only helpers that farming duplicates in parallel.
 
 ## Suggested Helper Model
 
@@ -425,37 +432,118 @@ This does not need to become a large public abstraction. The value is in making 
 
 **Code home.** The shared model and analysis logic live in a dedicated **`Access/` subfolder with its own namespace**, treated as an internal access helper library: the model types above, the fixpoint reachability flood, the closest-first generation pass, and candidate selection all belong here. Player-facing applications stay in **root-level files** as today - UI/tower-inspector integration, Harmony patches, the mining scan and farming session entry points, and notification rendering call *into* the `Access/` library rather than embedding its logic. This keeps the access core mode-agnostic and prevents mining (`ATD.RampGeneration.cs`, `ATD.Scan.cs`) and farming (`ATD.FarmingAccess.cs`) from each re-implementing reachability.
 
-## Refactor Plan
+## Phased Implementation Plan
 
-1. **Glossary and diagnostics**
-   Adopt this language in logs and comments first. This makes bug reports easier to map to code paths.
+This plan continues the phase numbering already used by the implementation commits. Each phase must leave the current straight-corridor generator usable as the control path. The experimental pathfinder remains off by default behind the public `Turning ramps (experimental)` setting; disabling that setting must reproduce current access generation without constructing search state or changing candidate selection.
 
-2. **Access analysis result object**
-   Replace boolean helper chains with a result that says which origin cluster needs access, already has it, received a provider, is waiting, is blocked, or is complete.
+### Phase 1 - Framework foundation and grounded reachability (complete)
 
-3. **Shared access-need classification**
-   Centralize "does this origin cluster need access now?" checks so mining, farming preparation, farming filling, and future construction-prep workflows do not each invent their own completion/workability gates.
+Implemented by `2e67b37`:
 
-4. **Shared edge compatibility helpers**
-   Centralize current-terrain-height vs target-designation-height edge checks so mining and farming do not diverge.
+* Added the shared `Access/` model, diagnostics vocabulary, origin-cluster states, blocked reasons, needs, providers, candidates, and analysis results.
+* Added the forward grounded-reachability flood used to classify direct and provider-mediated access.
+* Began routing mining access decisions through the shared model without replacing the current ramp geometry generator.
 
-5. **Provider scoring**
-   Make candidate choice explicit using the **lexicographic named criteria** in *Candidate Selection* (validity filter -> useless material moved -> mouth distance), not a weighted numeric score and not a "best next action / best eventually" blend. Cluster processing order is closest-to-tower first (Provision Pipeline step 8); the per-candidate ranking is what these criteria decide. Material moved can be approximated from the difference between current ground elevation and candidate target elevation across the provider's origins:
+**Exit evidence:** mining access compiles and runs through shared cluster/result types; grounded reachability is no longer inferred from a single local boolean.
 
-   * positive delta means material must be dumped
-   * negative delta means material must be mined
-   * larger absolute deltas rank worse because they require more vehicle work before the provider becomes useful
+### Phase 2 - Iterative provider generation and candidate selection (complete)
 
-   Apply a rebate when mined material is useful according to the same definition used by Create Designations auto-filtering. Disregard tower scan filters and mining priority for this purpose. Dumping cost is based only on elevation delta in the first implementation; do not account for available dump material, truck availability, or storage constraints in provider scoring yet.
+Implemented by `9b71921` and baseline-adjusted by `7255cbb`:
 
-6. **Origin-cluster-level logs**
-   Emit one summary per origin cluster when access provision is skipped, generated, waiting, or blocked.
+* Processes inaccessible clusters closest to tower-reachable ground first.
+* Places one provider, folds it into the provider set, and re-runs the reachability flood before handling farther clusters.
+* Ranks eligible straight-generator candidates lexicographically by `Valid -> Useless material moved -> Mouth distance`.
+* Treats mouth/provider reachability as part of candidate validity and keeps deterministic ordering for exact score ties.
 
-7. **Blocked warning notifications**
-   When an origin cluster is blocked and no valid next action exists, raise a concise warning notification for that origin cluster. The notifications manager may aggregate repeated warnings, but the access framework should report the blocked unit at origin-cluster granularity. Deduplicate repeated warnings for the same blocked reason, and clear or downgrade the warning when the provider chain becomes valid or the work completes. These notifications must be **transient and derived from runtime state** (purged before save, restored after from live state) so ATD stays safe to remove from saves - see the *Notification Save-Safety* rule.
+**Exit evidence:** the straight generator remains the production baseline; disconnected clusters are evaluated independently; selected candidates produce a real grounded provider chain.
 
-8. **Regression scenarios**
-   Keep a small checklist of reported layouts: disconnected mining clusters, flat cut out of mountain, ramp mouth blocked, farmland leveling with partial access, and completed terrain mixed with pending work.
+### Phase 3 - Freeze shared search inputs and feature gates (implemented; in-save validation pending)
+
+Build the mode-independent inputs needed by both the current generator and the experimental V1 search:
+
+* Add the public `Turning ramps (experimental)` setting, default off, with the V1-only tooltip defined in [Accessway Pathfinding](../planned/accessway-pathfinding.md#public-feature-gate).
+* Add a public search-algorithm sub setting with Dijkstra as the default and A* available but initially opt-in.
+* Add public parameter `workDistanceScale`, default `1`, through the existing Mod Settings / `ATDsettings.json` path without introducing mod-owned save state.
+* Add public parameter `accessLandslideRunPerHeight`, default `1` (45 degrees), so the symmetric landslide hourglass can be widened or narrowed without changing graph code.
+* Snapshot all search inputs once per provision pass: tower bounds, active vanilla designations, current terrain heights, target corner profiles, building occupancy, durability exclusions, tower-reachable G flood, origin clusters, and existing providers.
+* Keep the snapshot immutable for one cluster search. Stored/temporarily hidden designations and speculative search output are not part of it.
+* Extract shared edge-profile, corner-height, and active-designation queries from mining-only helpers into `Access/` without changing straight-generator output.
+
+**Exit gate:** with `Turning ramps (experimental) = off`, snapshot creation and new search code are not invoked and representative saves produce the same selected straight candidates as the Phase 2 baseline.
+
+**Implementation status:** the four public settings, immutable search snapshot, terrain/designation/profile capture, tower-reachable G flood, parameterized landslide index, and toggle-off short circuit are implemented. Representative-save equivalence remains to be recorded.
+
+### Phase 4 - V1 graph and Dijkstra dry run (implemented; in-save validation pending)
+
+Implement the bounded heterogeneous graph from [Accessway Pathfinding](../planned/accessway-pathfinding.md), but do not place designations yet:
+
+* Precompute tile-based `G` nodes over non-designation ground outside durability zones.
+* Create origin-based V1 nodes `(origin, h, mode)` for `F`, `X+`, `X-`, `Y+`, and `Y-`, using scaled integer heights.
+* Select cluster start `S`, derive tower-reachable goal set `E`, and apply the documented horizontal/vertical bounds.
+* Implement mechanical V-to-V edge-profile transitions, symmetric V/G handoffs, existing-designation edge compatibility, construction-slope checks, fight-invariant checks, and the durability envelope.
+* Implement the additive MVP cost: tile Manhattan length plus `workDistanceScale * centerHeightWork`; reused active designations have zero work cost but still pay length.
+* Run Dijkstra first (`heuristic = 0`) and reconstruct an in-memory path and rejection summary. Do not mutate terrain or designation state.
+
+**Exit gate:** deterministic unit-level graph tests cover flat travel, straight ramps, flat landings, switchbacks, V/G handoffs, fixed existing profiles, blocked durability zones, and no-path results. A dry run reproduces at least one existing straight ramp and finds at least one valid turning path unavailable to the control generator.
+
+**Implementation status:** the heterogeneous G/V state model, scaled profiles, mechanical transitions, fixed-profile reuse, V/G handoffs, bounds, durability/fight checks, additive cost, Dijkstra/A*, path reconstruction, rejection summary, final self-contact validation, and gated per-cluster dry-run hook are implemented. Executable transition and synthetic V-to-G fixtures run before snapshot construction. Representative straight-ramp and switchback save fixtures remain to be captured.
+
+### Phase 5 - Candidate materialization and safety validation
+
+Turn a successful V1 path into an ordinary framework candidate:
+
+* Convert V nodes into flat/slope designation plans; G nodes emit no designations.
+* Preserve active existing designations and represent reused segments as fixed profiles.
+* Run final whole-path validation for shared-corner fights, non-consecutive side/diagonal self-contact, V/G seams, construction slope, tower bounds, building collisions, duplicate designations, and durability exclusions.
+* Return the result through the existing `AccessCandidate`/provider contract with cost breakdown and failure reason; do not bypass the fixpoint flood or completion rules.
+* Keep materialization transactional: validation failure places nothing, and placement failure cannot leave a partial candidate behind.
+
+**Exit gate:** every emitted path passes the same dry-run/final validation immediately before placement; invalid paths leave the world unchanged; the post-placement reachability flood reaches the intended cluster through the new provider.
+
+### Phase 6 - Experimental integration and fallback
+
+Integrate V1 into Provision Pipeline step 8 behind the public feature gate:
+
+* Toggle off: run only the straight generator.
+* Toggle on: evaluate V1 as an alternative candidate generator using the same cluster order and immutable pass snapshot.
+* If V1 reports no valid candidate, preserve the straight generator as fallback; do not turn an existing successful layout into `Blocked` merely because the experiment failed.
+* Compare V1 and straight candidates through an explicit adapter. Keep each generator's native diagnostics; do not silently mix path cost with the production lexicographic score without a documented comparison rule.
+* Re-flood after each placed provider exactly as in Phase 2 so later clusters can reuse the new accessway.
+
+**Exit gate:** disabling the toggle is behaviorally equivalent to the Phase 2 baseline; enabling it can select and place a switchback; a V1 failure falls back cleanly; no save data becomes dependent on the experimental feature.
+
+### Phase 7 - Diagnosability and A* comparison
+
+Add the developer-facing tooling needed to explain and tune the search:
+
+* Add the keyboard-opened mod debug panel and opt-in visualization layers for `S`, `E`, chosen/rejected paths, V/G segments, handoffs, bounds, frontier/cost heat, fight failures, durability blocks, and final validation failures.
+* Add a cursor-coordinate toggle to the panel by reusing ATD's existing `ShowCursorOverlay` display, currently exposed through `atd_cursor_overlay`; do not create a separate coordinate renderer.
+* Add a compact compass-rose toggle showing projected world `+X` and `+Y` directions. Recompute its screen-space arrows from the active camera so they follow camera rotation and tilt, including foreshortening, and label axes directly rather than translating them to compass directions.
+* Cache only the latest search trace by default and provide explicit log-dump buttons for bounds, visited nodes, rejection counts, cost breakdown, and tie-break decisions.
+* Keep verbose logging behind debug controls; expected candidate rejection must not produce unconditional per-pass log spam.
+* Enable the public A* option using the admissible nearest-`E` Manhattan heuristic and compare visited-node count, runtime, and selected path against Dijkstra. Dijkstra remains the reference oracle for optimal-cost comparisons.
+
+**Exit gate:** Dijkstra and A* return the same minimum-cost path on deterministic fixtures; debug tooling can explain every blocked class without affecting search results when disabled.
+
+### Phase 8 - Validation, rollout, and framework consolidation
+
+Exercise both generators on representative saves and complete the remaining shared-framework work:
+
+* Regression matrix: disconnected mining clusters, deep-pit durability exclusion, flat cut, blocked mouth, existing accessway reuse, switchback terrain, mixed complete/pending work, farming preparation with partial access, and filling-only work.
+* Record selected generator, path/work/length metrics, visited nodes, runtime, placement outcome, post-placement accessibility, and completion progression.
+* Centralize remaining duplicated mining/farming access-need and edge-compatibility helpers only after fixtures protect their current behavior.
+* Add transient, deduplicated blocked notifications at origin-cluster granularity; derive them from runtime state and never serialize mod-owned notification state.
+* Promote V1 from experimental only after it is at least as robust as the straight generator on the regression matrix and its performance is bounded on large tower areas.
+
+**Exit gate:** no unresolved correctness regression against the control generator; blocked states are diagnosable; farming/mining callers use shared semantics; the feature remains removable from saves.
+
+### Deferred search spaces
+
+The following are explicitly outside the V1 rollout and require their own design/validation phases:
+
+* **V2:** `accessWayClearance = 2`, wider node profiles, footprint costs, and 2x2-origin turn handling.
+* **V' / V'':** corner and saddle designation transition tables.
+* Multi-source cached cost-to-ground fields, full band-state search, and material-aware landslide simulation.
 
 ## Architectural Rules (Resolved Decisions)
 

@@ -109,6 +109,24 @@ namespace AutoTerrainDesignations
             Loc.Str("settings.heading.keyboard_shortcuts", "Keyboard shortcuts", "Settings section heading for keyboard shortcuts.");
         public static LocStr SettingsHeadingNotifications =
             Loc.Str("settings.heading.notifications", "Notifications", "Settings section heading for notification settings.");
+        public static LocStr SettingsHeadingExperimentalAccess =
+            Loc.Str("settings.heading.experimental_access", "Experimental accessways", "Settings section heading for experimental accessway settings.");
+        public static LocStr SettingsTurningRampsLabel =
+            Loc.Str("settings.experimental_access.turning_ramps.label", "Turning ramps (experimental)", "Settings toggle label for experimental turning ramps.");
+        public static LocStr SettingsTurningRampsTooltip =
+            Loc.Str("settings.experimental_access.turning_ramps.tooltip", "Experimental V1 accessway search. Allows turning and switchback ramps using vanilla flat and slope designations only. Requires the tower's ramp width to be set to 1. Corridor clearance is independent. Wider ramps and corner or saddle designations are not included.", "Tooltip for experimental turning ramps.");
+        public static LocStr SettingsAccessAStarLabel =
+            Loc.Str("settings.experimental_access.astar.label", "Use A* search", "Settings toggle label for experimental A* access search.");
+        public static LocStr SettingsAccessAStarTooltip =
+            Loc.Str("settings.experimental_access.astar.tooltip", "Use A* instead of reference Dijkstra for experimental accessway dry runs. Dijkstra is the safer validation baseline.", "Tooltip for experimental A* access search.");
+        public static LocStr SettingsAccessWorkScaleLabel =
+            Loc.Str("settings.experimental_access.work_scale.label", "Work distance scale", "Settings row label for experimental access work cost scale.");
+        public static LocStr SettingsAccessWorkScaleTooltip =
+            Loc.Str("settings.experimental_access.work_scale.tooltip", "Tile-distance cost assigned to one unit of center-height terrain work. Range: 0-100; default: 1.", "Tooltip for experimental access work distance scale.");
+        public static LocStr SettingsAccessLandslideRunLabel =
+            Loc.Str("settings.experimental_access.landslide_run.label", "Landslide horizontal run", "Settings row label for the experimental landslide envelope scale.");
+        public static LocStr SettingsAccessLandslideRunTooltip =
+            Loc.Str("settings.experimental_access.landslide_run.tooltip", "Horizontal exclusion distance per vertical terrain level. 1 is a 45-degree slope; higher values widen the exclusion hourglass, while lower values narrow it. Range: 0.05-4; default: 1.", "Tooltip for experimental access landslide run setting.");
         public static LocStr SettingsMaxSlopeLabel =
             Loc.Str("settings.max_slope.label", "Max slope", "Settings row label for maximum designation slope.");
         public static LocStr SettingsMaxSlopeTooltip =

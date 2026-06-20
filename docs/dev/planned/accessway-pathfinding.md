@@ -213,22 +213,23 @@ There is **no same-type exemption**: a pair with one or more misaligned shared c
 
 A corridor the search lays down must satisfy this against (a) the existing designations it abuts and (b) itself. This is a local, per-node feasibility check during expansion: a node whose required corner heights would leave any shared corner misaligned with a neighbouring designation is **inadmissible**. Because the check is over *shared corners*, it includes **diagonal** neighbours (which share a single corner), not just the axis-adjacent ones a terrain-changing edge can move along. This replaces "phase coupling" as the cross-designation constraint.
 
-## Durability: don't route where mining will undermine it
+## Durability: don't route where future terrain work will reshape it
 
-The fight invariant prevents an *immediate* landslide between adjacent designations. A second, **temporal** hazard is just as damaging: an accessway built too close to a zone that will later be mined **deeper** can collapse once that mining proceeds, because the excavation removes the support beside the ramp. In game terms this is effectively irreparable - rebuilding the collapsed ramp would require filling the mining pit back up, but the pit is full of active mining designations, so the fill cannot be placed. A whole new accessway has to be routed instead, often while mining crews are stranded in the pit behind the collapse.
+The fight invariant prevents an *immediate* landslide between adjacent designations. A second, **temporal** hazard is just as damaging: an accessway built too close to future terrain work can collapse when deeper mining removes its support, or be buried when higher dumping or leveling work builds outward slopes. In game terms this can be effectively irreparable while the source designations remain active, forcing a whole new accessway to be routed.
 
 The ideal model would approximate the future landslide shape from below and remove only nodes that would actually lose support. That is too expensive and too uncertain for the first implementation: the angle of repose varies by material (roughly 37-77 degrees), and the game also has some randomness. Use a conservative geometric envelope instead.
 
-For each planned or existing mining designation corner at `(x, y, d)`, where `d` uses the same vertical coordinate as search height `h` (larger means higher), block any candidate accessway node/corner `(x', y', d')` that is **above** that corner (`d' > d`) and too close in either horizontal axis to survive the vertical delta:
+Treat every corner of every active or newly planned mining, dumping, or leveling designation as the waist of a symmetric hourglass exclusion volume. For a designation corner at `(x, y, d)` and a candidate accessway node/corner `(x', y', d')`, use the absolute vertical separation:
 
 ```text
-delta = d' - d
-blocked iff delta > 0 and (abs(x' - x) < delta or abs(y' - y) < delta)
+delta = abs(d' - d)
+run = configured horizontal run per vertical level
+blocked iff delta > 0 and abs(x' - x) < delta * run and abs(y' - y) < delta * run
 ```
 
-This is a deliberately conservative approximation of support: a lower pending corner casts an axis-wise no-build envelope upward, and any higher accessway candidate inside that envelope is inadmissible. The `or` is intentional: it creates a conservative axis-aligned exclusion band rather than a radial cone. The strict `<` leaves the boundary available; switch to `<=` only if in-save testing shows boundary collapses are common. The rule is applied against concrete designation **corners**, not only origin centers, because corner failure is the damaging case and because V/V' shapes can have different corner heights even when their center height is the same.
+This is a deliberately conservative approximation of both lost support below and future material spread above. A designation corner casts the same finite square envelope upward and downward. The public `accessLandslideRunPerHeight` parameter defaults to `1`, giving `max(abs(dx), abs(dy)) < delta`: a Chebyshev-distance approximation of a 45-degree hourglass. Values above `1` widen the exclusion volume and are more conservative; values below `1` narrow it. Clamp the public range to `0.05..4` so the predicate remains meaningful and bounded. Using `or` between the axis tests would create infinite exclusion strips and incorrectly block distant points that merely share X or Y with the designation corner. The strict `<` leaves the boundary available; switch to `<=` only if in-save testing shows boundary collapses are common. The rule is applied against concrete designation **corners**, not only origin centers, because corner failure is the damaging case and because V/V' shapes can have different corner heights even when their center height is the same. If multiple active designations disagree at a shared corner, retain every distinct target height as an exclusion source rather than collapsing them to one extreme.
 
-For V1, expansion can implement this as a local feasibility check after converting `(origin, h, mode)` to its four candidate corner heights: each corner is tested against the deeper planned mining-corner index, and any hit rejects the successor node. This generalizes the existing *Ramp safety margin* roadmap item into the graph itself as a hard inadmissibility rule, rather than a soft cost penalty.
+For V1, expansion implements this as a local feasibility check after converting `(origin, h, mode)` to its four candidate corner heights: each corner is tested against the active designation-corner index, and any hit rejects the successor node. The same index filters `G`, because currently pathable ground may become unsafe after pending work. Traversal on an already designated origin uses that designation's fixed profile and is not rejected by its own hourglass. This generalizes the existing *Ramp safety margin* roadmap item into the graph itself as a hard inadmissibility rule, rather than a soft cost penalty.
 
 ## Clearance as a lattice-parity rule
 
@@ -280,6 +281,8 @@ Failed searches should report the blocking class: no valid `S`, no tower-reachab
 Add an opt-in **pathfinding debug surface** for development builds and advanced troubleshooting:
 
 * **Visualization layer toggle.** A keyboard shortcut opens a mod debug panel; the panel can enable/disable an in-world overlay for the last accessway search.
+* **Cursor-coordinate toggle.** Reuse ATD's existing bottom-left cursor-position overlay (`ShowCursorOverlay`, currently controlled by `atd_cursor_overlay`) as a panel toggle alongside the pathfinding layers.
+* **Axis compass toggle.** Show a compact screen-space rose for world `+X` and `+Y`. Derive arrow direction and length from the active camera projection on every draw so camera rotation and tilt are visible; label the axes as `X` and `Y` to avoid compass-direction ambiguity.
 * **Overlay layers.** Show `S`, candidate `E` nodes, the chosen path, generated V segments, reused G segments, V/G handoff seams, durability-blocked zones, fight-invariant failures, construction-slope failures, and the final validation failure if any.
 * **Cost heat / frontier view.** Optionally visualize accumulated path cost or Dijkstra frontier order inside the bounded search area. This is primarily for tuning `workDistanceScale` and bounds.
 * **Decision dump buttons.** The panel can dump cached decision trees / rejection summaries to the log: selected `S`, candidate `E` set size, bounds, visited node count, best rejected blockers by class, final path cost breakdown, and tie-break decisions.

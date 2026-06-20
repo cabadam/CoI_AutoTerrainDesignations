@@ -82,6 +82,7 @@ namespace AutoTerrainDesignations
             var content = BuildSettingsColumn();
 
             AddScanBehaviorSection(content, refreshers);
+            AddExperimentalAccessSection(content, refreshers);
             AddPerformanceSection(content, refreshers);
             AddKeyboardShortcutsSection(content, refreshers);
             AddNotificationsSection(content, refreshers);
@@ -216,6 +217,45 @@ namespace AutoTerrainDesignations
                 () => AutoDepthDesignation.BatchSize,
                 value => AutoDepthDesignation.SetBatchSize(value),
                 value => value.ToString(CultureInfo.InvariantCulture),
+                refreshers));
+        }
+
+        private static void AddExperimentalAccessSection(Column content, List<Action> refreshers)
+        {
+            content.Add(BuildSectionHeading(AtdLocalization.SettingsHeadingExperimentalAccess.AsFormatted));
+            content.Add(BuildToggleRow(
+                AtdLocalization.SettingsTurningRampsLabel.AsFormatted,
+                AtdLocalization.SettingsTurningRampsTooltip.AsFormatted,
+                () => AutoTerrainDesignationsMod.TurningRampsExperimental,
+                AutoTerrainDesignationsMod.SetTurningRampsExperimental,
+                refreshers));
+            content.Add(BuildToggleRow(
+                AtdLocalization.SettingsAccessAStarLabel.AsFormatted,
+                AtdLocalization.SettingsAccessAStarTooltip.AsFormatted,
+                () => AutoTerrainDesignationsMod.ExperimentalAccessUseAStar,
+                AutoTerrainDesignationsMod.SetExperimentalAccessUseAStar,
+                refreshers));
+            content.Add(BuildFloatStepRow(
+                AtdLocalization.SettingsAccessWorkScaleLabel.AsFormatted,
+                AtdLocalization.SettingsAccessWorkScaleTooltip.AsFormatted,
+                () => AutoTerrainDesignationsMod.AccessWorkDistanceScale,
+                value =>
+                {
+                    AutoTerrainDesignationsMod.SetAccessWorkDistanceScale(value);
+                    return true;
+                },
+                FormatFloat,
+                refreshers));
+            content.Add(BuildFloatStepRow(
+                AtdLocalization.SettingsAccessLandslideRunLabel.AsFormatted,
+                AtdLocalization.SettingsAccessLandslideRunTooltip.AsFormatted,
+                () => AutoTerrainDesignationsMod.AccessLandslideRunPerHeight,
+                value =>
+                {
+                    AutoTerrainDesignationsMod.SetAccessLandslideRunPerHeight(value);
+                    return true;
+                },
+                FormatFloat,
                 refreshers));
         }
 
