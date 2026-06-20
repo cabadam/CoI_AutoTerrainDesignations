@@ -45,7 +45,7 @@ namespace AutoTerrainDesignations
         }
 
         /// <summary>
-        /// Clears all mining designations within the given tower's area.
+        /// Clears all terrain designations within the given tower's area.
         /// </summary>
         /// <param name="tower">Any IAreaManagingTower whose designations should be cleared.</param>
         public static void ClearDesignationsForTower(IAreaManagingTower tower)

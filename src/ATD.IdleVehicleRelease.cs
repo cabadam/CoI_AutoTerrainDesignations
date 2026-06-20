@@ -1,4 +1,4 @@
-// Auto Terrain Designations
+﻿// Auto Terrain Designations
 // Copyright (c) 2026 Kayser
 // Licensed under the MIT License.
 //
@@ -20,6 +20,7 @@ using Mafi.Core.Prototypes;
 using Mafi.Core.Terrain.Designation;
 using Mafi.Core.Vehicles.Excavators;
 using Mafi.Core.Vehicles.Trucks;
+using Mafi.Core.Entities.Static;
 
 namespace AutoTerrainDesignations
 {
@@ -82,9 +83,36 @@ namespace AutoTerrainDesignations
             if (s_entitiesManager == null)
                 return;
 
+            // Prune tracked towers that no longer exist, are destroyed, or are being deconstructed.
+            if (s_idleReleasedVehiclesByTower.Count > 0)
+            {
+                var keys = s_idleReleasedVehiclesByTower.Keys.ToList();
+                foreach (EntityId towerId in keys)
+                {
+                    if (!s_entitiesManager.TryGetEntity<MineTower>(towerId, out MineTower tower) || tower.IsDestroyed)
+                    {
+                        s_idleReleasedVehiclesByTower.Remove(towerId);
+                        LogDebug($"[IdleRelease] Removed destroyed or missing tower {towerId} from release tracking.");
+                    }
+                    else if (tower.ConstructionState == ConstructionState.PendingDeconstruction ||
+                             tower.ConstructionState == ConstructionState.InDeconstruction ||
+                             tower.ConstructionState == ConstructionState.Deconstructed)
+                    {
+                        s_idleReleasedVehiclesByTower.Remove(towerId);
+                        LogDebug($"[IdleRelease] Removed deconstructing tower {towerId} from release tracking without restoring vehicles.");
+                    }
+                    else if (!tower.IsConstructed)
+                    {
+                        // E.g. InConstruction or BeingUpgraded - restore any tracked vehicles and stop tracking.
+                        LogDebug($"[IdleRelease] Tower {towerId} is not constructed (state: {tower.ConstructionState}). Restoring vehicles.");
+                        RestoreIdleReleasedVehicles(tower, towerId, releaseExcavators: false, releaseTrucks: false);
+                    }
+                }
+            }
+
             foreach (MineTower tower in s_entitiesManager.GetAllEntitiesOfType<MineTower>())
             {
-                if (tower.IsDestroyed)
+                if (tower.IsDestroyed || !tower.IsConstructed)
                     continue;
 
                 if (!TryGetTowerEntityId(tower, out EntityId towerId))
@@ -256,6 +284,16 @@ namespace AutoTerrainDesignations
 
                 if (!s_idleReleasedVehiclesByTower.TryGetValue(towerId, out List<Vehicle> released))
                     continue;
+
+                // Skip restoring vehicles if the tower is under deconstruction or not constructed.
+                // This prevents writing vehicle assignments to deconstructing towers in the save file.
+                if (!tower.IsConstructed ||
+                    tower.ConstructionState == ConstructionState.PendingDeconstruction ||
+                    tower.ConstructionState == ConstructionState.InDeconstruction ||
+                    tower.ConstructionState == ConstructionState.Deconstructed)
+                {
+                    continue;
+                }
 
                 int restored = 0;
                 foreach (Vehicle vehicle in released)

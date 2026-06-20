@@ -1,25 +1,5 @@
 [
   [
-    "notification.ramp_access_failed",
-    "[ATD] {entity} non è riuscita ad avviare una rampa di accesso"
-  ],
-  [
-    "notification.ramp_access_truncated",
-    "[ATD] {entity} non è riuscita a inserirsi in una rampa di accesso completa"
-  ],
-  [
-    "notification.ramp_access_not_accessible",
-    "[ATD] {entity} non è riuscita a raggiungere la rampa"
-  ],
-  [
-    "notification.farming_complete",
-    "[ATD] Preparazione e riempimento di {entity} completati"
-  ],
-  [
-    "notification.excavator_completed",
-    "[ATD] {entity} ha completato un escavatore"
-  ],
-  [
     "common.level.off",
     "Spento"
   ],
@@ -61,7 +41,7 @@
   ],
   [
     "panel.designations.clear_tooltip",
-    "Elimina tutte le indicazioni relative all'estrazione nell'area di questa torre."
+    "Elimina tutte le designazioni del terreno nell'area di questa torre."
   ],
   [
     "panel.designations.ore_filter.auto",
@@ -116,48 +96,224 @@
     "Forza la scansione su un prodotto specifico. Nessuno = prima i prodotti utili, poi i detriti, infine la terra."
   ],
   [
-    "toolbox.corner_outer.tooltip",
-    "Angolo (esterno): posizionare delle rampe angolari convesse."
+    "settings.mod.name",
+    "Designazioni automatiche del terreno"
   ],
   [
-    "toolbox.corner_inner.tooltip",
-    "Angolo (interno): posizionare rampe angolari concave."
+    "settings.tab.defaults",
+    "Predefiniti"
   ],
   [
-    "panel.farming.title",
-    "Preparazione dei terreni agricoli"
+    "settings.tab.game_settings",
+    "Impostazioni di gioco"
   ],
   [
-    "panel.farming.description",
-    "Automatizza la preparazione e il riempimento finale delle aree pianeggianti in modo che il loro strato superiore diventi coltivabile."
+    "settings.tab.ore_quality",
+    "Qualità del minerale"
   ],
   [
-    "panel.farming.automation_toggle.label",
-    "Automazione della preparazione dei terreni agricoli"
+    "settings.heading.mining_defaults",
+    "Predefiniti della torre di controllo miniera"
   ],
   [
-    "panel.farming.automation_toggle.tooltip",
-    "Preparare le piane di livellamento dei terreni agricoli rimuovendo il materiale di copertura non idoneo, quindi ripristinare gli strati di riempimento finali."
+    "settings.heading.panel_defaults",
+    "Predefiniti dei pannelli"
   ],
   [
-    "panel.farming.idle_release_excavators.label",
-    "Rilascio escavatori quando inattivi"
+    "settings.heading.designations",
+    "Designazioni"
   ],
   [
-    "panel.farming.idle_release_excavators.tooltip",
-    "Annulla automaticamente l'assegnazione degli escavatori da questa torre quando nessuna designazione ha lavori di scavo in sospeso o quando la torre è in pausa.\nGli escavatori vengono tracciati e riassegnati quando riprendono i lavori di scavo."
+    "settings.heading.scan_performance",
+    "Prestazioni scansione"
   ],
   [
-    "panel.farming.idle_release_trucks.label",
-    "Rilascio camion quando inattivi"
+    "settings.heading.keyboard_shortcuts",
+    "Scorciatoie da tastiera"
   ],
   [
-    "panel.farming.idle_release_trucks.tooltip",
-    "Annulla automaticamente l'assegnazione dei camion da questa torre quando nessuna designazione ha lavori di scavo in sospeso o quando la torre è in pausa.\nI camion vengono tracciati e riassegnati quando riprendono i lavori di scavo."
+    "settings.heading.notifications",
+    "Notifiche"
   ],
   [
-    "panel.farming.assigned_vehicles.label",
-    "Veicoli assegnati"
+    "settings.heading.experimental_access",
+    "Accessi sperimentali"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.label",
+    "Rampe di svolta (sperimentali)"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.tooltip",
+    "Se abilitato, ATD può selezionare e posizionare accessi sperimentali di svolta o tornanti V1 utilizzando designazioni piatte e in pendenza. Richiede che la larghezza della rampa della torre sia impostata su 1. La distanza del corridoio è indipendente. Rampe più larghe e designazioni di angoli o selle non sono incluse."
+  ],
+  [
+    "settings.experimental_access.astar.label",
+    "Utilizza la ricerca A*"
+  ],
+  [
+    "settings.experimental_access.astar.tooltip",
+    "Utilizzare A* anziché fare riferimento a Dijkstra per i percorsi a secco di accessi sperimentali. Dijkstra è la base di convalida più sicura."
+  ],
+  [
+    "settings.experimental_access.work_scale.label",
+    "Scala della distanza di lavoro"
+  ],
+  [
+    "settings.experimental_access.work_scale.tooltip",
+    "Costo della distanza delle tessere assegnato a un'unità di lavoro del terreno ad altezza centrale. Intervallo: 0-100; predefinito: 1."
+  ],
+  [
+    "settings.experimental_access.landslide_run.label",
+    "Corsa orizzontale della frana"
+  ],
+  [
+    "settings.experimental_access.landslide_run.tooltip",
+    "Distanza di esclusione orizzontale per livello verticale del terreno. 1 è una pendenza di 45 gradi; valori più alti allargano la clessidra di esclusione, mentre valori più bassi la restringono. Intervallo: 0,05-4; predefinito: 1."
+  ],
+  [
+    "settings.max_slope.label",
+    "Pendenza max"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Differenza massima di altezza consentita tra angoli di designazione adiacenti. Intervallo: 1-3."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Spianamento del fondo"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Forza dello spianamento del fondo da 0 a 10. 0 disattiva il passaggio di spianamento."
+  ],
+  [
+    "settings.batch_size.label",
+    "Dimensione batch"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Designazioni piazzate per frame di coroutine mentre il gioco non è in pausa. Intervallo: 1-200."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Pannello minerario chiuso"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Se il pannello delle designazioni minerarie parte chiuso per impostazione predefinita."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Pannello minerale chiuso"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Se il pannello composizione del minerale parte chiuso per impostazione predefinita."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Pannello agricolo chiuso"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Se il pannello di preparazione dei terreni agricoli parte chiuso per impostazione predefinita."
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Notifiche completamento escavatore"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Se ATD mostra una notifica verde quando un deposito veicoli completa un escavatore."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Notifiche avviso rampa"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Se ATD mostra avvisi di accesso rampa sulle torri minerarie."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Altezza minima minerale"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Spessore minimo del minerale in caselle di terreno per questo livello di qualità."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Densità minima del fondo"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Densità minima del minerale dal fondo precedente a questo fondo. Limitata da 0 a 1."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Purezza minima minerale"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Rapporto minimo minerale/colonna per questo livello di qualità. Limitato da 0 a 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Dimensione minima componente"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Numero minimo di caselle di designazione connesse perché un gruppo superi il filtro di isolamento."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Modalità designazioni angolari"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Tasto per entrare e alternare la modalità designazioni angolari mentre è attivo uno strumento di designazione del terreno."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Usa un solo tasto, come K, 1, F1, Space o Escape."
+  ],
+  [
+    "settings.status.applied",
+    "Applicato"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Tasto non valido"
+  ],
+  [
+    "settings.action.save_as_global",
+    "Salva come config"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Salva queste impostazioni in ATDsettings.json. Verranno usate come predefiniti per tutte le nuove partite."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Ripristina predefiniti"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Ripristina i valori globali predefiniti del mod per tutte le impostazioni. (Non le salva automaticamente come config.)"
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Salvato in ATDsettings.json."
+  ],
+  [
+    "settings.status.save_failed",
+    "Salvataggio non riuscito; controlla il log."
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Predefiniti integrati ripristinati in memoria."
   ],
   [
     "panel.ore.title",
@@ -192,187 +348,63 @@
     "Imposta la priorità di estrazione della torre su {0}."
   ],
   [
-    "settings.action.restore_defaults",
-    "Ripristina predefiniti"
+    "panel.farming.title",
+    "Preparazione dei terreni agricoli"
   ],
   [
-    "settings.action.restore_defaults.tooltip",
-    "Ripristina i valori globali predefiniti del mod per tutte le impostazioni. (Non le salva automaticamente come config.)"
+    "panel.farming.description",
+    "Automatizza la preparazione e il riempimento finale delle aree pianeggianti in modo che il loro strato superiore diventi coltivabile."
   ],
   [
-    "settings.action.save_as_global",
-    "Salva come config"
+    "panel.farming.automation_toggle.label",
+    "Automazione della preparazione dei terreni agricoli"
   ],
   [
-    "settings.action.save_as_global.tooltip",
-    "Salva queste impostazioni in ATDsettings.json. Verranno usate come predefiniti per tutte le nuove partite."
+    "panel.farming.automation_toggle.tooltip",
+    "Preparare le piane di livellamento dei terreni agricoli rimuovendo il materiale di copertura non idoneo, quindi ripristinare gli strati di riempimento finali."
   ],
   [
-    "settings.batch_size.label",
-    "Dimensione batch"
+    "panel.farming.idle_release_excavators.label",
+    "Rilascio escavatori quando inattivi"
   ],
   [
-    "settings.batch_size.tooltip",
-    "Designazioni piazzate per frame di coroutine mentre il gioco non è in pausa. Intervallo: 1-200."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Annulla automaticamente l'assegnazione degli escavatori da questa torre quando nessuna designazione ha lavori di scavo in sospeso o quando la torre è in pausa.\nGli escavatori vengono tracciati e riassegnati quando riprendono i lavori di scavo."
   ],
   [
-    "settings.bottom_flattening.label",
-    "Spianamento del fondo"
+    "panel.farming.idle_release_trucks.label",
+    "Rilascio camion quando inattivi"
   ],
   [
-    "settings.bottom_flattening.tooltip",
-    "Forza dello spianamento del fondo da 0 a 10. 0 disattiva il passaggio di spianamento."
+    "panel.farming.idle_release_trucks.tooltip",
+    "Annulla automaticamente l'assegnazione dei camion da questa torre quando nessuna designazione ha lavori di scavo in sospeso o quando la torre è in pausa.\nI camion vengono tracciati e riassegnati quando riprendono i lavori di scavo."
   ],
   [
-    "settings.corner_mode.invalid_tooltip",
-    "Usa un solo tasto, come K, 1, F1, Space o Escape."
+    "toolbox.corner_outer.tooltip",
+    "Angolo (esterno): posizionare delle rampe angolari convesse."
   ],
   [
-    "settings.corner_mode.label",
-    "Modalità designazioni angolari"
+    "toolbox.corner_inner.tooltip",
+    "Angolo (interno): posizionare rampe angolari concave."
   ],
   [
-    "settings.corner_mode.tooltip",
-    "Tasto per entrare e alternare la modalità designazioni angolari mentre è attivo uno strumento di designazione del terreno."
+    "notification.ramp_access_failed",
+    "[ATD] {entity} non è riuscita ad avviare una rampa di accesso"
   ],
   [
-    "settings.heading.designations",
-    "Designazioni"
+    "notification.ramp_access_truncated",
+    "[ATD] {entity} non è riuscita a inserirsi in una rampa di accesso completa"
   ],
   [
-    "settings.heading.keyboard_shortcuts",
-    "Scorciatoie da tastiera"
+    "notification.ramp_access_not_accessible",
+    "[ATD] {entity} non è riuscita a raggiungere la rampa"
   ],
   [
-    "settings.heading.mining_defaults",
-    "Predefiniti della torre di controllo miniera"
+    "notification.farming_complete",
+    "[ATD] Preparazione e riempimento di {entity} completati"
   ],
   [
-    "settings.heading.notifications",
-    "Notifiche"
-  ],
-  [
-    "settings.heading.panel_defaults",
-    "Predefiniti dei pannelli"
-  ],
-  [
-    "settings.heading.scan_performance",
-    "Prestazioni scansione"
-  ],
-  [
-    "settings.max_slope.label",
-    "Pendenza max"
-  ],
-  [
-    "settings.max_slope.tooltip",
-    "Differenza massima di altezza consentita tra angoli di designazione adiacenti. Intervallo: 1-3."
-  ],
-  [
-    "settings.mod.name",
-    "Designazioni automatiche del terreno"
-  ],
-  [
-    "settings.notifications.excavator_completion.label",
-    "Notifiche completamento escavatore"
-  ],
-  [
-    "settings.notifications.excavator_completion.tooltip",
-    "Se ATD mostra una notifica verde quando un deposito veicoli completa un escavatore."
-  ],
-  [
-    "settings.notifications.ramp_warning.label",
-    "Notifiche avviso rampa"
-  ],
-  [
-    "settings.notifications.ramp_warning.tooltip",
-    "Se ATD mostra avvisi di accesso rampa sulle torri minerarie."
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.label",
-    "Densità minima del fondo"
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.tooltip",
-    "Densità minima del minerale dal fondo precedente a questo fondo. Limitata da 0 a 1."
-  ],
-  [
-    "settings.ore_quality.min_component_size.label",
-    "Dimensione minima componente"
-  ],
-  [
-    "settings.ore_quality.min_component_size.tooltip",
-    "Numero minimo di caselle di designazione connesse perché un gruppo superi il filtro di isolamento."
-  ],
-  [
-    "settings.ore_quality.min_ore_height.label",
-    "Altezza minima minerale"
-  ],
-  [
-    "settings.ore_quality.min_ore_height.tooltip",
-    "Spessore minimo del minerale in caselle di terreno per questo livello di qualità."
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.label",
-    "Purezza minima minerale"
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.tooltip",
-    "Rapporto minimo minerale/colonna per questo livello di qualità. Limitato da 0 a 1."
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.label",
-    "Pannello agricolo chiuso"
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.tooltip",
-    "Se il pannello di preparazione dei terreni agricoli parte chiuso per impostazione predefinita."
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.label",
-    "Pannello minerario chiuso"
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.tooltip",
-    "Se il pannello delle designazioni minerarie parte chiuso per impostazione predefinita."
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.label",
-    "Pannello minerale chiuso"
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.tooltip",
-    "Se il pannello composizione del minerale parte chiuso per impostazione predefinita."
-  ],
-  [
-    "settings.status.applied",
-    "Applicato"
-  ],
-  [
-    "settings.status.invalid_key",
-    "Tasto non valido"
-  ],
-  [
-    "settings.status.restored_defaults",
-    "Predefiniti integrati ripristinati in memoria."
-  ],
-  [
-    "settings.status.save_failed",
-    "Salvataggio non riuscito; controlla il log."
-  ],
-  [
-    "settings.status.saved_to_file",
-    "Salvato in ATDsettings.json."
-  ],
-  [
-    "settings.tab.defaults",
-    "Predefiniti"
-  ],
-  [
-    "settings.tab.game_settings",
-    "Impostazioni di gioco"
-  ],
-  [
-    "settings.tab.ore_quality",
-    "Qualità del minerale"
+    "notification.excavator_completed",
+    "[ATD] {entity} ha completato un escavatore"
   ]
 ]

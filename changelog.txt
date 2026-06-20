@@ -1,3 +1,13 @@
+v0.4.4 | 2026-06-20
+* Added: Experimental turning and switchback accessways (least-work corridor pathfinding) for mine towers, configurable via the new **Turning ramps (experimental)** toggle in Mod Settings
+* Changed: Renamed the Mod Settings **Mining defaults** heading to **Mine control tower defaults** to match the vanilla tower name
+* Changed: Split **Auto-release when idle** into separate per-tower and global toggles for excavators and trucks
+* Fixed: Auto-release now treats paused mine towers as idle, so vehicles are released while the tower is paused and restored when work resumes
+* Added: Compact assigned and released vehicle lists in the Farmland preparation panel tooltips
+* Fixed: Ramp generation skipping incorrectly due to unrelated reachable accessways in the tower area
+* Fixed: Vehicle auto-release could leave vehicles stuck assigned to invisible or deconstructed mine towers after saving and restarting
+* Updated: German, Spanish, Italian, Portuguese, Russian, Swedish, and Chinese translations
+
 v0.4.3 | 2026-06-06
 * Added AutoHelpers shared **Mod Settings** tabs for ATD global defaults, game settings, and ore-quality thresholds, with localized labels/tooltips and shared-window tab icons
 * Added: Chinese translation

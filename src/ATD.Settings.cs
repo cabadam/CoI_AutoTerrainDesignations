@@ -811,7 +811,7 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_autoReleaseTrucksWhenIdle\": \"Default starting value for the Auto-release trucks when idle toggle on each mine tower. When enabled, ATD automatically unassigns trucks from the tower once no managed designation has pending excavation work, or while the tower is paused. Vehicles are tracked and re-assigned when excavation work returns. Can be toggled per tower in-game. Default: false.\",");
             sb.AppendLine($"  \"autoReleaseTrucksWhenIdle\": {BoolToJsonStr(AutoTerrainDesignationsMod.AutoReleaseTrucksWhenIdle)},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_turningRampsExperimental\": \"Experimental V1 accessway search. Allows turning and switchback ramps using vanilla flat and slope designations with clearance 1 only. Default: false.\",");
+            sb.AppendLine("  \"_comment_turningRampsExperimental\": \"When enabled, ATD may select and place experimental V1 turning or switchback accessways using vanilla flat and slope designations. Requires ramp width 1; corridor clearance is independent. Default: false.\",");
             sb.AppendLine($"  \"turningRampsExperimental\": {BoolToJsonStr(AutoTerrainDesignationsMod.TurningRampsExperimental)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_experimentalAccessUseAStar\": \"Use A* instead of reference Dijkstra for experimental turning ramps. Default: false.\",");

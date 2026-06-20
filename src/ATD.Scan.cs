@@ -300,17 +300,30 @@ namespace AutoTerrainDesignations
             if (generateRamps)
             {
                 LogDebug("Creating access ramp...");
-                RampPlacementOutcome rampOutcome = CreateAccessRamp(tower, maxOreDepths, cornerHeights, terrMgr, towerSettings.RampWidth, out Tile2i rampTopTile);
+                var placedAccesswayOrigins = new List<Tile2i>();
+                RampPlacementOutcome rampOutcome = CreateAccessRamp(
+                    tower,
+                    maxOreDepths,
+                    cornerHeights,
+                    terrMgr,
+                    towerSettings.RampWidth,
+                    s_miningProto,
+                    placedAccesswayOrigins,
+                    null,
+                    out Tile2i rampTopTile);
                 SetTowerLastRampOutcome(tower, rampOutcome);
+
+                var protectedAccesswayOrigins = new HashSet<Tile2i>(placedAccesswayOrigins);
+                RemoveFulfilledDesignationsForTower(tower, protectedAccesswayOrigins);
+                CleanupIsolatedLeftoverDesignationsForTower(tower, maxOreDepths, protectedAccesswayOrigins);
             }
             else
             {
                 LogDebug("Ramp generation is disabled in settings.");
                 ClearTowerLastRampOutcome(tower);
+                RemoveFulfilledDesignationsForTower(tower);
+                CleanupIsolatedLeftoverDesignationsForTower(tower, maxOreDepths);
             }
-
-            RemoveFulfilledDesignationsForTower(tower);
-            CleanupIsolatedLeftoverDesignationsForTower(tower, maxOreDepths);
 
             // Refresh ore composition panel and designation panel after creating designations
             if (inspectorInstance != null)

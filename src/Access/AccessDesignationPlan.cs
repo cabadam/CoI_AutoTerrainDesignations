@@ -45,4 +45,16 @@ namespace AutoTerrainDesignations.Access
             => new AccessDesignationPlan(false, reason, startOrigin, default,
                 Array.Empty<AccessPlannedDesignation>(), 0, 0);
     }
+
+    internal sealed class ExperimentalAccessCandidate
+    {
+        public AccessSearchResult SearchResult { get; }
+        public AccessDesignationPlan Plan { get; }
+
+        public ExperimentalAccessCandidate(AccessSearchResult searchResult, AccessDesignationPlan plan)
+        {
+            SearchResult = searchResult;
+            Plan = plan;
+        }
+    }
 }

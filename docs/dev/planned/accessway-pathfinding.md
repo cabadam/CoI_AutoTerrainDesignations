@@ -13,9 +13,11 @@ Expose this generator as an experimental public toggle:
 * **Setting:** `Turning ramps (experimental)`
 * **Default:** off
 * **Scope:** enables only the V1 search space: vanilla flat/slope designations with `accessWayClearance = 1`.
-* **Tooltip:** `Experimental V1 accessway search. Allows turning/switchback ramps using vanilla flat and slope designations only. Wider accessways and corner/saddle designation support are not included yet.`
+* **Tooltip:** `When enabled, ATD may select and place experimental V1 turning or switchback accessways using vanilla flat and slope designations. Requires ramp width 1; corridor clearance is independent. Wider ramps and corner or saddle designations are not included.`
 
-When the toggle is off, accessway generation uses the current straight-corridor generator unchanged. When it is on, the framework may try the V1 pathfinder as an alternative candidate generator, while still validating candidates through the normal access framework.
+When the toggle is off, accessway generation uses the current straight-corridor generator unchanged. When it is on, the framework evaluates V1 alongside the straight generator, compares both through the production candidate ranking, and may place the V1 result. V1 placement is revalidated immediately before mutation and rolled back if placement or the post-placement reachability flood fails; the straight candidate remains the fallback.
+
+V1 uses the source work operation only to determine the V/G handoff direction. Generated accessway bodies use leveling designations, allowing a single route to combine excavation and fill where required by the terrain. The final generated V tile before G may instead use mining or dumping when the predecessor-facing target edge is wholly above or below current terrain; a mixed edge uses the origin center as the tie-break. Specialization is allowed only when the corresponding vanilla prospective-readiness check reports an accessible (non-red) edge. Existing leveling and specialized terminal designations are reusable providers. This keeps corridor geometry independent of whether the source cluster came from mining or dumping work while avoiding leveling overshoot at a ground attachment.
 
 ## Why
 
@@ -308,6 +310,7 @@ Build behind the same `AccessCandidate` contract the framework already defines, 
 * Whether centerline + thicken (#1) is sufficient in practice or whether footprint-cost search (#2) is needed for common terrain.
 * How aggressively to bound the search radius before declaring `Blocked`, and how that maps onto the existing `NoCandidate` / `MouthUnreachable` reasons.
 * Whether a later cost-to-ground field should be cached across passes and incrementally invalidated, or whether per-cluster `S -> E` Dijkstra/A* is fast enough.
+* Work function nonlinearity (future refinement): The work function is likely not a linear `delta-h`. Due to landslides, it is a quadratic function of `delta-h`. Assuming a 45-degree repose angle, each unit of `delta-h` contributes `h` work, suggesting a formula like `0.5 * dh^2`.
 
 ## Relationship to the access framework
 

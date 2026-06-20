@@ -490,7 +490,7 @@ Implement the bounded heterogeneous graph from [Accessway Pathfinding](../planne
 
 **Implementation status:** the heterogeneous G/V state model, scaled profiles, mechanical transitions, fixed-profile reuse, V/G handoffs, bounds, durability/fight checks, additive cost, Dijkstra/A*, path reconstruction, rejection summary, final self-contact validation, and gated per-cluster dry-run hook are implemented. Executable transition and synthetic V-to-G fixtures run before snapshot construction. Representative straight-ramp and switchback save fixtures remain to be captured.
 
-### Phase 5 - Candidate materialization and safety validation (read-only materialization implemented; placement pending)
+### Phase 5 - Candidate materialization and safety validation (implemented; save validation pending)
 
 Turn a successful V1 path into an ordinary framework candidate:
 
@@ -502,9 +502,9 @@ Turn a successful V1 path into an ordinary framework candidate:
 
 **Exit gate:** every emitted path passes the same dry-run/final validation immediately before placement; invalid paths leave the world unchanged; the post-placement reachability flood reaches the intended cluster through the new provider.
 
-**Implementation status:** successful search paths are converted into explicit flat/slope designation plans. The materializer independently replays V/V and V/G transitions, rechecks generated-node feasibility, fixed-profile reuse, duplicate origins, nonconsecutive self-contact corner consistency, and final goal membership. Legal matching diagonal contact at a flat-landed turn is explicitly covered by a fixture. Active designation corners and occupied building foundations share the parameterized landslide-source index, while buildings remain hard traversal obstacles. Valid plans and exact corner heights are logged and cached in memory; no designation placement, replacement, or removal occurs yet. Candidate adaptation, immediate pre-placement revalidation, transactional placement/rollback, and post-placement reachability remain pending.
+**Implementation status:** successful search paths are converted into explicit flat/slope designation plans. The materializer independently replays V/V and V/G transitions, rechecks generated-node feasibility, fixed-profile reuse, duplicate origins, nonconsecutive self-contact corner consistency, and final goal membership. Legal matching diagonal contact at a flat-landed turn is explicitly covered by a fixture. Active designation corners and occupied building foundations share the parameterized landslide-source index, while buildings remain hard traversal obstacles. The source work proto determines mining-versus-dumping handoff direction, while generated accessway bodies use the leveling proto so one route may safely combine cuts and fills. The final generated V tile before G is specialized to mining or dumping when its predecessor-facing edge (falling back to center height for a mixed edge) determines a one-directional operation and vanilla's prospective readiness check confirms at least one accessible edge; otherwise it remains leveling. Immediately before placement, ATD rebuilds the snapshot and rematerializes the path. Placement tracks each origin together with its actual proto and rolls all of them back on failure. The resulting provider is accepted only if a fresh reachability flood reaches the intended cluster. Representative-save validation of mixed cut/fill placement and terminal specialization remains pending.
 
-### Phase 6 - Experimental integration and fallback
+### Phase 6 - Experimental integration and fallback (implemented; save validation pending)
 
 Integrate V1 into Provision Pipeline step 8 behind the public feature gate:
 
@@ -515,6 +515,8 @@ Integrate V1 into Provision Pipeline step 8 behind the public feature gate:
 * Re-flood after each placed provider exactly as in Phase 2 so later clusters can reuse the new accessway.
 
 **Exit gate:** disabling the toggle is behaviorally equivalent to the Phase 2 baseline; enabling it can select and place a switchback; a V1 failure falls back cleanly; no save data becomes dependent on the experimental feature.
+
+**Implementation status:** V1 plans are adapted to the production `EvaluatedAccessCandidate` ranking using the same material-work estimate and mouth-distance tie-breaks as legacy candidates. Exact ties favor the legacy candidate. With the toggle enabled, each cluster evaluates both generators, selects the better valid candidate, and places V1 transactionally when selected. Search, rematerialization, placement, or post-placement reachability failure rolls back V1 changes and executes the already evaluated legacy candidate. With the toggle disabled, no V1 snapshot or search is constructed. In-save switchback placement, rollback, and toggle-off equivalence remain to be recorded against the regression matrix.
 
 ### Phase 7 - Diagnosability and A* comparison
 

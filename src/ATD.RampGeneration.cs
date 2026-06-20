@@ -292,6 +292,10 @@ namespace AutoTerrainDesignations
                 return RampPlacementOutcome.Failed;
             }
 
+            TerrainDesignationProto sourceWorkProto = rampProto;
+            TerrainDesignationProto accesswayProto = s_levelingProto ?? sourceWorkProto;
+            bool accesswayAllowsMixedWork = s_levelingProto != null && accesswayProto == s_levelingProto;
+
             BuildBuildingOccupiedTiles(tower);
             BuildDesignationOriginsInArea(tower);
 
@@ -316,12 +320,27 @@ namespace AutoTerrainDesignations
                 originClusters.Add(new AccessOriginCluster(++nextClusterId, accessOrigins, new[] { miningIntent }));
             }
 
+            if (AutoTerrainDesignationsMod.TurningRampsExperimental)
+            {
+                foreach (AccessOriginCluster cluster in originClusters)
+                {
+                    string origins = cluster.Origins.Count <= 32
+                        ? string.Join(",", cluster.Origins.Select(origin => origin.Origin.ToString()))
+                        : $"{cluster.Origins.Count} origins";
+                    LogExperimentalAccessDebug(
+                        $"[ATD Experimental Access Cluster] cluster={cluster.ClusterId} " +
+                        $"count={cluster.Origins.Count} origins=[{origins}]");
+                }
+            }
+
             AccessSearchSnapshot? experimentalSnapshot = null;
             LastExperimentalAccessSearch = null;
             LastExperimentalAccessPlan = null;
-            if (AutoTerrainDesignationsMod.TurningRampsExperimental && configuredRampWidth == 1)
+            bool experimentalOperationSupported = TryGetExperimentalOperation(sourceWorkProto, out bool experimentalIsMining);
+            if (AutoTerrainDesignationsMod.TurningRampsExperimental && configuredRampWidth == 1 && experimentalOperationSupported)
             {
                 if (!TryBuildExperimentalAccessSnapshot(tower, tileDepths, cornerHeights, terrMgr,
+                    experimentalIsMining, accesswayAllowsMixedWork,
                     out experimentalSnapshot, out string snapshotFailure))
                 {
                     LogExperimentalAccessDebug($"[ATD Experimental Access] snapshot unavailable: {snapshotFailure}");
@@ -329,7 +348,10 @@ namespace AutoTerrainDesignations
             }
             else if (AutoTerrainDesignationsMod.TurningRampsExperimental)
             {
-                LogExperimentalAccessDebug($"[ATD Experimental Access] V1 dry run skipped because tower ramp width is {configuredRampWidth}; V1 requires 1.");
+                string reason = configuredRampWidth != 1
+                    ? $"tower ramp width is {configuredRampWidth}; V1 requires 1"
+                    : $"designation proto {sourceWorkProto.Id.Value} is neither mining nor dumping";
+                LogExperimentalAccessDebug($"[ATD Experimental Access] V1 skipped because {reason}.");
             }
 
             // 2. Identify existing access providers
@@ -343,9 +365,10 @@ namespace AutoTerrainDesignations
                     continue;
 
                 Option<TerrainDesignation> existingDesignation = s_desigManager.GetDesignationAt(origin);
-                if (existingDesignation.HasValue && existingDesignation.Value.Prototype == rampProto)
+                if (existingDesignation.HasValue
+                    && IsAccesswayDesignationProto(existingDesignation.Value.Prototype, accesswayProto))
                 {
-                    bool reachesTower = ExistingAccessOriginConnectsToTower(tower, origin, tileDepths, rampProto, accessibleAccessOrigins, inaccessibleAccessOrigins);
+                    bool reachesTower = ExistingAccessOriginConnectsToTower(tower, origin, tileDepths, accesswayProto, accessibleAccessOrigins, inaccessibleAccessOrigins);
                     existingProviders.Add(new AccessProvider(new[] { origin, origin.AddX(4), origin.AddY(4), origin.AddXy(4) }, reachesTower));
                 }
             }
@@ -360,7 +383,7 @@ namespace AutoTerrainDesignations
                 (origin, direction) => 
                 {
                     Tile2i neighbor = new Tile2i(origin.X + direction.X, origin.Y + direction.Y);
-                    return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, rampProto, terrMgr, out _);
+                    return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, accesswayProto, terrMgr, out _);
                 });
 
             // Log initial states
@@ -414,9 +437,23 @@ namespace AutoTerrainDesignations
                     clusterTileDepths[origin.Origin] = tileDepths[origin.Origin];
                 }
 
+                EvaluatedAccessCandidate? experimentalCandidate = null;
                 if (experimentalSnapshot != null)
                 {
-                    RunExperimentalAccessDryRun(experimentalSnapshot, cluster);
+                    if (TryBuildExperimentalAccessSnapshot(tower, tileDepths, cornerHeights, terrMgr,
+                        experimentalIsMining, accesswayAllowsMixedWork,
+                        out AccessSearchSnapshot refreshedSnapshot, out string refreshFailure))
+                    {
+                        experimentalSnapshot = refreshedSnapshot;
+                        AccessSearchResult experimentalResult = RunExperimentalAccessDryRun(experimentalSnapshot, cluster);
+                        experimentalCandidate = EvaluateExperimentalAccessCandidate(
+                            experimentalResult, LastExperimentalAccessPlan, towerPos, terrMgr);
+                    }
+                    else
+                    {
+                        experimentalSnapshot = null;
+                        LogExperimentalAccessDebug($"[ATD Experimental Access] snapshot refresh failed: {refreshFailure}");
+                    }
                 }
 
                 int rampWidth = Math.Max(1, Math.Min(5, configuredRampWidth));
@@ -429,7 +466,7 @@ namespace AutoTerrainDesignations
                     clusterTileDepths,
                     cornerHeights,
                     terrMgr,
-                    rampProto,
+                    accesswayProto,
                     rampWidth,
                     lateralRetryOffset: 0,
                     reservedRampTiles,
@@ -448,7 +485,7 @@ namespace AutoTerrainDesignations
                         clusterTileDepths,
                         cornerHeights,
                         terrMgr,
-                        rampProto,
+                        accesswayProto,
                         rampWidth,
                         lateralRetryOffset,
                         reservedRampTiles,
@@ -467,13 +504,103 @@ namespace AutoTerrainDesignations
                         clusterTileDepths,
                         cornerHeights,
                         terrMgr,
-                        rampProto,
+                        accesswayProto,
                         1,
                         lateralRetryOffset: 0,
                         reservedRampTiles,
                         useLocalSurfaceReference,
                         forbiddenApproachClusterOrigins,
                         out allEvaluated);
+                }
+
+                bool preferExperimental = experimentalCandidate != null
+                    && (bestCandidate == null || EvaluatedAccessCandidate.Compare(experimentalCandidate, bestCandidate) < 0);
+                if (experimentalCandidate != null)
+                {
+                    string legacyMetrics = bestCandidate == null
+                        ? "none"
+                        : $"complete={bestCandidate.IsReachableNow},material={bestCandidate.MaterialMoved},mouthDistance={bestCandidate.MouthDistance},designations={bestCandidate.DesignationCount}";
+                    string selectedGenerator = preferExperimental ? "experimental" : "legacy";
+                    string decidedBy = bestCandidate == null
+                        ? "only-valid-candidate"
+                        : EvaluatedAccessCandidate.GetDecidedBy(
+                            preferExperimental ? experimentalCandidate : bestCandidate,
+                            preferExperimental ? bestCandidate : experimentalCandidate);
+                    LogExperimentalAccessDebug(
+                        $"[ATD Experimental Access Selection] cluster={cluster.ClusterId} " +
+                        $"experimental=[complete={experimentalCandidate.IsReachableNow},material={experimentalCandidate.MaterialMoved},mouthDistance={experimentalCandidate.MouthDistance},designations={experimentalCandidate.DesignationCount}] " +
+                        $"legacy=[{legacyMetrics}] selected={selectedGenerator} decidedBy={decidedBy}");
+                }
+                if (preferExperimental)
+                {
+                    var source = (ExperimentalAccessCandidate)experimentalCandidate!.SourceCandidate;
+                    var localPlacedOrigins = new List<Tile2i>();
+                    if (TryPlaceExperimentalAccessCandidate(
+                        tower,
+                        tileDepths,
+                        cornerHeights,
+                        terrMgr,
+                        accesswayProto,
+                        experimentalIsMining,
+                        accesswayAllowsMixedWork,
+                        source,
+                        localPlacedOrigins,
+                        reservedRampTiles,
+                        out Tile2i experimentalTopTile,
+                        out string experimentalPlacementFailure))
+                    {
+                        string decidedBy = bestCandidate == null
+                            ? "only-valid-candidate"
+                            : EvaluatedAccessCandidate.GetDecidedBy(experimentalCandidate, bestCandidate);
+                        var experimentalProvider = new AccessProvider(localPlacedOrigins, reachesGround: true);
+                        existingProviders.Add(experimentalProvider);
+                        states = AccessReachability.EvaluateReachability(
+                            originClusters,
+                            existingProviders,
+                            tower,
+                            terrMgr,
+                            tile => IsClusterOriginReadyAndPathable(tower, tile),
+                            (origin, direction) =>
+                            {
+                                Tile2i neighbor = new Tile2i(origin.X + direction.X, origin.Y + direction.Y);
+                                return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, accesswayProto, terrMgr, out _);
+                            });
+                        if (states[cluster] == AccessClusterState.AccessibleViaProvider
+                            || states[cluster] == AccessClusterState.AccessibleDirect)
+                        {
+                            topRowTile = experimentalTopTile;
+                            placedAny = true;
+                            placedRampOrigins?.AddRange(localPlacedOrigins);
+                            LogExperimentalAccessDebug($"[ATD Experimental Access] cluster={cluster.ClusterId} selected=true designations={localPlacedOrigins.Count} decidedBy={decidedBy}");
+                            AccessDiagnostics.LogAccessProvided(
+                                cluster.ClusterId,
+                                "experimental-turning-ramp",
+                                accesswayProto.Id.ToString(),
+                                localPlacedOrigins[0],
+                                "path",
+                                decidedBy);
+                            continue;
+                        }
+
+                        existingProviders.Remove(experimentalProvider);
+                        RollBackExperimentalDesignations(localPlacedOrigins, accesswayProto, reservedRampTiles);
+                        states = AccessReachability.EvaluateReachability(
+                            originClusters,
+                            existingProviders,
+                            tower,
+                            terrMgr,
+                            tile => IsClusterOriginReadyAndPathable(tower, tile),
+                            (origin, direction) =>
+                            {
+                                Tile2i neighbor = new Tile2i(origin.X + direction.X, origin.Y + direction.Y);
+                                return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, accesswayProto, terrMgr, out _);
+                            });
+                        LogExperimentalAccessDebug($"[ATD Experimental Access] cluster={cluster.ClusterId} post-placement provider validation failed; using legacy fallback.");
+                    }
+                    else
+                    {
+                        LogExperimentalAccessDebug($"[ATD Experimental Access] cluster={cluster.ClusterId} placement failed reason={experimentalPlacementFailure}; using legacy fallback.");
+                    }
                 }
 
                 if (bestCandidate != null)
@@ -486,7 +613,7 @@ namespace AutoTerrainDesignations
                         tileDepths,
                         cornerHeights,
                         terrMgr,
-                        rampProto,
+                        accesswayProto,
                         localPlacedOrigins,
                         reservedRampTiles,
                         useLocalSurfaceReference,
@@ -527,7 +654,7 @@ namespace AutoTerrainDesignations
                         AccessDiagnostics.LogAccessProvided(
                             cluster.ClusterId,
                             "generated-ramp",
-                            rampProto.Id.ToString(),
+                            accesswayProto.Id.ToString(),
                             rampCand.OreTiles[0],
                             rampCand.Direction.ToString(),
                             decidedBy);
@@ -544,7 +671,7 @@ namespace AutoTerrainDesignations
                             (origin, direction) => 
                             {
                                 Tile2i neighbor = new Tile2i(origin.X + direction.X, origin.Y + direction.Y);
-                                return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, rampProto, terrMgr, out _);
+                                return TryClusterEdgeConnectsToAccess(origin, neighbor, direction, tileDepths, accesswayProto, terrMgr, out _);
                             });
                     }
                     else
@@ -624,6 +751,22 @@ namespace AutoTerrainDesignations
                     continue;
                 }
 
+                // Real placement normalizes shared vertices before writing designations.
+                // Score and validate that same geometry so ranking cannot select a plan
+                // that changes shape (or becomes already fulfilled) only at commit time.
+                NormalizeRampPlan(plannedTiles, clusterTileDepths, cornerHeights);
+                if (!RampPlanMatchesDesignationOperation(plannedTiles, terrMgr, rampProto))
+                {
+                    continue;
+                }
+                if (plannedTiles.Count == 0)
+                {
+                    // This cluster was classified NeedsAccessway. A candidate that emits no
+                    // designation cannot provide the missing connection and must not win as
+                    // a zero-work legacy candidate.
+                    continue;
+                }
+
                 bool approachMismatch = RampMouthApproachTargetMismatches(terrMgr, dryTopRowTile, candidate.Direction, candidate.OreTiles.Length, rampProto);
                 bool approachForbidden = forbiddenApproachClusterOrigins != null && forbiddenApproachClusterOrigins.Count > 0
                     && RampMouthApproachInForbiddenCluster(dryTopRowTile, candidate.Direction, candidate.OreTiles.Length, rampProto, forbiddenApproachClusterOrigins);
@@ -659,7 +802,7 @@ namespace AutoTerrainDesignations
                 var evaluated = new EvaluatedAccessCandidate(
                     dryTopRowTile,
                     isValid: isMouthReachable,
-                    isReachableNow: isMouthReachable,
+                    isReachableNow: dryOutcome == RampPlacementOutcome.Crested && isMouthReachable,
                     mouthDistance: mouthDistance,
                     materialMoved: materialMoved,
                     designationCount: designationCount,
@@ -750,6 +893,34 @@ namespace AutoTerrainDesignations
             }
             // Scale by 4 to match the 4-vertex height sum scale of the original calculation.
             return (int)Math.Round(totalUseless * 4f);
+        }
+
+        private static bool RampPlanMatchesDesignationOperation(
+            IEnumerable<RampTilePlan> plannedTiles,
+            TerrainManager terrMgr,
+            TerrainDesignationProto rampProto)
+        {
+            bool isMining = RampProtoUsesMiningReadiness(rampProto);
+            bool isDumping = RampProtoUsesDumpingReadiness(rampProto);
+            if (!isMining && !isDumping) return true;
+
+            const float tolerance = 0.01f;
+            foreach (RampTilePlan plan in plannedTiles)
+            {
+                for (int y = 0; y <= 4; y++)
+                {
+                    float west = plan.NwHeight + (plan.SwHeight - plan.NwHeight) * (y / 4f);
+                    float east = plan.NeHeight + (plan.SeHeight - plan.NeHeight) * (y / 4f);
+                    for (int x = 0; x <= 4; x++)
+                    {
+                        float targetHeight = west + (east - west) * (x / 4f);
+                        float terrainHeight = terrMgr.GetHeight(plan.Tile + new RelTile2i(x, y)).Value.ToFloat();
+                        if (isMining && targetHeight > terrainHeight + tolerance) return false;
+                        if (isDumping && targetHeight < terrainHeight - tolerance) return false;
+                    }
+                }
+            }
+            return true;
         }
 
         private static List<RampCandidate> CollectRampCandidates(
@@ -1239,9 +1410,9 @@ namespace AutoTerrainDesignations
                     : BuildConstantBoundaryHeights(laneCount, approachReferenceHeight);
                 if (BoundaryHeightsMatch(currentBoundaryHeights, initialRefHeights))
                 {
+                    AddGapConnectorPlans(plannedTiles, candidate, laneFirstEdgeHeights, laneSecondEdgeHeights);
                     if (!dryRun)
                     {
-                        AddGapConnectorPlans(plannedTiles, candidate, laneFirstEdgeHeights, laneSecondEdgeHeights);
                         ApplyRampPlan(plannedTiles, tileDepths, cornerHeights, rampProto, placedRampOrigins);
                     }
                     topRowTile = candidate.RampTiles[0];
@@ -1356,9 +1527,9 @@ namespace AutoTerrainDesignations
                             || (!usesMiningReadiness && !usesDumpingReadiness)))
                     || (hasApproachReference && reachedReferenceLevel))
                 {
+                    AddGapConnectorPlans(plannedTiles, candidate, laneFirstEdgeHeights, laneSecondEdgeHeights);
                     if (!dryRun)
                     {
-                        AddGapConnectorPlans(plannedTiles, candidate, laneFirstEdgeHeights, laneSecondEdgeHeights);
                         ApplyRampPlan(plannedTiles, tileDepths, cornerHeights, rampProto, placedRampOrigins);
                     }
 
@@ -1380,9 +1551,9 @@ namespace AutoTerrainDesignations
 
                 if (!allInsideTower)
                 {
+                    AddGapConnectorPlans(plannedTiles, candidate, laneFirstEdgeHeights, laneSecondEdgeHeights);
                     if (!dryRun)
                     {
-                        AddGapConnectorPlans(plannedTiles, candidate, laneFirstEdgeHeights, laneSecondEdgeHeights);
                         ApplyRampPlan(plannedTiles, tileDepths, cornerHeights, rampProto, placedRampOrigins);
                     }
 
@@ -1423,12 +1594,18 @@ namespace AutoTerrainDesignations
 
         private static bool RampProtoUsesMiningReadiness(TerrainDesignationProto rampProto)
         {
-            return s_desigManager != null && rampProto.IsFulfilledMiningFn.HasValue;
+            return s_desigManager != null
+                && s_miningProto != null
+                && rampProto == s_miningProto
+                && rampProto.IsFulfilledMiningFn.HasValue;
         }
 
         private static bool RampProtoUsesDumpingReadiness(TerrainDesignationProto rampProto)
         {
-            return s_desigManager != null && rampProto.IsFulfilledDumpingFn.HasValue;
+            return s_desigManager != null
+                && s_dumpingProto != null
+                && rampProto == s_dumpingProto
+                && rampProto.IsFulfilledDumpingFn.HasValue;
         }
 
         private static bool RowHasReadyMiningDesignation(
@@ -1840,7 +2017,7 @@ namespace AutoTerrainDesignations
             Tile2i approachTile = Offset(candidate.RampTiles[0], candidate.Direction);
             Option<TerrainDesignation> opt = s_desigManager.GetDesignationAt(approachTile);
             if (!opt.HasValue) return false;
-            if (opt.Value.Prototype == rampProto) return false;
+            if (IsAccesswayDesignationProto(opt.Value.Prototype, rampProto)) return false;
             // Sample the target z at the shared-edge midpoint of the facing designation cell.
             int sx, sy;
             if (candidate.Direction.X > 0)      { sx = 0; sy = 2; }
@@ -1873,7 +2050,7 @@ namespace AutoTerrainDesignations
                 Tile2i approachTile = Offset(mouthTile, direction);
                 Option<TerrainDesignation> opt = s_desigManager.GetDesignationAt(approachTile);
                 if (!opt.HasValue) continue;
-                if (opt.Value.Prototype == rampProto) continue;
+                if (IsAccesswayDesignationProto(opt.Value.Prototype, rampProto)) continue;
                 if (forbiddenOrigins.Contains(opt.Value.OriginTileCoord)) return true;
             }
             return false;
@@ -1899,7 +2076,7 @@ namespace AutoTerrainDesignations
                 Tile2i approachTile = Offset(mouthTile, direction);
                 Option<TerrainDesignation> opt = s_desigManager.GetDesignationAt(approachTile);
                 if (!opt.HasValue) continue;
-                if (opt.Value.Prototype == rampProto) continue; // Adjacent ramp is fine.
+                if (IsAccesswayDesignationProto(opt.Value.Prototype, rampProto)) continue; // Adjacent ramp is fine.
 
                 // Determine the two shared-edge corners (world tile coords) and the target-height
                 // local sample positions inside the approach designation's 4×4 grid.
@@ -2019,6 +2196,26 @@ namespace AutoTerrainDesignations
 
         private static bool IsTileTransitionTraversable(Tile2i t1, Tile2i t2, Dict<Tile2i, int> tileDepths, TerrainManager terrMgr)
         {
+            // Active designation target profiles are authoritative. Adjacent origins can have
+            // very different center heights on steep terrain while still sharing an exact,
+            // traversable edge; the old center-height approximation split those into clusters.
+            if (s_desigManager != null)
+            {
+                Tile2i direction = new Tile2i(t2.X - t1.X, t2.Y - t1.Y);
+                Option<TerrainDesignation> firstDesignation = s_desigManager.GetDesignationAt(t1);
+                Option<TerrainDesignation> secondDesignation = s_desigManager.GetDesignationAt(t2);
+                if (firstDesignation.HasValue
+                    && secondDesignation.HasValue
+                    && TryGetEdgeTargetHeights(firstDesignation.Value, direction, out float firstA, out float firstB)
+                    && TryGetEdgeTargetHeights(secondDesignation.Value, Scale(direction, -1), out float secondA, out float secondB))
+                {
+                    return Math.Abs(firstA - secondA) <= 0.01f
+                        && Math.Abs(firstB - secondB) <= 0.01f;
+                }
+            }
+
+            // Fallback for callers whose candidate origins have not yet become active
+            // designations. This retains the previous coarse behavior for that case only.
             int h1 = GetSurfaceHeight(terrMgr, t1 + new RelTile2i(2, 2));
             int h2 = GetSurfaceHeight(terrMgr, t2 + new RelTile2i(2, 2));
             if (Math.Abs(h1 - h2) > 2)
@@ -2137,7 +2334,7 @@ namespace AutoTerrainDesignations
             {
                 if (tileDepths.ContainsKey(alignedAccessOrigin))
                     return false;
-                if (accessDesignation.Value.Prototype != accessProto)
+                if (!IsAccesswayDesignationProto(accessDesignation.Value.Prototype, accessProto))
                     return false;
                 if (!TryGetEdgeTargetHeights(accessDesignation.Value, Scale(direction, -1), out float accessA, out float accessB))
                     return false;
@@ -2273,7 +2470,18 @@ namespace AutoTerrainDesignations
                 return false;
 
             Option<TerrainDesignation> existingDesignation = s_desigManager.GetDesignationAt(origin);
-            return existingDesignation.HasValue && existingDesignation.Value.Prototype == accessProto;
+            return existingDesignation.HasValue
+                && IsAccesswayDesignationProto(existingDesignation.Value.Prototype, accessProto);
+        }
+
+        private static bool IsAccesswayDesignationProto(
+            TerrainDesignationProto proto,
+            TerrainDesignationProto preferredProto)
+        {
+            return proto == preferredProto
+                || (s_levelingProto != null && proto == s_levelingProto)
+                || (s_miningProto != null && proto == s_miningProto)
+                || (s_dumpingProto != null && proto == s_dumpingProto);
         }
 
         private static bool IsFreeRampTile(IAreaManagingTower tower, Tile2i tile, Dict<Tile2i, int> tileDepths, int rampDepth, Tile2i rampDirection, HashSet<Tile2i>? reservedRampTiles)

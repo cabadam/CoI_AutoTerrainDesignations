@@ -67,6 +67,16 @@ namespace AutoTerrainDesignations.Access
 
         public int Center2 => (Nw2 + Ne2 + Se2 + Sw2) / 4;
 
+        public int GetHeight2NumeratorAt(int x, int y)
+        {
+            // Bilinear target height over a 4x4 designation. The denominator is 16;
+            // retaining the numerator avoids rounding away operation incompatibilities.
+            return Nw2 * (4 - x) * (4 - y)
+                + Ne2 * x * (4 - y)
+                + Sw2 * (4 - x) * y
+                + Se2 * x * y;
+        }
+
         public static bool TryForMode(AccessSearchMode mode, int center2, out AccessHeightProfile profile)
         {
             switch (mode)
@@ -138,6 +148,7 @@ namespace AutoTerrainDesignations.Access
         private readonly HashSet<Tile2i> m_groundNodes;
         private readonly HashSet<Tile2i> m_goalGroundNodes;
         private readonly HashSet<Tile2i> m_occupiedTiles;
+        private readonly HashSet<Tile2i> m_oceanTiles;
         private readonly HashSet<Tile2i> m_validOrigins;
         private readonly Dictionary<Tile2i, int> m_goalDistance;
         private readonly AccessDurabilityCorner[] m_durabilityCorners;
@@ -148,6 +159,7 @@ namespace AutoTerrainDesignations.Access
         public int MinHeight2 { get; }
         public int MaxHeight2 { get; }
         public bool IsMining { get; }
+        public bool AllowsMixedWork { get; }
         public bool UseAStar { get; }
         public float WorkDistanceScale { get; }
         public float LandslideRunPerHeight { get; }
@@ -161,6 +173,7 @@ namespace AutoTerrainDesignations.Access
             int minHeight2,
             int maxHeight2,
             bool isMining,
+            bool allowsMixedWork,
             bool useAStar,
             float workDistanceScale,
             float landslideRunPerHeight,
@@ -171,6 +184,7 @@ namespace AutoTerrainDesignations.Access
             IEnumerable<Tile2i> groundNodes,
             IEnumerable<Tile2i> goalGroundNodes,
             IEnumerable<Tile2i> occupiedTiles,
+            IEnumerable<Tile2i> oceanTiles,
             IEnumerable<AccessDurabilityCorner> durabilityCorners)
         {
             BoundsMin = boundsMin;
@@ -179,6 +193,7 @@ namespace AutoTerrainDesignations.Access
             MinHeight2 = minHeight2;
             MaxHeight2 = maxHeight2;
             IsMining = isMining;
+            AllowsMixedWork = allowsMixedWork;
             UseAStar = useAStar;
             WorkDistanceScale = workDistanceScale;
             LandslideRunPerHeight = landslideRunPerHeight;
@@ -189,6 +204,7 @@ namespace AutoTerrainDesignations.Access
             m_groundNodes = new HashSet<Tile2i>(groundNodes);
             m_goalGroundNodes = new HashSet<Tile2i>(goalGroundNodes);
             m_occupiedTiles = new HashSet<Tile2i>(occupiedTiles);
+            m_oceanTiles = new HashSet<Tile2i>(oceanTiles);
             m_validOrigins = new HashSet<Tile2i>(m_terrainCenterHeight2.Keys);
             m_goalDistance = useAStar ? BuildGoalDistance(boundsMin, boundsMax, m_goalGroundNodes) : new Dictionary<Tile2i, int>();
             m_durabilityCorners = new List<AccessDurabilityCorner>(durabilityCorners).ToArray();
@@ -211,12 +227,47 @@ namespace AutoTerrainDesignations.Access
         public bool TryGetGroundHeight2(Tile2i tile, out int height2) => m_groundHeight2.TryGetValue(tile, out height2);
         public int GetTerrainCenterHeight2(Tile2i origin) => m_terrainCenterHeight2.TryGetValue(origin, out int h2) ? h2 : 0;
 
+        public bool IsProfileOceanBlocked(Tile2i origin, AccessHeightProfile profile)
+        {
+            const int minOceanHeight2Numerator = 2 * 16;
+            for (int y = 0; y <= 4; y++)
+                for (int x = 0; x <= 4; x++)
+                    if (m_oceanTiles.Contains(origin + new RelTile2i(x, y))
+                        && profile.GetHeight2NumeratorAt(x, y) < minOceanHeight2Numerator)
+                        return true;
+            return false;
+        }
+
         public bool IsCandidateProfileFeasible(Tile2i origin, AccessHeightProfile profile, out string reason)
         {
             if (!IsOriginInside(origin)) { reason = "HorizontalBounds"; return false; }
             if (m_workOrigins.Contains(origin)) { reason = "WorkOrigin"; return false; }
             if (m_fixedProfiles.ContainsKey(origin)) { reason = "ExistingDesignation"; return false; }
             if (profile.Center2 < MinHeight2 || profile.Center2 > MaxHeight2) { reason = "VerticalBounds"; return false; }
+            if (IsProfileOceanBlocked(origin, profile)) { reason = "OceanBelowMinimum"; return false; }
+
+            string? operationMismatch = null;
+            for (int y = 0; !AllowsMixedWork && y <= 4 && operationMismatch == null; y++)
+            {
+                for (int x = 0; x <= 4; x++)
+                {
+                    Tile2i sample = origin + new RelTile2i(x, y);
+                    if (!m_groundHeight2.TryGetValue(sample, out int terrainHeight2)) continue;
+                    int targetHeight2Numerator = profile.GetHeight2NumeratorAt(x, y);
+                    int terrainHeight2Numerator = terrainHeight2 * 16;
+                    if (IsMining && targetHeight2Numerator > terrainHeight2Numerator)
+                    {
+                        operationMismatch = "RequiresDumping";
+                        break;
+                    }
+                    if (!IsMining && targetHeight2Numerator < terrainHeight2Numerator)
+                    {
+                        operationMismatch = "RequiresMining";
+                        break;
+                    }
+                }
+            }
+            if (operationMismatch != null) { reason = operationMismatch; return false; }
 
             for (int y = 0; y < 4; y++)
                 for (int x = 0; x < 4; x++)

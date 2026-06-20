@@ -1,25 +1,5 @@
 [
   [
-    "notification.ramp_access_failed",
-    "[ATD] {entity}无法生成斜坡"
-  ],
-  [
-    "notification.ramp_access_truncated",
-    "[ATD] {entity}无法生成完整斜坡"
-  ],
-  [
-    "notification.ramp_access_not_accessible",
-    "[ATD] {entity}斜坡无法抵达地面"
-  ],
-  [
-    "notification.farming_complete",
-    "[ATD] {entity}的农地处理完成"
-  ],
-  [
-    "notification.excavator_completed",
-    "[ATD] {entity}完成了挖掘机建造"
-  ],
-  [
     "common.level.off",
     "关"
   ],
@@ -37,7 +17,7 @@
   ],
   [
     "common.level.max",
-    "最大"
+    "最大限度"
   ],
   [
     "panel.designations.title",
@@ -61,7 +41,7 @@
   ],
   [
     "panel.designations.clear_tooltip",
-    "清空区域内的采矿区规划。"
+    "清除此塔区域内的所有地形规划。"
   ],
   [
     "panel.designations.ore_filter.auto",
@@ -116,48 +96,224 @@
     "指定扫描的材料类型。\n无 = 矿物优先，其次碎片，再次土壤。"
   ],
   [
-    "toolbox.corner_outer.tooltip",
-    "转角(外侧): 放置突出的转角坡道。"
+    "settings.mod.name",
+    "自动地形指定"
   ],
   [
-    "toolbox.corner_inner.tooltip",
-    "转角(内侧): 放置凹进的转角坡道。"
+    "settings.tab.defaults",
+    "默认值"
   ],
   [
-    "panel.farming.title",
-    "农地处理"
+    "settings.tab.game_settings",
+    "游戏设置"
   ],
   [
-    "panel.farming.description",
-    "针对平整命令自动化顶层铺土，创造可耕种地块。"
+    "settings.tab.ore_quality",
+    "矿石质量"
   ],
   [
-    "panel.farming.automation_toggle.label",
-    "农地自动处理"
+    "settings.heading.mining_defaults",
+    "矿井控制塔默认值"
   ],
   [
-    "panel.farming.automation_toggle.tooltip",
-    "针对水平的[平整]指令，清除不可种植的顶层材料并自动请求回填以创建农地。"
+    "settings.heading.panel_defaults",
+    "面板默认值"
   ],
   [
-    "panel.farming.idle_release_excavators.label",
-    "闲置时释放挖掘机"
+    "settings.heading.designations",
+    "指定"
   ],
   [
-    "panel.farming.idle_release_excavators.tooltip",
-    "在区域内无挖掘作业或矿塔暂停时，自动解除挖掘机的分配。\n当有新增挖掘工作后会自动重新分配挖掘机。"
+    "settings.heading.scan_performance",
+    "扫描性能"
   ],
   [
-    "panel.farming.idle_release_trucks.label",
-    "闲置时释放卡车"
+    "settings.heading.keyboard_shortcuts",
+    "键盘快捷键"
   ],
   [
-    "panel.farming.idle_release_trucks.tooltip",
-    "在区域内无挖掘作业或矿塔暂停时，自动解除卡车的分配。\n当有新增挖掘工作后会自动重新分配卡车。"
+    "settings.heading.notifications",
+    "通知"
   ],
   [
-    "panel.farming.assigned_vehicles.label",
-    "已分配车辆"
+    "settings.heading.experimental_access",
+    "实验通道"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.label",
+    "转弯坡道（实验）"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.tooltip",
+    "启用后，ATD 可以使用普通平坦和斜坡名称选择并放置实验性 V1 转弯或之字形通道。要求将塔楼的坡道宽度设置为 1。走廊间隙是独立的。不包括更宽的坡道和拐角或鞍座名称。"
+  ],
+  [
+    "settings.experimental_access.astar.label",
+    "使用 A* 搜索"
+  ],
+  [
+    "settings.experimental_access.astar.tooltip",
+    "使用 A* 代替参考 Dijkstra 进行实验通道试运行。 Dijkstra 是更安全的验证基线。"
+  ],
+  [
+    "settings.experimental_access.work_scale.label",
+    "工作距离量表"
+  ],
+  [
+    "settings.experimental_access.work_scale.tooltip",
+    "分配给一个中心高度地形工作单位的平铺距离成本。范围：0-100；默认值：1。"
+  ],
+  [
+    "settings.experimental_access.landslide_run.label",
+    "滑坡水平运行"
+  ],
+  [
+    "settings.experimental_access.landslide_run.tooltip",
+    "每个垂直地形水平的水平排除距离。 1为45度坡度；较高的值会扩大排除沙漏，而较低的值会缩小排除沙漏。范围：0.05-4；默认值：1。"
+  ],
+  [
+    "settings.max_slope.label",
+    "最大坡度"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "相邻指定角点之间允许的最大高度差。范围：1-3。"
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "底部平整"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "底部平整强度，范围 0 到 10。0 会禁用底部平整步骤。"
+  ],
+  [
+    "settings.batch_size.label",
+    "批量大小"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "游戏未暂停时，每个协程帧放置的指定数量。范围：1-200。"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "采矿面板折叠"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "采矿指定面板是否默认以折叠状态开始。"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "矿石面板折叠"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "矿石组成面板是否默认以折叠状态开始。"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "农田面板折叠"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "农田准备面板是否默认以折叠状态开始。"
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "挖掘机完成通知"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "当任意车辆基地完成一台挖掘机时，ATD 是否显示绿色通知。"
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "坡道警告通知"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "ATD 是否在矿塔上显示坡道通行警告通知。"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "最小矿石高度"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "此质量等级所需的最小矿石厚度，以地形格为单位。"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "最小底部密度"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "从上一个矿石底部到此矿石底部的最小矿石密度。限制在 0 到 1。"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "最小矿石纯度"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "此质量等级所需的最小矿石/矿柱比例。限制在 0 到 1。"
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "最小连通区大小"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "连通指定格数量达到此值的矿簇才会通过孤立过滤器。"
+  ],
+  [
+    "settings.corner_mode.label",
+    "角点指定模式"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "当地形指定工具处于活动状态时，用于进入和切换角点指定模式的按键。"
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "请使用单个按键，例如 K、1、F1、Space 或 Escape。"
+  ],
+  [
+    "settings.status.applied",
+    "已应用"
+  ],
+  [
+    "settings.status.invalid_key",
+    "无效按键"
+  ],
+  [
+    "settings.action.save_as_global",
+    "保存到配置"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "将这些设置保存到 ATDsettings.json。它们将用作所有新游戏的默认值。"
+  ],
+  [
+    "settings.action.restore_defaults",
+    "恢复默认值"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "恢复所有设置的全局模组默认值。（不会自动保存到配置。）"
+  ],
+  [
+    "settings.status.saved_to_file",
+    "已保存到 ATDsettings.json。"
+  ],
+  [
+    "settings.status.save_failed",
+    "保存失败；请检查日志。"
+  ],
+  [
+    "settings.status.restored_defaults",
+    "已在内存中恢复内置默认值。"
   ],
   [
     "panel.ore.title",
@@ -192,187 +348,63 @@
     "命令优先挖掘{0}。"
   ],
   [
-    "settings.action.restore_defaults",
-    "恢复默认值"
+    "panel.farming.title",
+    "农地处理"
   ],
   [
-    "settings.action.restore_defaults.tooltip",
-    "恢复所有设置的全局模组默认值。（不会自动保存到配置。）"
+    "panel.farming.description",
+    "针对平整命令自动化顶层铺土，创造可耕种地块。"
   ],
   [
-    "settings.action.save_as_global",
-    "保存到配置"
+    "panel.farming.automation_toggle.label",
+    "农地自动处理"
   ],
   [
-    "settings.action.save_as_global.tooltip",
-    "将这些设置保存到 ATDsettings.json。它们将用作所有新游戏的默认值。"
+    "panel.farming.automation_toggle.tooltip",
+    "针对水平的[平整]指令，清除不可种植的顶层材料并自动请求回填以创建农地。"
   ],
   [
-    "settings.batch_size.label",
-    "批量大小"
+    "panel.farming.idle_release_excavators.label",
+    "闲置时释放挖掘机"
   ],
   [
-    "settings.batch_size.tooltip",
-    "游戏未暂停时，每个协程帧放置的指定数量。范围：1-200。"
+    "panel.farming.idle_release_excavators.tooltip",
+    "在区域内无挖掘作业或矿塔暂停时，自动解除挖掘机的分配。\n当有新增挖掘工作后会自动重新分配挖掘机。"
   ],
   [
-    "settings.bottom_flattening.label",
-    "底部平整"
+    "panel.farming.idle_release_trucks.label",
+    "闲置时释放卡车"
   ],
   [
-    "settings.bottom_flattening.tooltip",
-    "底部平整强度，范围 0 到 10。0 会禁用底部平整步骤。"
+    "panel.farming.idle_release_trucks.tooltip",
+    "在区域内无挖掘作业或矿塔暂停时，自动解除卡车的分配。\n当有新增挖掘工作后会自动重新分配卡车。"
   ],
   [
-    "settings.corner_mode.invalid_tooltip",
-    "请使用单个按键，例如 K、1、F1、Space 或 Escape。"
+    "toolbox.corner_outer.tooltip",
+    "转角(外侧): 放置突出的转角坡道。"
   ],
   [
-    "settings.corner_mode.label",
-    "角点指定模式"
+    "toolbox.corner_inner.tooltip",
+    "转角(内侧): 放置凹进的转角坡道。"
   ],
   [
-    "settings.corner_mode.tooltip",
-    "当地形指定工具处于活动状态时，用于进入和切换角点指定模式的按键。"
+    "notification.ramp_access_failed",
+    "[ATD] {entity}无法生成斜坡"
   ],
   [
-    "settings.heading.designations",
-    "指定"
+    "notification.ramp_access_truncated",
+    "[ATD] {entity}无法生成完整斜坡"
   ],
   [
-    "settings.heading.keyboard_shortcuts",
-    "键盘快捷键"
+    "notification.ramp_access_not_accessible",
+    "[ATD] {entity}斜坡无法抵达地面"
   ],
   [
-    "settings.heading.mining_defaults",
-    "矿井控制塔默认值"
+    "notification.farming_complete",
+    "[ATD] {entity}的农地处理完成"
   ],
   [
-    "settings.heading.notifications",
-    "通知"
-  ],
-  [
-    "settings.heading.panel_defaults",
-    "面板默认值"
-  ],
-  [
-    "settings.heading.scan_performance",
-    "扫描性能"
-  ],
-  [
-    "settings.max_slope.label",
-    "最大坡度"
-  ],
-  [
-    "settings.max_slope.tooltip",
-    "相邻指定角点之间允许的最大高度差。范围：1-3。"
-  ],
-  [
-    "settings.mod.name",
-    "自动地形指定"
-  ],
-  [
-    "settings.notifications.excavator_completion.label",
-    "挖掘机完成通知"
-  ],
-  [
-    "settings.notifications.excavator_completion.tooltip",
-    "当任意车辆基地完成一台挖掘机时，ATD 是否显示绿色通知。"
-  ],
-  [
-    "settings.notifications.ramp_warning.label",
-    "坡道警告通知"
-  ],
-  [
-    "settings.notifications.ramp_warning.tooltip",
-    "ATD 是否在矿塔上显示坡道通行警告通知。"
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.label",
-    "最小底部密度"
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.tooltip",
-    "从上一个矿石底部到此矿石底部的最小矿石密度。限制在 0 到 1。"
-  ],
-  [
-    "settings.ore_quality.min_component_size.label",
-    "最小连通区大小"
-  ],
-  [
-    "settings.ore_quality.min_component_size.tooltip",
-    "连通指定格数量达到此值的矿簇才会通过孤立过滤器。"
-  ],
-  [
-    "settings.ore_quality.min_ore_height.label",
-    "最小矿石高度"
-  ],
-  [
-    "settings.ore_quality.min_ore_height.tooltip",
-    "此质量等级所需的最小矿石厚度，以地形格为单位。"
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.label",
-    "最小矿石纯度"
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.tooltip",
-    "此质量等级所需的最小矿石/矿柱比例。限制在 0 到 1。"
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.label",
-    "农田面板折叠"
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.tooltip",
-    "农田准备面板是否默认以折叠状态开始。"
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.label",
-    "采矿面板折叠"
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.tooltip",
-    "采矿指定面板是否默认以折叠状态开始。"
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.label",
-    "矿石面板折叠"
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.tooltip",
-    "矿石组成面板是否默认以折叠状态开始。"
-  ],
-  [
-    "settings.status.applied",
-    "已应用"
-  ],
-  [
-    "settings.status.invalid_key",
-    "无效按键"
-  ],
-  [
-    "settings.status.restored_defaults",
-    "已在内存中恢复内置默认值。"
-  ],
-  [
-    "settings.status.save_failed",
-    "保存失败；请检查日志。"
-  ],
-  [
-    "settings.status.saved_to_file",
-    "已保存到 ATDsettings.json。"
-  ],
-  [
-    "settings.tab.defaults",
-    "默认值"
-  ],
-  [
-    "settings.tab.game_settings",
-    "游戏设置"
-  ],
-  [
-    "settings.tab.ore_quality",
-    "矿石质量"
+    "notification.excavator_completed",
+    "[ATD] {entity}完成了挖掘机建造"
   ]
 ]

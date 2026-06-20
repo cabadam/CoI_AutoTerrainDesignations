@@ -46,7 +46,7 @@ namespace AutoTerrainDesignations
         public static LocStr DesigDebrisTip =
             Loc.Str("panel.designations.debris_tooltip", "Designate all debris in the area for mining/removal. Overrides any forestry designations.", "Tooltip on the Debris button.");
         public static LocStr DesigClearTip =
-            Loc.Str("panel.designations.clear_tooltip", "Clear all mining designations in this tower's area.", "Tooltip on the Clear button.");
+            Loc.Str("panel.designations.clear_tooltip", "Clear all terrain designations in this tower's area.", "Tooltip on the Clear button.");
         public static LocStr DesigOreFilterAuto =
             Loc.Str("panel.designations.ore_filter.auto", "Auto (useful -> debris -> dirt)", "Label for the automatic ore filter option in the ore picker.");
         public static LocStr DesigRampWidthLabel =
@@ -114,19 +114,19 @@ namespace AutoTerrainDesignations
         public static LocStr SettingsTurningRampsLabel =
             Loc.Str("settings.experimental_access.turning_ramps.label", "Turning ramps (experimental)", "Settings toggle label for experimental turning ramps.");
         public static LocStr SettingsTurningRampsTooltip =
-            Loc.Str("settings.experimental_access.turning_ramps.tooltip", "Experimental V1 accessway search. Allows turning and switchback ramps using vanilla flat and slope designations only. Requires the tower's ramp width to be set to 1. Corridor clearance is independent. Wider ramps and corner or saddle designations are not included.", "Tooltip for experimental turning ramps.");
+            Loc.Str("settings.experimental_access.turning_ramps.tooltip", "When enabled, ATD may select and place experimental V1 turning or switchback accessways using vanilla flat and slope designations. Requires the tower's ramp width to be set to 1. Corridor clearance is independent. Wider ramps and corner or saddle designations are not included.", "Tooltip for experimental turning ramps.");
         public static LocStr SettingsAccessAStarLabel =
             Loc.Str("settings.experimental_access.astar.label", "Use A* search", "Settings toggle label for experimental A* access search.");
         public static LocStr SettingsAccessAStarTooltip =
-            Loc.Str("settings.experimental_access.astar.tooltip", "Use A* instead of reference Dijkstra for experimental accessway dry runs. Dijkstra is the safer validation baseline.", "Tooltip for experimental A* access search.");
+            Loc.Str("settings.experimental_access.astar.tooltip", "Use A* instead of reference Dijkstra for experimental accessway dry runs. Dijkstra is the safer validation baseline. A* is faster.", "Tooltip for experimental A* access search.");
         public static LocStr SettingsAccessWorkScaleLabel =
-            Loc.Str("settings.experimental_access.work_scale.label", "Work distance scale", "Settings row label for experimental access work cost scale.");
+            Loc.Str("settings.experimental_access.work_scale.label", "Work vs. distance cost", "Settings row label for experimental access work cost scale.");
         public static LocStr SettingsAccessWorkScaleTooltip =
-            Loc.Str("settings.experimental_access.work_scale.tooltip", "Tile-distance cost assigned to one unit of center-height terrain work. Range: 0-100; default: 1.", "Tooltip for experimental access work distance scale.");
+            Loc.Str("settings.experimental_access.work_scale.tooltip", "Tile-distance cost assigned to one unit of center-height terrain work. Range: 0-100; default: 1. A higher value will promote routes with less terraforming.", "Tooltip for experimental access work distance scale.");
         public static LocStr SettingsAccessLandslideRunLabel =
-            Loc.Str("settings.experimental_access.landslide_run.label", "Landslide horizontal run", "Settings row label for the experimental landslide envelope scale.");
+            Loc.Str("settings.experimental_access.landslide_run.label", "Landslide protection slope factor", "Settings row label for the experimental landslide envelope scale.");
         public static LocStr SettingsAccessLandslideRunTooltip =
-            Loc.Str("settings.experimental_access.landslide_run.tooltip", "Horizontal exclusion distance per vertical terrain level. 1 is a 45-degree slope; higher values widen the exclusion hourglass, while lower values narrow it. Range: 0.05-4; default: 1.", "Tooltip for experimental access landslide run setting.");
+            Loc.Str("settings.experimental_access.landslide_run.tooltip", "Horizontal exclusion distance per vertical terrain level. 1 translates to a 45-degree slope; higher values widen the exclusion zone (use in e.g. pure sand), while lower values narrow it. Range: 0.05-4; default: 1.", "Tooltip for experimental access landslide run setting.");
         public static LocStr SettingsMaxSlopeLabel =
             Loc.Str("settings.max_slope.label", "Max slope", "Settings row label for maximum designation slope.");
         public static LocStr SettingsMaxSlopeTooltip =

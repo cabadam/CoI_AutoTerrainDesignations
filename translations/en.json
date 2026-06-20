@@ -1,25 +1,5 @@
 [
   [
-    "notification.ramp_access_failed",
-    "[ATD] {entity} could not start an access ramp"
-  ],
-  [
-    "notification.ramp_access_truncated",
-    "[ATD] {entity} could not fit a full access ramp"
-  ],
-  [
-    "notification.ramp_access_not_accessible",
-    "[ATD] {entity} could not path to the ramp"
-  ],
-  [
-    "notification.farming_complete",
-    "[ATD] {entity} farming preparation and filling complete"
-  ],
-  [
-    "notification.excavator_completed",
-    "[ATD] {entity} completed an excavator"
-  ],
-  [
     "common.level.off",
     "Off"
   ],
@@ -61,7 +41,7 @@
   ],
   [
     "panel.designations.clear_tooltip",
-    "Clear all mining designations in this tower's area."
+    "Clear all terrain designations in this tower's area."
   ],
   [
     "panel.designations.ore_filter.auto",
@@ -81,7 +61,7 @@
   ],
   [
     "panel.designations.max_layers.tooltip",
-    "Maximum layers to excavate from the surface. (∞ = no limit.)"
+    "Maximum layers to excavate from the surface. (u221e = no limit.)"
   ],
   [
     "panel.designations.elevation_limit.label",
@@ -89,7 +69,7 @@
   ],
   [
     "panel.designations.elevation_limit.tooltip",
-    "Maximum (absolute) excavation depth (-∞ = no limit.)"
+    "Maximum (absolute) excavation depth (-u221e = no limit.)"
   ],
   [
     "panel.designations.ore_purity.label",
@@ -97,7 +77,7 @@
   ],
   [
     "panel.designations.ore_purity.tooltip",
-    "How strictly the scan filters for ore quality.\nOff: include all tiles, dig to full depth.\nLow: exclude very sparse tiles, trim thin trailing ore at the bottom.\nMed: moderate quality — skip tiles with heavy overburden or little ore.\nHigh: only rich tiles with a clean ore column.\nMax: near-pure ore only — strict on overburden, depth and ore density."
+    "How strictly the scan filters for ore quality.\nOff: include all tiles, dig to full depth.\nLow: exclude very sparse tiles, trim thin trailing ore at the bottom.\nMed: moderate quality u2014 skip tiles with heavy overburden or little ore.\nHigh: only rich tiles with a clean ore column.\nMax: near-pure ore only u2014 strict on overburden, depth and ore density."
   ],
   [
     "panel.designations.corridor_clearance.label",
@@ -116,12 +96,256 @@
     "Force the scan to target a specific product. None = useful products first, then debris, then dirt."
   ],
   [
-    "toolbox.corner_outer.tooltip",
-    "Corner (outer): place convex corner ramps."
+    "settings.mod.name",
+    "Auto Terrain Designations"
   ],
   [
-    "toolbox.corner_inner.tooltip",
-    "Corner (inner): place concave corner ramps."
+    "settings.tab.defaults",
+    "Defaults"
+  ],
+  [
+    "settings.tab.game_settings",
+    "Game settings"
+  ],
+  [
+    "settings.tab.ore_quality",
+    "Ore quality"
+  ],
+  [
+    "settings.heading.mining_defaults",
+    "Mine control tower defaults"
+  ],
+  [
+    "settings.heading.panel_defaults",
+    "Panel defaults"
+  ],
+  [
+    "settings.heading.designations",
+    "Designations"
+  ],
+  [
+    "settings.heading.scan_performance",
+    "Scan performance"
+  ],
+  [
+    "settings.heading.keyboard_shortcuts",
+    "Keyboard shortcuts"
+  ],
+  [
+    "settings.heading.notifications",
+    "Notifications"
+  ],
+  [
+    "settings.heading.experimental_access",
+    "Experimental accessways"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.label",
+    "Turning ramps (experimental)"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.tooltip",
+    "When enabled, ATD may select and place experimental V1 turning or switchback accessways using vanilla flat and slope designations. Requires the tower's ramp width to be set to 1. Corridor clearance is independent. Wider ramps and corner or saddle designations are not included."
+  ],
+  [
+    "settings.experimental_access.astar.label",
+    "Use A* search"
+  ],
+  [
+    "settings.experimental_access.astar.tooltip",
+    "Use A* instead of reference Dijkstra for experimental accessway dry runs. Dijkstra is the safer validation baseline."
+  ],
+  [
+    "settings.experimental_access.work_scale.label",
+    "Work distance scale"
+  ],
+  [
+    "settings.experimental_access.work_scale.tooltip",
+    "Tile-distance cost assigned to one unit of center-height terrain work. Range: 0-100; default: 1."
+  ],
+  [
+    "settings.experimental_access.landslide_run.label",
+    "Landslide horizontal run"
+  ],
+  [
+    "settings.experimental_access.landslide_run.tooltip",
+    "Horizontal exclusion distance per vertical terrain level. 1 is a 45-degree slope; higher values widen the exclusion hourglass, while lower values narrow it. Range: 0.05-4; default: 1."
+  ],
+  [
+    "settings.max_slope.label",
+    "Max slope"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Maximum allowed height difference between adjacent designation corners. Range: 1-3."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Bottom flattening"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Bottom-flattening strength from 0 to 10. 0 disables the bottom-flattening pass."
+  ],
+  [
+    "settings.batch_size.label",
+    "Batch size"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Designations placed per coroutine frame while the game is unpaused. Range: 1-200."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Mining panel collapsed"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Whether the Mining designations panel starts collapsed by default."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Ore panel collapsed"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Whether the Ore composition panel starts collapsed by default."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Farming panel collapsed"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Whether the Farmland preparation panel starts collapsed by default."
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Excavator completion notifications"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Whether ATD shows a green notification when any vehicle depot completes an excavator."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Ramp warning notifications"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Whether ATD shows ramp access warning notifications on mine towers."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Minimum ore height"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Minimum ore thickness in terrain tiles for this quality level."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Minimum bottom density"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Minimum ore density from the previous ore bottom to this ore bottom. Clamped from 0 to 1."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Minimum ore purity"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Minimum ore-to-column ratio for this quality level. Clamped from 0 to 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Minimum component size"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Minimum connected designation tile count for a cluster to survive the isolation filter."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Corner designations mode"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Key used to enter and toggle corner designation mode while a terrain designation tool is active."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Use a single key such as K, 1, F1, Space, or Escape."
+  ],
+  [
+    "settings.status.applied",
+    "Applied"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Invalid key"
+  ],
+  [
+    "settings.action.save_as_global",
+    "Save as config"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Save these settings to ATDsettings.json. They will be used as the defaults for all new games."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Restore defaults"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Restore the global mod defaults for all settings. (Does not automatically save them as config.)"
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Saved to ATDsettings.json."
+  ],
+  [
+    "settings.status.save_failed",
+    "Save failed; check the log."
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Restored built-in defaults in memory."
+  ],
+  [
+    "panel.ore.title",
+    "Ore composition"
+  ],
+  [
+    "panel.ore.description",
+    "Ore resources within this tower's current mining designations. (Does not account for potential landslides.)"
+  ],
+  [
+    "panel.ore.prompt_scan",
+    "Press u21ba to scan ore composition."
+  ],
+  [
+    "panel.ore.scan_tooltip",
+    "Scan ore composition"
+  ],
+  [
+    "panel.ore.no_tower",
+    "No tower selected."
+  ],
+  [
+    "panel.ore.no_minable_designations",
+    "No minable designations found."
+  ],
+  [
+    "panel.ore.priority_selected_tooltip",
+    "Tower mining priority set to {0}. Click to unset."
+  ],
+  [
+    "panel.ore.priority_set_tooltip",
+    "Set tower mining priority to {0}."
   ],
   [
     "panel.farming.title",
@@ -156,219 +380,31 @@
     "Automatically unassign trucks from this tower when no designation has pending excavation work, or while the tower is paused.\nTrucks are tracked and re-assigned when excavation work returns."
   ],
   [
-    "panel.ore.title",
-    "Ore composition"
+    "toolbox.corner_outer.tooltip",
+    "Corner (outer): place convex corner ramps."
   ],
   [
-    "panel.ore.description",
-    "Ore resources within this tower's current mining designations. (Does not account for potential landslides.)"
+    "toolbox.corner_inner.tooltip",
+    "Corner (inner): place concave corner ramps."
   ],
   [
-    "panel.ore.prompt_scan",
-    "Press ↺ to scan ore composition."
+    "notification.ramp_access_failed",
+    "[ATD] {entity} could not start an access ramp"
   ],
   [
-    "panel.ore.scan_tooltip",
-    "Scan ore composition"
+    "notification.ramp_access_truncated",
+    "[ATD] {entity} could not fit a full access ramp"
   ],
   [
-    "panel.ore.no_tower",
-    "No tower selected."
+    "notification.ramp_access_not_accessible",
+    "[ATD] {entity} could not path to the ramp"
   ],
   [
-    "panel.ore.no_minable_designations",
-    "No minable designations found."
+    "notification.farming_complete",
+    "[ATD] {entity} farming preparation and filling complete"
   ],
   [
-    "panel.ore.priority_selected_tooltip",
-    "Tower mining priority set to {0}. Click to unset."
-  ],
-  [
-    "panel.ore.priority_set_tooltip",
-    "Set tower mining priority to {0}."
-  ],
-  [
-    "settings.action.restore_defaults",
-    "Restore defaults"
-  ],
-  [
-    "settings.action.restore_defaults.tooltip",
-    "Restore the global mod defaults for all settings. (Does not automatically save them as config.)"
-  ],
-  [
-    "settings.action.save_as_global",
-    "Save as config"
-  ],
-  [
-    "settings.action.save_as_global.tooltip",
-    "Save these settings to ATDsettings.json. They will be used as the defaults for all new games."
-  ],
-  [
-    "settings.batch_size.label",
-    "Batch size"
-  ],
-  [
-    "settings.batch_size.tooltip",
-    "Designations placed per coroutine frame while the game is unpaused. Range: 1-200."
-  ],
-  [
-    "settings.bottom_flattening.label",
-    "Bottom flattening"
-  ],
-  [
-    "settings.bottom_flattening.tooltip",
-    "Bottom-flattening strength from 0 to 10. 0 disables the bottom-flattening pass."
-  ],
-  [
-    "settings.corner_mode.invalid_tooltip",
-    "Use a single key such as K, 1, F1, Space, or Escape."
-  ],
-  [
-    "settings.corner_mode.label",
-    "Corner designations mode"
-  ],
-  [
-    "settings.corner_mode.tooltip",
-    "Key used to enter and toggle corner designation mode while a terrain designation tool is active."
-  ],
-  [
-    "settings.heading.designations",
-    "Designations"
-  ],
-  [
-    "settings.heading.keyboard_shortcuts",
-    "Keyboard shortcuts"
-  ],
-  [
-    "settings.heading.mining_defaults",
-    "Mine control tower defaults"
-  ],
-  [
-    "settings.heading.notifications",
-    "Notifications"
-  ],
-  [
-    "settings.heading.panel_defaults",
-    "Panel defaults"
-  ],
-  [
-    "settings.heading.scan_performance",
-    "Scan performance"
-  ],
-  [
-    "settings.max_slope.label",
-    "Max slope"
-  ],
-  [
-    "settings.max_slope.tooltip",
-    "Maximum allowed height difference between adjacent designation corners. Range: 1-3."
-  ],
-  [
-    "settings.mod.name",
-    "Auto Terrain Designations"
-  ],
-  [
-    "settings.notifications.excavator_completion.label",
-    "Excavator completion notifications"
-  ],
-  [
-    "settings.notifications.excavator_completion.tooltip",
-    "Whether ATD shows a green notification when any vehicle depot completes an excavator."
-  ],
-  [
-    "settings.notifications.ramp_warning.label",
-    "Ramp warning notifications"
-  ],
-  [
-    "settings.notifications.ramp_warning.tooltip",
-    "Whether ATD shows ramp access warning notifications on mine towers."
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.label",
-    "Minimum bottom density"
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.tooltip",
-    "Minimum ore density from the previous ore bottom to this ore bottom. Clamped from 0 to 1."
-  ],
-  [
-    "settings.ore_quality.min_component_size.label",
-    "Minimum component size"
-  ],
-  [
-    "settings.ore_quality.min_component_size.tooltip",
-    "Minimum connected designation tile count for a cluster to survive the isolation filter."
-  ],
-  [
-    "settings.ore_quality.min_ore_height.label",
-    "Minimum ore height"
-  ],
-  [
-    "settings.ore_quality.min_ore_height.tooltip",
-    "Minimum ore thickness in terrain tiles for this quality level."
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.label",
-    "Minimum ore purity"
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.tooltip",
-    "Minimum ore-to-column ratio for this quality level. Clamped from 0 to 1."
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.label",
-    "Farming panel collapsed"
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.tooltip",
-    "Whether the Farmland preparation panel starts collapsed by default."
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.label",
-    "Mining panel collapsed"
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.tooltip",
-    "Whether the Mining designations panel starts collapsed by default."
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.label",
-    "Ore panel collapsed"
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.tooltip",
-    "Whether the Ore composition panel starts collapsed by default."
-  ],
-  [
-    "settings.status.applied",
-    "Applied"
-  ],
-  [
-    "settings.status.invalid_key",
-    "Invalid key"
-  ],
-  [
-    "settings.status.restored_defaults",
-    "Restored built-in defaults in memory."
-  ],
-  [
-    "settings.status.save_failed",
-    "Save failed; check the log."
-  ],
-  [
-    "settings.status.saved_to_file",
-    "Saved to ATDsettings.json."
-  ],
-  [
-    "settings.tab.defaults",
-    "Defaults"
-  ],
-  [
-    "settings.tab.game_settings",
-    "Game settings"
-  ],
-  [
-    "settings.tab.ore_quality",
-    "Ore quality"
+    "notification.excavator_completed",
+    "[ATD] {entity} completed an excavator"
   ]
 ]

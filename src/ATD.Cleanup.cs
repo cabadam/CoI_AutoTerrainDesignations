@@ -25,10 +25,7 @@ namespace AutoTerrainDesignations
             var originsToRemove = new List<Tile2i>();
             foreach (TerrainDesignation designation in tower.ManagedDesignations)
             {
-                if (IsMiningDesignation(designation))
-                {
-                    originsToRemove.Add(designation.OriginTileCoord);
-                }
+                originsToRemove.Add(designation.OriginTileCoord);
             }
 
             foreach (Tile2i origin in originsToRemove)
@@ -65,7 +62,9 @@ namespace AutoTerrainDesignations
             ClearDesignationsInArea(tower);
         }
 
-        private static void RemoveFulfilledDesignationsForTower(IAreaManagingTower tower)
+        private static void RemoveFulfilledDesignationsForTower(
+            IAreaManagingTower tower,
+            HashSet<Tile2i>? protectedOrigins = null)
         {
             if (s_desigManager == null)
             {
@@ -75,7 +74,9 @@ namespace AutoTerrainDesignations
             var fulfilledOrigins = new List<Tile2i>();
             foreach (TerrainDesignation designation in tower.ManagedDesignations)
             {
-                if (IsMiningDesignation(designation) && designation.IsFulfilled)
+                if (IsMiningDesignation(designation)
+                    && designation.IsFulfilled
+                    && (protectedOrigins == null || !protectedOrigins.Contains(designation.OriginTileCoord)))
                 {
                     fulfilledOrigins.Add(designation.OriginTileCoord);
                 }
@@ -87,7 +88,10 @@ namespace AutoTerrainDesignations
             }
         }
 
-        private static void CleanupIsolatedLeftoverDesignationsForTower(IAreaManagingTower tower, Dict<Tile2i, int> originalOreOrigins)
+        private static void CleanupIsolatedLeftoverDesignationsForTower(
+            IAreaManagingTower tower,
+            Dict<Tile2i, int> originalOreOrigins,
+            HashSet<Tile2i>? protectedOrigins = null)
         {
             if (s_desigManager == null)
             {
@@ -123,7 +127,8 @@ namespace AutoTerrainDesignations
                 FloodFillOrigins(origin, remainingOrigins, visited, component);
 
                 bool touchesOriginalOre = component.Any(originalOriginSet.Contains);
-                if (!touchesOriginalOre)
+                bool containsProtectedAccessway = protectedOrigins != null && component.Any(protectedOrigins.Contains);
+                if (!touchesOriginalOre && !containsProtectedAccessway)
                 {
                     originsToRemove.AddRange(component);
                 }

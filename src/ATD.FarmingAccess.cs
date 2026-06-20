@@ -294,12 +294,14 @@ namespace AutoTerrainDesignations
                     // ownedRamps, so the duplicate-prevention code wouldn't catch it).
                     if (prevPlacedByDebugId.TryGetValue(cluster.DebugId, out List<Tile2i>? prevOrigins) && prevOrigins != null)
                     {
+                        TerrainDesignationProto accesswayProto = s_levelingProto ?? clusterRampProto;
                         foreach (Tile2i prev in prevOrigins)
                         {
                             ownedRamps.Remove(prev);
                             reservedRampTiles.Remove(prev);
                             Option<TerrainDesignation> placed = s_desigManager.GetDesignationAt(prev);
-                            if (placed.HasValue && placed.Value.Prototype == clusterRampProto)
+                            if (placed.HasValue
+                                && IsAccesswayDesignationProto(placed.Value.Prototype, accesswayProto))
                                 s_desigManager.RemoveDesignation(prev);
                         }
                         prevOrigins.Clear();
@@ -688,6 +690,8 @@ namespace AutoTerrainDesignations
             if (s_desigManager == null || ownedRamps.Count == 0)
                 return false;
 
+            TerrainDesignationProto accesswayProto = s_levelingProto ?? rampProto;
+
             foreach (TerrainDesignation attachDesignation in attachDesignations)
             {
                 Tile2i origin = attachDesignation.OriginTileCoord;
@@ -699,7 +703,7 @@ namespace AutoTerrainDesignations
 
                     Option<TerrainDesignation> existing = s_desigManager.GetDesignationAt(neighbor);
                     if (existing.HasValue
-                        && existing.Value.Prototype == rampProto
+                        && IsAccesswayDesignationProto(existing.Value.Prototype, accesswayProto)
                         && attachDesignation.IsSnappedTowards(dir))
                         return true;
                 }
@@ -729,6 +733,7 @@ namespace AutoTerrainDesignations
 
             TerrainDesignationProto? rampProto = isFilling ? s_dumpingProto : s_miningProto;
             if (rampProto == null) return false;
+            TerrainDesignationProto accesswayProto = s_levelingProto ?? rampProto;
 
             // Ensure the pathability bitmap is up-to-date before running BFS checks.
             if (s_vehiclePathFindingManager != null)
@@ -741,7 +746,8 @@ namespace AutoTerrainDesignations
             foreach (Tile2i origin in ownedRamps.ToList())
             {
                 Option<TerrainDesignation> desig = s_desigManager.GetDesignationAt(origin);
-                if (!desig.HasValue || desig.Value.Prototype != rampProto)
+                if (!desig.HasValue
+                    || !IsAccesswayDesignationProto(desig.Value.Prototype, accesswayProto))
                 {
                     // Designation already gone (fulfilled or replaced) — just drop the tracking entry.
                     ownedRamps.Remove(origin);
@@ -769,6 +775,7 @@ namespace AutoTerrainDesignations
             TerrainDesignationProto? rampProto = isFilling ? s_dumpingProto : s_miningProto;
             if (rampProto == null)
                 return 0;
+            TerrainDesignationProto accesswayProto = s_levelingProto ?? rampProto;
 
             HashSet<Tile2i> ownedRamps = GetOwnedFarmingAccessRamps(session, isFilling);
             int removed = 0;
@@ -776,8 +783,7 @@ namespace AutoTerrainDesignations
             {
                 var currentDesignation = s_desigManager.GetDesignationAt(origin);
                 if (currentDesignation.HasValue
-                    && (currentDesignation.Value.Prototype == rampProto
-                        || (!isFilling && s_dumpingProto != null && currentDesignation.Value.Prototype == s_dumpingProto)))
+                    && IsAccesswayDesignationProto(currentDesignation.Value.Prototype, accesswayProto))
                 {
                     s_desigManager.RemoveDesignation(origin);
                     removed++;

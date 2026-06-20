@@ -62,7 +62,7 @@ namespace AutoTerrainDesignations.Access
             Tile2i fixtureGoal = new Tile2i(10, 6);
             var fixture = new AccessSearchSnapshot(
                 new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
-                -2, 2, true, false, 1f, 1f,
+                -2, 2, true, false, false, 1f, 1f,
                 groundHeights,
                 terrainCenters,
                 new Dictionary<Tile2i, AccessHeightProfile>
@@ -73,6 +73,7 @@ namespace AutoTerrainDesignations.Access
                 new[] { fixtureStart, fixtureWorkNeighbor },
                 new[] { fixtureGoal },
                 new[] { fixtureGoal },
+                Array.Empty<Tile2i>(),
                 Array.Empty<Tile2i>(),
                 new[] { new AccessDurabilityCorner(new Tile2i(16, 16), 0) });
             if (!fixture.IsDurabilityBlocked(new Tile2i(17, 17), 4))
@@ -87,6 +88,95 @@ namespace AutoTerrainDesignations.Access
             if (scaleSource.Blocks(new Tile2i(18, 18), 4, 1f)
                 || !scaleSource.Blocks(new Tile2i(18, 18), 4, 2f))
             { failure = "landslide horizontal-run scale should widen the exclusion envelope"; return false; }
+            AccessHeightProfile.TryForMode(AccessSearchMode.Flat, 2, out AccessHeightProfile raisedFlat);
+            if (fixture.IsCandidateProfileFeasible(new Tile2i(12, 12), raisedFlat, out string miningMismatch)
+                || miningMismatch != "RequiresDumping")
+            { failure = "mining candidate must reject profiles that require dumping"; return false; }
+            var depressedGround = new Dictionary<Tile2i, int>(groundHeights)
+            {
+                [new Tile2i(14, 14)] = -2,
+            };
+            var depressedCenterFixture = new AccessSearchSnapshot(
+                new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
+                -4, 4, true, false, false, 1f, 1f,
+                depressedGround,
+                terrainCenters,
+                new Dictionary<Tile2i, AccessHeightProfile>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<AccessDurabilityCorner>());
+            if (depressedCenterFixture.IsCandidateProfileFeasible(new Tile2i(12, 12), flat, out string interiorMismatch)
+                || interiorMismatch != "RequiresDumping")
+            { failure = "mining candidate must reject a target plane above an interior terrain sample"; return false; }
+            var mixedWorkFixture = new AccessSearchSnapshot(
+                new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
+                -4, 4, true, true, false, 1f, 1f,
+                depressedGround,
+                terrainCenters,
+                new Dictionary<Tile2i, AccessHeightProfile>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<AccessDurabilityCorner>());
+            if (!mixedWorkFixture.IsCandidateProfileFeasible(new Tile2i(12, 12), flat, out string mixedWorkMismatch))
+            { failure = "leveling accessway profiles must allow mixed cut and fill: " + mixedWorkMismatch; return false; }
+            AccessHeightProfile.TryForMode(AccessSearchMode.YNegative, 1, out AccessHeightProfile edgeContactSlope);
+            Tile2i handoffOrigin = new Tile2i(12, 12);
+            Tile2i handoffCenter = new Tile2i(14, 14);
+            Tile2i handoffSw = new Tile2i(12, 16);
+            Tile2i handoffSe = new Tile2i(16, 16);
+            var handoffFixture = new AccessSearchSnapshot(
+                new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
+                -4, 4, true, true, false, 1f, 1f,
+                groundHeights,
+                terrainCenters,
+                new Dictionary<Tile2i, AccessHeightProfile>(),
+                Array.Empty<Tile2i>(),
+                new[] { handoffCenter, handoffSw, handoffSe },
+                new[] { handoffSw, handoffSe },
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<AccessDurabilityCorner>());
+            if (ContainsHandoffTile(handoffFixture, handoffOrigin, edgeContactSlope, handoffCenter)
+                || !ContainsHandoffTile(handoffFixture, handoffOrigin, edgeContactSlope, handoffSw)
+                || !ContainsHandoffTile(handoffFixture, handoffOrigin, edgeContactSlope, handoffSe))
+            { failure = "V/G handoff must use matching edge contacts, not a mismatched center"; return false; }
+            var oceanFixture = new AccessSearchSnapshot(
+                new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
+                -4, 4, true, false, false, 1f, 1f,
+                groundHeights,
+                terrainCenters,
+                new Dictionary<Tile2i, AccessHeightProfile>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                new[] { new Tile2i(14, 14) },
+                Array.Empty<AccessDurabilityCorner>());
+            if (oceanFixture.IsCandidateProfileFeasible(new Tile2i(12, 12), flat, out string oceanMismatch)
+                || oceanMismatch != "OceanBelowMinimum")
+            { failure = "V profiles below height 1 must not visit ocean"; return false; }
+            var dumpingFixture = new AccessSearchSnapshot(
+                new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
+                -4, 4, false, false, false, 1f, 1f,
+                groundHeights,
+                terrainCenters,
+                new Dictionary<Tile2i, AccessHeightProfile>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<Tile2i>(),
+                Array.Empty<AccessDurabilityCorner>());
+            AccessHeightProfile.TryForMode(AccessSearchMode.Flat, -2, out AccessHeightProfile loweredFlat);
+            if (dumpingFixture.IsCandidateProfileFeasible(new Tile2i(12, 12), loweredFlat, out string dumpingMismatch)
+                || dumpingMismatch != "RequiresMining")
+            { failure = "dumping candidate must reject profiles that require mining"; return false; }
             AccessSearchResult fixtureResult = FindPath(fixture, new[] { fixtureStart });
             if (!fixtureResult.Success || fixtureResult.Path.Count < 2
                 || fixtureResult.Path[0].Position != fixtureWorkNeighbor
@@ -101,13 +191,14 @@ namespace AutoTerrainDesignations.Access
             Tile2i generatedGoal = new Tile2i(6, 10);
             var generatedFixture = new AccessSearchSnapshot(
                 new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
-                -2, 2, true, false, 1f, 1f,
+                -2, 2, true, false, false, 1f, 1f,
                 groundHeights,
                 terrainCenters,
                 new Dictionary<Tile2i, AccessHeightProfile> { [fixtureStart] = flat },
                 new[] { fixtureStart },
                 new[] { generatedGoal },
                 new[] { generatedGoal },
+                Array.Empty<Tile2i>(),
                 Array.Empty<Tile2i>(),
                 Array.Empty<AccessDurabilityCorner>());
             var generatedResult = new AccessSearchResult(true, string.Empty, fixtureStart,
@@ -125,13 +216,14 @@ namespace AutoTerrainDesignations.Access
             Tile2i turnStart = new Tile2i(4, 12);
             var turnFixture = new AccessSearchSnapshot(
                 new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
-                -2, 2, true, false, 1f, 1f,
+                -2, 2, true, false, false, 1f, 1f,
                 groundHeights,
                 terrainCenters,
                 new Dictionary<Tile2i, AccessHeightProfile> { [turnStart] = flat },
                 new[] { turnStart },
                 new[] { fixtureGoal },
                 new[] { fixtureGoal },
+                Array.Empty<Tile2i>(),
                 Array.Empty<Tile2i>(),
                 Array.Empty<AccessDurabilityCorner>());
             var turnResult = new AccessSearchResult(true, string.Empty, turnStart,
@@ -145,6 +237,17 @@ namespace AutoTerrainDesignations.Access
             AccessDesignationPlan turnPlan = AccessPathMaterializer.Materialize(turnFixture, turnResult);
             if (!turnPlan.IsValid || turnPlan.Designations.Count != 3)
             { failure = "legal diagonal self-contact at flat turn should materialize"; return false; }
+
+            var repeatedOriginPath = new AccessSearchNode[]
+            {
+                new AccessSearchNode(new Tile2i(4, 8), 0, AccessSearchMode.Flat),
+                new AccessSearchNode(new Tile2i(4, 4), 0, AccessSearchMode.Flat),
+                new AccessSearchNode(new Tile2i(4, 8), 0, AccessSearchMode.Flat),
+                new AccessSearchNode(fixtureGoal, 0, AccessSearchMode.Ground),
+            };
+            if (ValidateGeneratedPath(repeatedOriginPath, turnFixture, out string repeatedOriginReason)
+                || !repeatedOriginReason.StartsWith("FinalOriginRevisit@", StringComparison.Ordinal))
+            { failure = "a V path must never revisit an origin, even with the same profile"; return false; }
 
             failure = string.Empty;
             return true;
@@ -160,10 +263,15 @@ namespace AutoTerrainDesignations.Access
                 return Failed("NoGoalGround", startOrigin, 0, rejections);
             if (!snapshot.TryGetFixedProfile(startOrigin, out AccessHeightProfile startProfile))
                 return Failed("NoStartProfile", startOrigin, 0, rejections);
+            if (snapshot.IsProfileOceanBlocked(startOrigin, startProfile))
+                return Failed("OceanStartBelowMinimum", startOrigin, 0, rejections);
 
             var distance = new Dictionary<AccessSearchNode, float>();
             var previous = new Dictionary<AccessSearchNode, AccessSearchNode>();
             var queue = new MinQueue();
+            List<AccessSearchNode>? lastRejectedGoalPath = null;
+            string lastGoalValidationReason = string.Empty;
+            float lastRejectedGoalCost = 0f;
 
             foreach (Tile2i direction in s_originDirections)
             {
@@ -188,7 +296,13 @@ namespace AutoTerrainDesignations.Access
                 {
                     List<AccessSearchNode> path = Reconstruct(current, previous);
                     if (!ValidateGeneratedPath(path, snapshot, out string validationReason))
-                        return new AccessSearchResult(false, validationReason, startOrigin, path, known, visited, rejections);
+                    {
+                        Reject(rejections, "FinalSelfContact");
+                        lastRejectedGoalPath = path;
+                        lastGoalValidationReason = validationReason;
+                        lastRejectedGoalCost = known;
+                        continue;
+                    }
                     return new AccessSearchResult(true, string.Empty, startOrigin, path, known, visited, rejections);
                 }
 
@@ -200,6 +314,14 @@ namespace AutoTerrainDesignations.Access
                     Reject(rejections, "MissingProfile");
             }
 
+            if (lastRejectedGoalPath != null)
+            {
+                string reason = visited >= MAX_VISITED_NODES
+                    ? "VisitedLimitAfterSelfContact"
+                    : lastGoalValidationReason;
+                return new AccessSearchResult(false, reason, startOrigin, lastRejectedGoalPath,
+                    lastRejectedGoalCost, visited, rejections);
+            }
             return Failed(visited >= MAX_VISITED_NODES ? "VisitedLimit" : "NoPath", startOrigin, visited, rejections);
         }
 
@@ -239,6 +361,13 @@ namespace AutoTerrainDesignations.Access
             foreach (Tile2i direction in s_originDirections)
             {
                 Tile2i nextOrigin = new Tile2i(current.Position.X + direction.X, current.Position.Y + direction.Y);
+                if (previous.TryGetValue(current, out AccessSearchNode parent)
+                    && !parent.IsGround
+                    && parent.Position == nextOrigin)
+                {
+                    Reject(rejections, "OriginRevisit");
+                    continue;
+                }
                 AddOriginSuccessors(snapshot, current.Position, currentProfile, nextOrigin, direction,
                     current, true, currentCost, distance, previous, queue, rejections);
             }
@@ -255,6 +384,8 @@ namespace AutoTerrainDesignations.Access
 
             if (snapshot.TryGetFixedProfile(nextOrigin, out AccessHeightProfile fixedProfile))
             {
+                if (snapshot.IsProfileOceanBlocked(nextOrigin, fixedProfile))
+                { Reject(rejections, "OceanBelowMinimum"); return; }
                 if (!EdgesMatch(currentProfile, fixedProfile, direction)) { Reject(rejections, "FixedEdgeMismatch"); return; }
                 var existing = new AccessSearchNode(nextOrigin, fixedProfile.Center2, AccessSearchMode.Existing);
                 Relax(snapshot, current, existing, baseCost + 4f, distance, previous, queue, hasCurrent);
@@ -267,6 +398,9 @@ namespace AutoTerrainDesignations.Access
                 { Reject(rejections, "EdgeProfile"); continue; }
                 if (!snapshot.IsCandidateProfileFeasible(nextOrigin, nextProfile, out string reason))
                 { Reject(rejections, reason); continue; }
+                if (hasCurrent && !IsCompatibleWithPathHistory(
+                    snapshot, nextOrigin, nextProfile, current, previous))
+                { Reject(rejections, "PathSelfContact"); continue; }
 
                 var next = new AccessSearchNode(nextOrigin, nextProfile.Center2, mode);
                 float work = Math.Abs(nextProfile.Center2 - snapshot.GetTerrainCenterHeight2(nextOrigin)) / 2f;
@@ -299,6 +433,8 @@ namespace AutoTerrainDesignations.Access
                         if (!snapshot.IsCandidateProfileFeasible(origin, profile, out string reason))
                         { Reject(rejections, reason); continue; }
                         if (!ContainsHandoffTile(snapshot, origin, profile, current.Position)) continue;
+                        if (!IsCompatibleWithPathHistory(snapshot, origin, profile, current, previous))
+                        { Reject(rejections, "PathSelfContact"); continue; }
                         var next = new AccessSearchNode(origin, profile.Center2, mode);
                         float work = Math.Abs(profile.Center2 - center2) / 2f;
                         float cost = currentCost + Manhattan(current.Position, next.CostPosition)
@@ -307,6 +443,43 @@ namespace AutoTerrainDesignations.Access
                     }
                 }
             }
+        }
+
+        private static bool IsCompatibleWithPathHistory(
+            AccessSearchSnapshot snapshot,
+            Tile2i nextOrigin,
+            AccessHeightProfile nextProfile,
+            AccessSearchNode current,
+            Dictionary<AccessSearchNode, AccessSearchNode> previous)
+        {
+            var nextCorners = new Dictionary<Tile2i, int>(4);
+            nextProfile.AddWorldCorners(nextOrigin, (corner, height2) => nextCorners[corner] = height2);
+
+            AccessSearchNode ancestor = current;
+            while (true)
+            {
+                if (!ancestor.IsGround && ancestor.Mode != AccessSearchMode.Existing)
+                {
+                    if (ancestor.Position == nextOrigin) return false;
+                    if (Math.Abs(ancestor.Position.X - nextOrigin.X) <= 4
+                        && Math.Abs(ancestor.Position.Y - nextOrigin.Y) <= 4
+                        && TryGetProfile(snapshot, ancestor, out AccessHeightProfile ancestorProfile))
+                    {
+                        bool mismatch = false;
+                        ancestorProfile.AddWorldCorners(ancestor.Position, (corner, height2) =>
+                        {
+                            if (nextCorners.TryGetValue(corner, out int nextHeight2)
+                                && nextHeight2 != height2)
+                                mismatch = true;
+                        });
+                        if (mismatch) return false;
+                    }
+                }
+
+                if (!previous.TryGetValue(ancestor, out AccessSearchNode parent)) break;
+                ancestor = parent;
+            }
+            return true;
         }
 
         private static IEnumerable<Tile2i> CandidateOriginsAtGroundTile(Tile2i tile)
@@ -333,14 +506,21 @@ namespace AutoTerrainDesignations.Access
                 origin, origin + new RelTile2i(4, 0), origin + new RelTile2i(4, 4), origin + new RelTile2i(0, 4)
             };
             int[] heights = { profile.Nw2, profile.Ne2, profile.Se2, profile.Sw2 };
-            bool centerReached = Reached(snapshot, center, profile.Center2);
-            int reachedCorners = 0;
-            for (int i = 0; i < corners.Length; i++) if (Reached(snapshot, corners[i], heights[i])) reachedCorners++;
-            if (!centerReached && reachedCorners < 2) yield break;
-
-            if (snapshot.IsGroundNode(center)) yield return center;
+            bool centerMatches = MatchesGround(snapshot, center, profile.Center2)
+                && snapshot.IsGroundNode(center);
+            var matchingCorners = new bool[corners.Length];
+            int matchingCornerCount = 0;
             for (int i = 0; i < corners.Length; i++)
-                if (snapshot.IsGroundNode(corners[i])) yield return corners[i];
+            {
+                matchingCorners[i] = MatchesGround(snapshot, corners[i], heights[i])
+                    && snapshot.IsGroundNode(corners[i]);
+                if (matchingCorners[i]) matchingCornerCount++;
+            }
+            if (!centerMatches && matchingCornerCount < 2) yield break;
+
+            if (centerMatches) yield return center;
+            for (int i = 0; i < corners.Length; i++)
+                if (matchingCorners[i]) yield return corners[i];
         }
 
         internal static bool ContainsHandoffTile(AccessSearchSnapshot snapshot, Tile2i origin,
@@ -351,10 +531,10 @@ namespace AutoTerrainDesignations.Access
             return false;
         }
 
-        private static bool Reached(AccessSearchSnapshot snapshot, Tile2i tile, int targetHeight2)
+        private static bool MatchesGround(AccessSearchSnapshot snapshot, Tile2i tile, int targetHeight2)
         {
             if (!snapshot.TryGetGroundHeight2(tile, out int groundHeight2)) return false;
-            return snapshot.IsMining ? targetHeight2 >= groundHeight2 : targetHeight2 <= groundHeight2;
+            return targetHeight2 == groundHeight2;
         }
 
         private static bool TrySolveSuccessor(AccessHeightProfile current, Tile2i direction,
@@ -418,18 +598,32 @@ namespace AutoTerrainDesignations.Access
             {
                 if (node.IsGround || node.Mode == AccessSearchMode.Existing) continue;
                 if (!TryGetProfile(snapshot, node, out AccessHeightProfile profile)) continue;
-                if (profilesByOrigin.TryGetValue(node.Position, out AccessHeightProfile existing)
-                    && (existing.Nw2 != profile.Nw2 || existing.Ne2 != profile.Ne2
-                        || existing.Se2 != profile.Se2 || existing.Sw2 != profile.Sw2))
-                { reason = "FinalSelfContact"; return false; }
+                if (profilesByOrigin.ContainsKey(node.Position))
+                {
+                    reason = $"FinalOriginRevisit@{node.Position}";
+                    return false;
+                }
                 profilesByOrigin[node.Position] = profile;
                 bool mismatch = false;
+                Tile2i mismatchCorner = default;
+                int oldMismatchHeight2 = 0;
+                int newMismatchHeight2 = 0;
                 profile.AddWorldCorners(node.Position, (p, h) =>
                 {
-                    if (cornerHeights.TryGetValue(p, out int old) && old != h) mismatch = true;
+                    if (cornerHeights.TryGetValue(p, out int old) && old != h)
+                    {
+                        mismatch = true;
+                        mismatchCorner = p;
+                        oldMismatchHeight2 = old;
+                        newMismatchHeight2 = h;
+                    }
                     else cornerHeights[p] = h;
                 });
-                if (mismatch) { reason = "FinalSelfContact"; return false; }
+                if (mismatch)
+                {
+                    reason = $"FinalSelfContactCorner@{mismatchCorner}:oldH2={oldMismatchHeight2},newH2={newMismatchHeight2},origin={node.Position}";
+                    return false;
+                }
             }
             reason = string.Empty;
             return true;

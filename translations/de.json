@@ -1,25 +1,5 @@
 [
   [
-    "notification.ramp_access_failed",
-    "[ATD] {entity} konnte keine Zugangsrampe beginnen"
-  ],
-  [
-    "notification.ramp_access_truncated",
-    "[ATD] {entity} konnte keine vollständige Zugangsrampe platzieren"
-  ],
-  [
-    "notification.ramp_access_not_accessible",
-    "[ATD] {entity} konnte keinen Weg zur Rampe finden"
-  ],
-  [
-    "notification.farming_complete",
-    "[ATD] {entity} hat Feldvorbereitung und Auffüllung abgeschlossen"
-  ],
-  [
-    "notification.excavator_completed",
-    "[ATD] {entity} hat einen Bagger fertiggestellt"
-  ],
-  [
     "common.level.off",
     "Aus"
   ],
@@ -61,7 +41,7 @@
   ],
   [
     "panel.designations.clear_tooltip",
-    "Entfernt alle Bergbaugebiete im Bereich dieses Turms."
+    "Entfernt alle Geländemarkierungen im Bereich dieses Turms."
   ],
   [
     "panel.designations.ore_filter.auto",
@@ -116,48 +96,224 @@
     "Erzwingt, dass der Scan ein bestimmtes Produkt sucht. Keine = zuerst nützliche Produkte, dann Schutt, dann Erde."
   ],
   [
-    "toolbox.corner_outer.tooltip",
-    "Ecke (außen): konvexe Eckrampen platzieren."
+    "settings.mod.name",
+    "Automatische Geländemarkierungen"
   ],
   [
-    "toolbox.corner_inner.tooltip",
-    "Ecke (innen): konkave Eckrampen platzieren."
+    "settings.tab.defaults",
+    "Standardwerte"
   ],
   [
-    "panel.farming.title",
-    "Feldvorbereitung"
+    "settings.tab.game_settings",
+    "Spieleinstellungen"
   ],
   [
-    "panel.farming.description",
-    "Automatisiert die Vorbereitung und endgültige Auffüllung flacher Planierungsgebiete, damit ihre oberste Schicht fruchtbar wird."
+    "settings.tab.ore_quality",
+    "Erzqualität"
   ],
   [
-    "panel.farming.automation_toggle.label",
-    "Automatische Feldvorbereitung"
+    "settings.heading.mining_defaults",
+    "Standardwerte für Minenkontrollturm"
   ],
   [
-    "panel.farming.automation_toggle.tooltip",
-    "Bereitet flache Planierungsgebiete für Felder vor, indem ungeeignetes Oberflächenmaterial entfernt und anschließend die endgültigen Auffüllgebiete wiederhergestellt werden."
+    "settings.heading.panel_defaults",
+    "Panel-Standardwerte"
   ],
   [
-    "panel.farming.idle_release_excavators.label",
-    "Bagger freigeben bei Leerlauf"
+    "settings.heading.designations",
+    "Markierungen"
   ],
   [
-    "panel.farming.idle_release_excavators.tooltip",
-    "Hebt automatisch die Zuweisung von Baggern von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat oder wenn der Turm pausiert ist.\nBagger werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
+    "settings.heading.scan_performance",
+    "Scan-Leistung"
   ],
   [
-    "panel.farming.idle_release_trucks.label",
-    "LKWs freigeben bei Leerlauf"
+    "settings.heading.keyboard_shortcuts",
+    "Tastenkürzel"
   ],
   [
-    "panel.farming.idle_release_trucks.tooltip",
-    "Hebt automatisch die Zuweisung von LKWs von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat oder wenn der Turm pausiert ist.\nLKWs werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
+    "settings.heading.notifications",
+    "Benachrichtigungen"
   ],
   [
-    "panel.farming.assigned_vehicles.label",
-    "Zugewiesene Fahrzeuge"
+    "settings.heading.experimental_access",
+    "Experimentelle Zugänge"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.label",
+    "Wenderampen (experimentell)"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.tooltip",
+    "Wenn diese Option aktiviert ist, kann ATD experimentelle V1-Abbiege- oder Serpentinenzufahrten unter Verwendung von Vanilla-Flach- und Gefällebezeichnungen auswählen und platzieren. Erfordert die Einstellung der Rampenbreite des Turms auf 1. Der Korridorabstand ist unabhängig. Breitere Rampen sowie Eck- oder Sattelbezeichnungen sind nicht enthalten."
+  ],
+  [
+    "settings.experimental_access.astar.label",
+    "Verwenden Sie die A*-Suche"
+  ],
+  [
+    "settings.experimental_access.astar.tooltip",
+    "Verwenden Sie A* anstelle der Referenz Dijkstra für experimentelle Zufahrts-Trockenläufe. Dijkstra ist die sicherere Validierungsbasislinie."
+  ],
+  [
+    "settings.experimental_access.work_scale.label",
+    "Arbeitsentfernungsskala"
+  ],
+  [
+    "settings.experimental_access.work_scale.tooltip",
+    "Kosten für die Kachelentfernung, die einer Einheit der Geländearbeit in mittlerer Höhe zugeordnet sind. Bereich: 0-100; Standard: 1."
+  ],
+  [
+    "settings.experimental_access.landslide_run.label",
+    "Erdrutsch-Horizontallauf"
+  ],
+  [
+    "settings.experimental_access.landslide_run.tooltip",
+    "Horizontaler Ausschlussabstand pro vertikaler Geländeebene. 1 ist eine 45-Grad-Neigung; Höhere Werte erweitern die Ausschlusssanduhr, während niedrigere Werte sie verengen. Bereich: 0,05–4; Standard: 1."
+  ],
+  [
+    "settings.max_slope.label",
+    "Max. Neigung"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Maximal erlaubter Höhenunterschied zwischen benachbarten Markierungsecken. Bereich: 1-3."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Sohle ebnen"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Stärke der Sohlenglättung von 0 bis 10. 0 deaktiviert den Glättungsdurchlauf."
+  ],
+  [
+    "settings.batch_size.label",
+    "Stapelgröße"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Markierungen pro Coroutine-Frame, während das Spiel nicht pausiert ist. Bereich: 1-200."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Abbau-Panel eingeklappt"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Ob das Panel für Abbaumarkierungen standardmäßig eingeklappt startet."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Erz-Panel eingeklappt"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Ob das Erz-Zusammensetzungs-Panel standardmäßig eingeklappt startet."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Farm-Panel eingeklappt"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Ob das Panel für Ackerlandvorbereitung standardmäßig eingeklappt startet."
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Bagger-Fertigstellungsbenachrichtigungen"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Ob ATD eine grüne Benachrichtigung zeigt, wenn ein Fahrzeugdepot einen Bagger fertigstellt."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Rampenwarnungen"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Ob ATD Rampenzugangs-Warnungen an Minentürmen anzeigt."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Minimale Erzhöhe"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Minimale Erzdicke in Geländekacheln für diese Qualitätsstufe."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Minimale Sohldichte"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Minimale Erzdichte vom vorherigen Erzboden bis zu diesem Erzboden. Auf 0 bis 1 begrenzt."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Minimale Erzreinheit"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Minimales Erz-zu-Spalte-Verhältnis für diese Qualitätsstufe. Auf 0 bis 1 begrenzt."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Minimale Komponentengröße"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Minimale Anzahl verbundener Markierungskacheln, damit ein Cluster den Isolationsfilter übersteht."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Eckmarkierungsmodus"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Taste zum Aktivieren und Umschalten des Eckmarkierungsmodus, während ein Geländemarkierungswerkzeug aktiv ist."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Nutze eine einzelne Taste wie K, 1, F1, Space oder Escape."
+  ],
+  [
+    "settings.status.applied",
+    "Angewendet"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Ungültige Taste"
+  ],
+  [
+    "settings.action.save_as_global",
+    "Als Konfig speichern"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Speichert diese Einstellungen in ATDsettings.json. Sie werden als Standardwerte für alle neuen Spiele verwendet."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Standardwerte wiederherstellen"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Stellt die globalen Mod-Standardwerte für alle Einstellungen wieder her. (Speichert sie nicht automatisch als Konfig.)"
+  ],
+  [
+    "settings.status.saved_to_file",
+    "In ATDsettings.json gespeichert."
+  ],
+  [
+    "settings.status.save_failed",
+    "Speichern fehlgeschlagen; prüfe das Log."
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Eingebaute Standardwerte im Speicher wiederhergestellt."
   ],
   [
     "panel.ore.title",
@@ -192,187 +348,63 @@
     "Abbaupriorität des Turms auf {0} setzen."
   ],
   [
-    "settings.action.restore_defaults",
-    "Standardwerte wiederherstellen"
+    "panel.farming.title",
+    "Feldvorbereitung"
   ],
   [
-    "settings.action.restore_defaults.tooltip",
-    "Stellt die globalen Mod-Standardwerte für alle Einstellungen wieder her. (Speichert sie nicht automatisch als Konfig.)"
+    "panel.farming.description",
+    "Automatisiert die Vorbereitung und endgültige Auffüllung flacher Planierungsgebiete, damit ihre oberste Schicht fruchtbar wird."
   ],
   [
-    "settings.action.save_as_global",
-    "Als Konfig speichern"
+    "panel.farming.automation_toggle.label",
+    "Automatische Feldvorbereitung"
   ],
   [
-    "settings.action.save_as_global.tooltip",
-    "Speichert diese Einstellungen in ATDsettings.json. Sie werden als Standardwerte für alle neuen Spiele verwendet."
+    "panel.farming.automation_toggle.tooltip",
+    "Bereitet flache Planierungsgebiete für Felder vor, indem ungeeignetes Oberflächenmaterial entfernt und anschließend die endgültigen Auffüllgebiete wiederhergestellt werden."
   ],
   [
-    "settings.batch_size.label",
-    "Stapelgröße"
+    "panel.farming.idle_release_excavators.label",
+    "Bagger freigeben bei Leerlauf"
   ],
   [
-    "settings.batch_size.tooltip",
-    "Markierungen pro Coroutine-Frame, während das Spiel nicht pausiert ist. Bereich: 1-200."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Hebt automatisch die Zuweisung von Baggern von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat oder wenn der Turm pausiert ist.\nBagger werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
   ],
   [
-    "settings.bottom_flattening.label",
-    "Sohle ebnen"
+    "panel.farming.idle_release_trucks.label",
+    "LKWs freigeben bei Leerlauf"
   ],
   [
-    "settings.bottom_flattening.tooltip",
-    "Stärke der Sohlenglättung von 0 bis 10. 0 deaktiviert den Glättungsdurchlauf."
+    "panel.farming.idle_release_trucks.tooltip",
+    "Hebt automatisch die Zuweisung von LKWs von diesem Turm auf, wenn kein Gebiet ausstehende Aushubarbeiten hat oder wenn der Turm pausiert ist.\nLKWs werden verfolgt und erneut zugewiesen, sobald wieder Aushubarbeiten anstehen."
   ],
   [
-    "settings.corner_mode.invalid_tooltip",
-    "Nutze eine einzelne Taste wie K, 1, F1, Space oder Escape."
+    "toolbox.corner_outer.tooltip",
+    "Ecke (außen): konvexe Eckrampen platzieren."
   ],
   [
-    "settings.corner_mode.label",
-    "Eckmarkierungsmodus"
+    "toolbox.corner_inner.tooltip",
+    "Ecke (innen): konkave Eckrampen platzieren."
   ],
   [
-    "settings.corner_mode.tooltip",
-    "Taste zum Aktivieren und Umschalten des Eckmarkierungsmodus, während ein Geländemarkierungswerkzeug aktiv ist."
+    "notification.ramp_access_failed",
+    "[ATD] {entity} konnte keine Zugangsrampe beginnen"
   ],
   [
-    "settings.heading.designations",
-    "Markierungen"
+    "notification.ramp_access_truncated",
+    "[ATD] {entity} konnte keine vollständige Zugangsrampe platzieren"
   ],
   [
-    "settings.heading.keyboard_shortcuts",
-    "Tastenkürzel"
+    "notification.ramp_access_not_accessible",
+    "[ATD] {entity} konnte keinen Weg zur Rampe finden"
   ],
   [
-    "settings.heading.mining_defaults",
-    "Standardwerte für Minenkontrollturm"
+    "notification.farming_complete",
+    "[ATD] {entity} hat Feldvorbereitung und Auffüllung abgeschlossen"
   ],
   [
-    "settings.heading.notifications",
-    "Benachrichtigungen"
-  ],
-  [
-    "settings.heading.panel_defaults",
-    "Panel-Standardwerte"
-  ],
-  [
-    "settings.heading.scan_performance",
-    "Scan-Leistung"
-  ],
-  [
-    "settings.max_slope.label",
-    "Max. Neigung"
-  ],
-  [
-    "settings.max_slope.tooltip",
-    "Maximal erlaubter Höhenunterschied zwischen benachbarten Markierungsecken. Bereich: 1-3."
-  ],
-  [
-    "settings.mod.name",
-    "Automatische Geländemarkierungen"
-  ],
-  [
-    "settings.notifications.excavator_completion.label",
-    "Bagger-Fertigstellungsbenachrichtigungen"
-  ],
-  [
-    "settings.notifications.excavator_completion.tooltip",
-    "Ob ATD eine grüne Benachrichtigung zeigt, wenn ein Fahrzeugdepot einen Bagger fertigstellt."
-  ],
-  [
-    "settings.notifications.ramp_warning.label",
-    "Rampenwarnungen"
-  ],
-  [
-    "settings.notifications.ramp_warning.tooltip",
-    "Ob ATD Rampenzugangs-Warnungen an Minentürmen anzeigt."
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.label",
-    "Minimale Sohldichte"
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.tooltip",
-    "Minimale Erzdichte vom vorherigen Erzboden bis zu diesem Erzboden. Auf 0 bis 1 begrenzt."
-  ],
-  [
-    "settings.ore_quality.min_component_size.label",
-    "Minimale Komponentengröße"
-  ],
-  [
-    "settings.ore_quality.min_component_size.tooltip",
-    "Minimale Anzahl verbundener Markierungskacheln, damit ein Cluster den Isolationsfilter übersteht."
-  ],
-  [
-    "settings.ore_quality.min_ore_height.label",
-    "Minimale Erzhöhe"
-  ],
-  [
-    "settings.ore_quality.min_ore_height.tooltip",
-    "Minimale Erzdicke in Geländekacheln für diese Qualitätsstufe."
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.label",
-    "Minimale Erzreinheit"
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.tooltip",
-    "Minimales Erz-zu-Spalte-Verhältnis für diese Qualitätsstufe. Auf 0 bis 1 begrenzt."
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.label",
-    "Farm-Panel eingeklappt"
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.tooltip",
-    "Ob das Panel für Ackerlandvorbereitung standardmäßig eingeklappt startet."
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.label",
-    "Abbau-Panel eingeklappt"
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.tooltip",
-    "Ob das Panel für Abbaumarkierungen standardmäßig eingeklappt startet."
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.label",
-    "Erz-Panel eingeklappt"
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.tooltip",
-    "Ob das Erz-Zusammensetzungs-Panel standardmäßig eingeklappt startet."
-  ],
-  [
-    "settings.status.applied",
-    "Angewendet"
-  ],
-  [
-    "settings.status.invalid_key",
-    "Ungültige Taste"
-  ],
-  [
-    "settings.status.restored_defaults",
-    "Eingebaute Standardwerte im Speicher wiederhergestellt."
-  ],
-  [
-    "settings.status.save_failed",
-    "Speichern fehlgeschlagen; prüfe das Log."
-  ],
-  [
-    "settings.status.saved_to_file",
-    "In ATDsettings.json gespeichert."
-  ],
-  [
-    "settings.tab.defaults",
-    "Standardwerte"
-  ],
-  [
-    "settings.tab.game_settings",
-    "Spieleinstellungen"
-  ],
-  [
-    "settings.tab.ore_quality",
-    "Erzqualität"
+    "notification.excavator_completed",
+    "[ATD] {entity} hat einen Bagger fertiggestellt"
   ]
 ]

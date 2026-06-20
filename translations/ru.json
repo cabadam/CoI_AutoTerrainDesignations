@@ -1,25 +1,5 @@
 [
   [
-    "notification.ramp_access_failed",
-    "[ATD] {entity} не смог начать подъездную рампу"
-  ],
-  [
-    "notification.ramp_access_truncated",
-    "[ATD] {entity} не смог разместить полную подъездную рампу"
-  ],
-  [
-    "notification.ramp_access_not_accessible",
-    "[ATD] {entity} не смог найти путь к рампе"
-  ],
-  [
-    "notification.farming_complete",
-    "[ATD] {entity} завершил подготовку и засыпку под ферму"
-  ],
-  [
-    "notification.excavator_completed",
-    "[ATD] {entity} завершил сборку экскаватора"
-  ],
-  [
     "common.level.off",
     "Выкл."
   ],
@@ -37,7 +17,7 @@
   ],
   [
     "common.level.max",
-    "Макс."
+    "Макс"
   ],
   [
     "panel.designations.title",
@@ -61,7 +41,7 @@
   ],
   [
     "panel.designations.clear_tooltip",
-    "Очистить всю разметку в области этой вышки."
+    "Удалить все обозначения рельефа в зоне этой башни."
   ],
   [
     "panel.designations.ore_filter.auto",
@@ -116,48 +96,224 @@
     "Сканировать только конкретный продукт. Нет = сначала полезные продукты, затем мусор, затем грунт."
   ],
   [
-    "toolbox.corner_outer.tooltip",
-    "Угол (внешний): размещать выпуклые угловые рампы."
+    "settings.mod.name",
+    "Автоматические обозначения рельефа"
   ],
   [
-    "toolbox.corner_inner.tooltip",
-    "Угол (внутренний): размещать вогнутые угловые рампы."
+    "settings.tab.defaults",
+    "По умолчанию"
   ],
   [
-    "panel.farming.title",
-    "Подготовка полей"
+    "settings.tab.game_settings",
+    "Настройки игры"
   ],
   [
-    "panel.farming.description",
-    "Автоматизирует подготовку и финальную засыпку плоских разметок выравнивания, чтобы верхний слой стал плодородным."
+    "settings.tab.ore_quality",
+    "Качество руды"
   ],
   [
-    "panel.farming.automation_toggle.label",
-    "Автоматическая подготовка полей"
+    "settings.heading.mining_defaults",
+    "Настройки башни управления шахтой по умолчанию"
   ],
   [
-    "panel.farming.automation_toggle.tooltip",
-    "Подготавливает плоские разметки выравнивания под поля, удаляя неподходящий верхний материал, а затем восстанавливая финальные заказы засыпки."
+    "settings.heading.panel_defaults",
+    "Панели по умолчанию"
   ],
   [
-    "panel.farming.idle_release_excavators.label",
-    "Автоосвобождение экскаваторов"
+    "settings.heading.designations",
+    "Обозначения"
   ],
   [
-    "panel.farming.idle_release_excavators.tooltip",
-    "Автоматически снимает назначение экскаваторов с этой вышки, когда ни у одной разметки нет ожидающих работ по выемке или когда вышка приостановлена.\nЭкскаваторы отслеживаются и назначаются заново, когда работы по выемке возобновляются."
+    "settings.heading.scan_performance",
+    "Производительность сканирования"
   ],
   [
-    "panel.farming.idle_release_trucks.label",
-    "Автоосвобождение грузовиков"
+    "settings.heading.keyboard_shortcuts",
+    "Горячие клавиши"
   ],
   [
-    "panel.farming.idle_release_trucks.tooltip",
-    "Автоматически снимает назначение грузовиков с этой вышки, когда ни у одной разметки нет ожидающих работ по выемке или когда вышка приостановлена.\nГрузовики отслеживаются и назначаются заново, когда работы по выемке возобновляются."
+    "settings.heading.notifications",
+    "Уведомления"
   ],
   [
-    "panel.farming.assigned_vehicles.label",
-    "Назначенная техника"
+    "settings.heading.experimental_access",
+    "Экспериментальные доступы"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.label",
+    "Поворотные рампы (экспериментально)"
+  ],
+  [
+    "settings.experimental_access.turning_ramps.tooltip",
+    "Если эта функция включена, ATD может выбирать и размещать экспериментальные подъезды к повороту или обратному маршруту V1, используя обычные обозначения плоскостей и уклонов. Требуется, чтобы ширина рампы башни была установлена ​​на 1. Просвет коридора независим. Более широкие пандусы, а также обозначения углов или седловины не включены."
+  ],
+  [
+    "settings.experimental_access.astar.label",
+    "Используйте поиск A*"
+  ],
+  [
+    "settings.experimental_access.astar.tooltip",
+    "Используйте A* вместо ссылки на Дейкстру для экспериментальных испытаний подъездного пути. Дейкстра — более безопасный базовый уровень проверки."
+  ],
+  [
+    "settings.experimental_access.work_scale.label",
+    "Шкала рабочего расстояния"
+  ],
+  [
+    "settings.experimental_access.work_scale.tooltip",
+    "Стоимость тайлового расстояния, назначенная одной единице работы над местностью по центру. Диапазон: 0–100; по умолчанию: 1."
+  ],
+  [
+    "settings.experimental_access.landslide_run.label",
+    "Горизонтальный спуск оползня"
+  ],
+  [
+    "settings.experimental_access.landslide_run.tooltip",
+    "Горизонтальное расстояние исключения на вертикальный уровень местности. 1 – уклон 45 градусов; более высокие значения расширяют песочные часы исключения, а более низкие значения сужают его. Диапазон: 0,05–4; по умолчанию: 1."
+  ],
+  [
+    "settings.max_slope.label",
+    "Макс. уклон"
+  ],
+  [
+    "settings.max_slope.tooltip",
+    "Максимально допустимая разница высот между соседними углами обозначения. Диапазон: 1-3."
+  ],
+  [
+    "settings.bottom_flattening.label",
+    "Выравнивание дна"
+  ],
+  [
+    "settings.bottom_flattening.tooltip",
+    "Сила выравнивания дна от 0 до 10. 0 отключает этот проход."
+  ],
+  [
+    "settings.batch_size.label",
+    "Размер пакета"
+  ],
+  [
+    "settings.batch_size.tooltip",
+    "Количество обозначений за кадр корутины, пока игра не на паузе. Диапазон: 1-200."
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.label",
+    "Панель добычи свернута"
+  ],
+  [
+    "settings.panel_defaults.mining_collapsed.tooltip",
+    "Будет ли панель обозначений добычи свернута по умолчанию."
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.label",
+    "Панель руды свернута"
+  ],
+  [
+    "settings.panel_defaults.ore_collapsed.tooltip",
+    "Будет ли панель состава руды свернута по умолчанию."
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.label",
+    "Панель ферм свернута"
+  ],
+  [
+    "settings.panel_defaults.farming_collapsed.tooltip",
+    "Будет ли панель подготовки фермерской земли свернута по умолчанию."
+  ],
+  [
+    "settings.notifications.excavator_completion.label",
+    "Уведомления о завершении экскаватора"
+  ],
+  [
+    "settings.notifications.excavator_completion.tooltip",
+    "Показывает ли ATD зеленое уведомление, когда любое депо техники завершает экскаватор."
+  ],
+  [
+    "settings.notifications.ramp_warning.label",
+    "Уведомления о пандусах"
+  ],
+  [
+    "settings.notifications.ramp_warning.tooltip",
+    "Показывает ли ATD предупреждения о доступе к пандусу на шахтных башнях."
+  ],
+  [
+    "settings.ore_quality.min_ore_height.label",
+    "Минимальная высота руды"
+  ],
+  [
+    "settings.ore_quality.min_ore_height.tooltip",
+    "Минимальная толщина руды в клетках рельефа для этого уровня качества."
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.label",
+    "Минимальная плотность дна"
+  ],
+  [
+    "settings.ore_quality.min_bottom_density.tooltip",
+    "Минимальная плотность руды от предыдущего дна руды до этого дна. Ограничена от 0 до 1."
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.label",
+    "Минимальная чистота руды"
+  ],
+  [
+    "settings.ore_quality.min_ore_purity.tooltip",
+    "Минимальное отношение руды к столбцу для этого уровня качества. Ограничено от 0 до 1."
+  ],
+  [
+    "settings.ore_quality.min_component_size.label",
+    "Минимальный размер компонента"
+  ],
+  [
+    "settings.ore_quality.min_component_size.tooltip",
+    "Минимальное число соединенных клеток обозначения, чтобы кластер прошел фильтр изоляции."
+  ],
+  [
+    "settings.corner_mode.label",
+    "Режим угловых обозначений"
+  ],
+  [
+    "settings.corner_mode.tooltip",
+    "Клавиша для входа и переключения режима угловых обозначений, когда активен инструмент обозначения рельефа."
+  ],
+  [
+    "settings.corner_mode.invalid_tooltip",
+    "Используйте одну клавишу, например K, 1, F1, Space или Escape."
+  ],
+  [
+    "settings.status.applied",
+    "Применено"
+  ],
+  [
+    "settings.status.invalid_key",
+    "Недопустимая клавиша"
+  ],
+  [
+    "settings.action.save_as_global",
+    "Сохранить как конфиг"
+  ],
+  [
+    "settings.action.save_as_global.tooltip",
+    "Сохраняет эти настройки в ATDsettings.json. Они будут использоваться как значения по умолчанию для всех новых игр."
+  ],
+  [
+    "settings.action.restore_defaults",
+    "Восстановить значения"
+  ],
+  [
+    "settings.action.restore_defaults.tooltip",
+    "Восстанавливает глобальные значения мода по умолчанию для всех настроек. (Не сохраняет их автоматически как конфиг.)"
+  ],
+  [
+    "settings.status.saved_to_file",
+    "Сохранено в ATDsettings.json."
+  ],
+  [
+    "settings.status.save_failed",
+    "Не удалось сохранить; проверьте журнал."
+  ],
+  [
+    "settings.status.restored_defaults",
+    "Встроенные значения по умолчанию восстановлены в памяти."
   ],
   [
     "panel.ore.title",
@@ -192,187 +348,63 @@
     "Установить приоритет добычи башни на {0}."
   ],
   [
-    "settings.action.restore_defaults",
-    "Восстановить значения"
+    "panel.farming.title",
+    "Подготовка полей"
   ],
   [
-    "settings.action.restore_defaults.tooltip",
-    "Восстанавливает глобальные значения мода по умолчанию для всех настроек. (Не сохраняет их автоматически как конфиг.)"
+    "panel.farming.description",
+    "Автоматизирует подготовку и финальную засыпку плоских разметок выравнивания, чтобы верхний слой стал плодородным."
   ],
   [
-    "settings.action.save_as_global",
-    "Сохранить как конфиг"
+    "panel.farming.automation_toggle.label",
+    "Автоматическая подготовка полей"
   ],
   [
-    "settings.action.save_as_global.tooltip",
-    "Сохраняет эти настройки в ATDsettings.json. Они будут использоваться как значения по умолчанию для всех новых игр."
+    "panel.farming.automation_toggle.tooltip",
+    "Подготавливает плоские разметки выравнивания под поля, удаляя неподходящий верхний материал, а затем восстанавливая финальные заказы засыпки."
   ],
   [
-    "settings.batch_size.label",
-    "Размер пакета"
+    "panel.farming.idle_release_excavators.label",
+    "Автоосвобождение экскаваторов"
   ],
   [
-    "settings.batch_size.tooltip",
-    "Количество обозначений за кадр корутины, пока игра не на паузе. Диапазон: 1-200."
+    "panel.farming.idle_release_excavators.tooltip",
+    "Автоматически снимает назначение экскаваторов с этой вышки, когда ни у одной разметки нет ожидающих работ по выемке или когда вышка приостановлена.\nЭкскаваторы отслеживаются и назначаются заново, когда работы по выемке возобновляются."
   ],
   [
-    "settings.bottom_flattening.label",
-    "Выравнивание дна"
+    "panel.farming.idle_release_trucks.label",
+    "Автоосвобождение грузовиков"
   ],
   [
-    "settings.bottom_flattening.tooltip",
-    "Сила выравнивания дна от 0 до 10. 0 отключает этот проход."
+    "panel.farming.idle_release_trucks.tooltip",
+    "Автоматически снимает назначение грузовиков с этой вышки, когда ни у одной разметки нет ожидающих работ по выемке или когда вышка приостановлена.\nГрузовики отслеживаются и назначаются заново, когда работы по выемке возобновляются."
   ],
   [
-    "settings.corner_mode.invalid_tooltip",
-    "Используйте одну клавишу, например K, 1, F1, Space или Escape."
+    "toolbox.corner_outer.tooltip",
+    "Угол (внешний): размещать выпуклые угловые рампы."
   ],
   [
-    "settings.corner_mode.label",
-    "Режим угловых обозначений"
+    "toolbox.corner_inner.tooltip",
+    "Угол (внутренний): размещать вогнутые угловые рампы."
   ],
   [
-    "settings.corner_mode.tooltip",
-    "Клавиша для входа и переключения режима угловых обозначений, когда активен инструмент обозначения рельефа."
+    "notification.ramp_access_failed",
+    "[ATD] {entity} не смог начать подъездную рампу"
   ],
   [
-    "settings.heading.designations",
-    "Обозначения"
+    "notification.ramp_access_truncated",
+    "[ATD] {entity} не смог разместить полную подъездную рампу"
   ],
   [
-    "settings.heading.keyboard_shortcuts",
-    "Горячие клавиши"
+    "notification.ramp_access_not_accessible",
+    "[ATD] {entity} не смог найти путь к рампе"
   ],
   [
-    "settings.heading.mining_defaults",
-    "Настройки башни управления шахтой по умолчанию"
+    "notification.farming_complete",
+    "[ATD] {entity} завершил подготовку и засыпку под ферму"
   ],
   [
-    "settings.heading.notifications",
-    "Уведомления"
-  ],
-  [
-    "settings.heading.panel_defaults",
-    "Панели по умолчанию"
-  ],
-  [
-    "settings.heading.scan_performance",
-    "Производительность сканирования"
-  ],
-  [
-    "settings.max_slope.label",
-    "Макс. уклон"
-  ],
-  [
-    "settings.max_slope.tooltip",
-    "Максимально допустимая разница высот между соседними углами обозначения. Диапазон: 1-3."
-  ],
-  [
-    "settings.mod.name",
-    "Автоматические обозначения рельефа"
-  ],
-  [
-    "settings.notifications.excavator_completion.label",
-    "Уведомления о завершении экскаватора"
-  ],
-  [
-    "settings.notifications.excavator_completion.tooltip",
-    "Показывает ли ATD зеленое уведомление, когда любое депо техники завершает экскаватор."
-  ],
-  [
-    "settings.notifications.ramp_warning.label",
-    "Уведомления о пандусах"
-  ],
-  [
-    "settings.notifications.ramp_warning.tooltip",
-    "Показывает ли ATD предупреждения о доступе к пандусу на шахтных башнях."
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.label",
-    "Минимальная плотность дна"
-  ],
-  [
-    "settings.ore_quality.min_bottom_density.tooltip",
-    "Минимальная плотность руды от предыдущего дна руды до этого дна. Ограничена от 0 до 1."
-  ],
-  [
-    "settings.ore_quality.min_component_size.label",
-    "Минимальный размер компонента"
-  ],
-  [
-    "settings.ore_quality.min_component_size.tooltip",
-    "Минимальное число соединенных клеток обозначения, чтобы кластер прошел фильтр изоляции."
-  ],
-  [
-    "settings.ore_quality.min_ore_height.label",
-    "Минимальная высота руды"
-  ],
-  [
-    "settings.ore_quality.min_ore_height.tooltip",
-    "Минимальная толщина руды в клетках рельефа для этого уровня качества."
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.label",
-    "Минимальная чистота руды"
-  ],
-  [
-    "settings.ore_quality.min_ore_purity.tooltip",
-    "Минимальное отношение руды к столбцу для этого уровня качества. Ограничено от 0 до 1."
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.label",
-    "Панель ферм свернута"
-  ],
-  [
-    "settings.panel_defaults.farming_collapsed.tooltip",
-    "Будет ли панель подготовки фермерской земли свернута по умолчанию."
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.label",
-    "Панель добычи свернута"
-  ],
-  [
-    "settings.panel_defaults.mining_collapsed.tooltip",
-    "Будет ли панель обозначений добычи свернута по умолчанию."
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.label",
-    "Панель руды свернута"
-  ],
-  [
-    "settings.panel_defaults.ore_collapsed.tooltip",
-    "Будет ли панель состава руды свернута по умолчанию."
-  ],
-  [
-    "settings.status.applied",
-    "Применено"
-  ],
-  [
-    "settings.status.invalid_key",
-    "Недопустимая клавиша"
-  ],
-  [
-    "settings.status.restored_defaults",
-    "Встроенные значения по умолчанию восстановлены в памяти."
-  ],
-  [
-    "settings.status.save_failed",
-    "Не удалось сохранить; проверьте журнал."
-  ],
-  [
-    "settings.status.saved_to_file",
-    "Сохранено в ATDsettings.json."
-  ],
-  [
-    "settings.tab.defaults",
-    "По умолчанию"
-  ],
-  [
-    "settings.tab.game_settings",
-    "Настройки игры"
-  ],
-  [
-    "settings.tab.ore_quality",
-    "Качество руды"
+    "notification.excavator_completed",
+    "[ATD] {entity} завершил сборку экскаватора"
   ]
 ]

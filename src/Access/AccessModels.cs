@@ -175,6 +175,13 @@ namespace AutoTerrainDesignations.Access
                 return left.IsValid ? -1 : 1;
             }
 
+            // A complete, immediately usable provider outranks a truncated or deferred
+            // provider regardless of work cost. Partial legacy ramps remain valid fallbacks.
+            if (left.IsReachableNow != right.IsReachableNow)
+            {
+                return left.IsReachableNow ? -1 : 1;
+            }
+
             if (left.MaterialMoved != right.MaterialMoved)
             {
                 return left.MaterialMoved.CompareTo(right.MaterialMoved);
@@ -193,6 +200,10 @@ namespace AutoTerrainDesignations.Access
             if (best.IsValid != other.IsValid)
             {
                 return "validity";
+            }
+            if (best.IsReachableNow != other.IsReachableNow)
+            {
+                return "complete-accessway";
             }
             if (best.MaterialMoved != other.MaterialMoved)
             {

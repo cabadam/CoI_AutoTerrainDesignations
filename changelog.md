@@ -1,10 +1,15 @@
-v0.4.3a | 2026-06-06 [unreleased]
+v0.4.4 | 2026-06-20 [packaged]
+* Added: **Experimental turning & switchback accessways** (least-work corridor pathfinding) for mine towers, configurable via the new **Turning ramps (experimental)** toggle in Mod Settings (default: off)
+  - Uses a new 2.5D pathfinding search (supports reference Dijkstra and optimized A*) over the terrain heightfield to evaluate and select the cheapest access route
+  - Automatically plans and places multi-directional, turning, and switchback corridors using vanilla flat and slope designations (requires a tower ramp width of 1; corridor clearance remains independent)
+  - Added configuration parameters under the new **Experimental accessways** Mod Settings section: **Use A* search**, **Work distance scale** (weight of terrain work vs driving distance), and **Landslide horizontal run** (adjusts safety/exclusion margin per level)
 * Changed: renamed the Mod Settings **Mining defaults** heading to **Mine control tower defaults** to match the vanilla tower name
 * Changed: split **Auto-release when idle** into separate per-tower/global toggles for excavators and trucks; legacy `autoReleaseVehiclesWhenIdle` settings still migrate by setting both new defaults
 * Fixed: auto-release now treats paused mine towers as idle, so enabled vehicle classes are released while the tower is paused and restored when excavation work resumes
 * Added: the Farmland preparation panel auto-release tooltips now include a compact assigned/ATD-released vehicle list for the selected tower
 * Fixed: ramp generation could incorrectly skip with "existing planned ramp designation(s) already provide surface access" when an unrelated reachable accessway existed in the tower area; the duplicate-access shortcut now requires every disconnected excavation cluster to have height-compatible access to tower-reachable ground or to a connected existing accessway
 * Updated: translations for German, Spanish, Italian, Portuguese, Russian, Swedish, and Chinese to support the split auto-release toggles and assigned vehicles list
+* Fixed: vehicle auto-release could leave vehicles stuck assigned to invisible or deconstructed mine towers after saving and restarting. Release tracking is now immediately pruned and save-time reassignments are skipped for any tower that is deconstructing or not fully constructed, keeping released vehicles unassigned and free.
 
 v0.4.3 | 2026-06-06
 * Added AutoHelpers shared **Mod Settings** tabs for ATD global defaults, game settings, and ore-quality thresholds, with localized labels/tooltips and shared-window tab icons

@@ -1,0 +1,125 @@
+{
+  "mod": "AutoTerrainDesignations",
+  "source_file": "src\\ATD.Localization.cs",
+  "total_keys": 102,
+  "skip_keys": [
+    "dtk.mod.name",
+    "dtk.rate_limit.items_per_min",
+    "dtk.settings.language.hybrid",
+    "dtk.settings.language.local",
+    "dtk.settings.number_format.auto"
+  ],
+  "keys": {
+    "common.level.max": {
+      "en": "Max",
+      "context": "Common level setting label: maximum.",
+      "de": "Max",
+      "sv": "Max",
+      "es": "máx.",
+      "it": "Massimo",
+      "pt": "Máx.",
+      "ru": "Макс",
+      "zh": "最大限度"
+    },
+    "settings.heading.experimental_access": {
+      "en": "Experimental accessways",
+      "context": "Settings section heading for experimental accessway settings.",
+      "de": "Experimentelle Zugänge",
+      "es": "Accesos experimentales",
+      "it": "Accessi sperimentali",
+      "pt": "Acessos experimentais",
+      "ru": "Экспериментальные доступы",
+      "sv": "Experimentella tillfarter",
+      "zh": "实验通道"
+    },
+    "settings.experimental_access.turning_ramps.label": {
+      "en": "Turning ramps (experimental)",
+      "context": "Settings toggle label for experimental turning ramps.",
+      "de": "Wenderampen (experimentell)",
+      "es": "Rampas de giro (experimental)",
+      "it": "Rampe di svolta (sperimentali)",
+      "pt": "Rampas de viragem (experimental)",
+      "ru": "Поворотные рампы (экспериментально)",
+      "sv": "Svängramper (experimentell)",
+      "zh": "转弯坡道（实验）"
+    },
+    "settings.experimental_access.turning_ramps.tooltip": {
+      "en": "When enabled, ATD may select and place experimental V1 turning or switchback accessways using vanilla flat and slope designations. Requires the tower's ramp width to be set to 1. Corridor clearance is independent. Wider ramps and corner or saddle designations are not included.",
+      "context": "Tooltip for experimental turning ramps.",
+      "de": "Wenn diese Option aktiviert ist, kann ATD experimentelle V1-Abbiege- oder Serpentinenzufahrten unter Verwendung von Vanilla-Flach- und Gefällebezeichnungen auswählen und platzieren. Erfordert die Einstellung der Rampenbreite des Turms auf 1. Der Korridorabstand ist unabhängig. Breitere Rampen sowie Eck- oder Sattelbezeichnungen sind nicht enthalten.",
+      "es": "Cuando está habilitado, ATD puede seleccionar y colocar vías de acceso experimentales de giro o curvatura V1 utilizando designaciones planas y inclinadas. Requiere que el ancho de la rampa de la torre se establezca en 1. El espacio libre del corredor es independiente. No se incluyen rampas más anchas ni designaciones de esquinas o monturas.",
+      "it": "Se abilitato, ATD può selezionare e posizionare accessi sperimentali di svolta o tornanti V1 utilizzando designazioni piatte e in pendenza. Richiede che la larghezza della rampa della torre sia impostata su 1. La distanza del corridoio è indipendente. Rampe più larghe e designazioni di angoli o selle non sono incluse.",
+      "pt": "Quando ativado, o ATD pode selecionar e posicionar vias de acesso experimentais V1 ou em ziguezague usando designações simples de plano e inclinação. Requer que a largura da rampa da torre seja definida como 1. A folga do corredor é independente. Rampas mais largas e designações de canto ou sela não estão incluídas.",
+      "ru": "Если эта функция включена, ATD может выбирать и размещать экспериментальные подъезды к повороту или обратному маршруту V1, используя обычные обозначения плоскостей и уклонов. Требуется, чтобы ширина рампы башни была установлена ​​на 1. Просвет коридора независим. Более широкие пандусы, а также обозначения углов или седловины не включены.",
+      "sv": "När det är aktiverat kan ATD välja och placera experimentella V1-svängnings- eller återkopplingsvägar med vaniljplatt- och sluttningsbeteckningar. Kräver att tornets rampbredd ställs in på 1. Korridorfrigången är oberoende. Bredare ramper och hörn- eller sadelbeteckningar ingår inte.",
+      "zh": "启用后，ATD 可以使用普通平坦和斜坡名称选择并放置实验性 V1 转弯或之字形通道。要求将塔楼的坡道宽度设置为 1。走廊间隙是独立的。不包括更宽的坡道和拐角或鞍座名称。"
+    },
+    "settings.experimental_access.astar.label": {
+      "en": "Use A* search",
+      "context": "Settings toggle label for experimental A* access search.",
+      "de": "Verwenden Sie die A*-Suche",
+      "es": "Utilice la búsqueda A*",
+      "it": "Utilizza la ricerca A*",
+      "pt": "Use a pesquisa A*",
+      "ru": "Используйте поиск A*",
+      "sv": "Använd A*-sökning",
+      "zh": "使用 A* 搜索"
+    },
+    "settings.experimental_access.astar.tooltip": {
+      "en": "Use A* instead of reference Dijkstra for experimental accessway dry runs. Dijkstra is the safer validation baseline.",
+      "context": "Tooltip for experimental A* access search.",
+      "de": "Verwenden Sie A* anstelle der Referenz Dijkstra für experimentelle Zufahrts-Trockenläufe. Dijkstra ist die sicherere Validierungsbasislinie.",
+      "es": "Utilice A* en lugar de la referencia Dijkstra para ensayos experimentales de vías de acceso. Dijkstra es la base de validación más segura.",
+      "it": "Utilizzare A* anziché fare riferimento a Dijkstra per i percorsi a secco di accessi sperimentali. Dijkstra è la base di convalida più sicura.",
+      "pt": "Use A* em vez da referência Dijkstra para ensaios experimentais de vias de acesso. Dijkstra é a linha de base de validação mais segura.",
+      "ru": "Используйте A* вместо ссылки на Дейкстру для экспериментальных испытаний подъездного пути. Дейкстра — более безопасный базовый уровень проверки.",
+      "sv": "Använd A* istället för referens Dijkstra för experimentella tillfartskörningar. Dijkstra är den säkrare valideringsbaslinjen.",
+      "zh": "使用 A* 代替参考 Dijkstra 进行实验通道试运行。 Dijkstra 是更安全的验证基线。"
+    },
+    "settings.experimental_access.work_scale.label": {
+      "en": "Work distance scale",
+      "context": "Settings row label for experimental access work cost scale.",
+      "de": "Arbeitsentfernungsskala",
+      "es": "Escala de distancia de trabajo",
+      "it": "Scala della distanza di lavoro",
+      "pt": "Escala de distância de trabalho",
+      "ru": "Шкала рабочего расстояния",
+      "sv": "Arbetsavståndsskala",
+      "zh": "工作距离量表"
+    },
+    "settings.experimental_access.work_scale.tooltip": {
+      "en": "Tile-distance cost assigned to one unit of center-height terrain work. Range: 0-100; default: 1.",
+      "context": "Tooltip for experimental access work distance scale.",
+      "de": "Kosten für die Kachelentfernung, die einer Einheit der Geländearbeit in mittlerer Höhe zugeordnet sind. Bereich: 0-100; Standard: 1.",
+      "es": "Costo de distancia de mosaico asignado a una unidad de trabajo de terreno de altura central. Rango: 0-100; predeterminado: 1.",
+      "it": "Costo della distanza delle tessere assegnato a un'unità di lavoro del terreno ad altezza centrale. Intervallo: 0-100; predefinito: 1.",
+      "pt": "Custo da distância do bloco atribuído a uma unidade de trabalho de terreno na altura central. Faixa: 0-100; padrão: 1.",
+      "ru": "Стоимость тайлового расстояния, назначенная одной единице работы над местностью по центру. Диапазон: 0–100; по умолчанию: 1.",
+      "sv": "Kostnad för kakelavstånd tilldelad en enhet av mitthöjd terrängarbete. Område: 0-100; standard: 1.",
+      "zh": "分配给一个中心高度地形工作单位的平铺距离成本。范围：0-100；默认值：1。"
+    },
+    "settings.experimental_access.landslide_run.label": {
+      "en": "Landslide horizontal run",
+      "context": "Settings row label for the experimental landslide envelope scale.",
+      "de": "Erdrutsch-Horizontallauf",
+      "es": "Carrera horizontal de deslizamiento de tierra",
+      "it": "Corsa orizzontale della frana",
+      "pt": "Corrida horizontal de deslizamento de terra",
+      "ru": "Горизонтальный спуск оползня",
+      "sv": "Jordskred horisontellt lopp",
+      "zh": "滑坡水平运行"
+    },
+    "settings.experimental_access.landslide_run.tooltip": {
+      "en": "Horizontal exclusion distance per vertical terrain level. 1 is a 45-degree slope; higher values widen the exclusion hourglass, while lower values narrow it. Range: 0.05-4; default: 1.",
+      "context": "Tooltip for experimental access landslide run setting.",
+      "de": "Horizontaler Ausschlussabstand pro vertikaler Geländeebene. 1 ist eine 45-Grad-Neigung; Höhere Werte erweitern die Ausschlusssanduhr, während niedrigere Werte sie verengen. Bereich: 0,05–4; Standard: 1.",
+      "es": "Distancia de exclusión horizontal por nivel de terreno vertical. 1 es una pendiente de 45 grados; los valores más altos amplían el reloj de arena de exclusión, mientras que los valores más bajos lo estrechan. Rango: 0,05-4; predeterminado: 1.",
+      "it": "Distanza di esclusione orizzontale per livello verticale del terreno. 1 è una pendenza di 45 gradi; valori più alti allargano la clessidra di esclusione, mentre valori più bassi la restringono. Intervallo: 0,05-4; predefinito: 1.",
+      "pt": "Distância de exclusão horizontal por nível vertical do terreno. 1 é uma inclinação de 45 graus; valores mais altos ampliam a ampulheta de exclusão, enquanto valores mais baixos a estreitam. Faixa: 0,05-4; padrão: 1.",
+      "ru": "Горизонтальное расстояние исключения на вертикальный уровень местности. 1 – уклон 45 градусов; более высокие значения расширяют песочные часы исключения, а более низкие значения сужают его. Диапазон: 0,05–4; по умолчанию: 1.",
+      "sv": "Horisontellt uteslutningsavstånd per vertikal terrängnivå. 1 är en 45-graders lutning; högre värden vidgar uteslutande timglas, medan lägre värden begränsar det. Område: 0,05-4; standard: 1.",
+      "zh": "每个垂直地形水平的水平排除距离。 1为45度坡度；较高的值会扩大排除沙漏，而较低的值会缩小排除沙漏。范围：0.05-4；默认值：1。"
+    }
+  },
+  "keys_needing_translation": 10
+}
