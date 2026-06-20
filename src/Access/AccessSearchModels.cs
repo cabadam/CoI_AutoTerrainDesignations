@@ -152,6 +152,7 @@ namespace AutoTerrainDesignations.Access
         public float WorkDistanceScale { get; }
         public float LandslideRunPerHeight { get; }
         public int GoalCount => m_goalGroundNodes.Count;
+        public int LandslideSourceCount => m_durabilityCorners.Length;
 
         public AccessSearchSnapshot(
             Tile2i boundsMin,

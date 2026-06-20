@@ -21,6 +21,7 @@ namespace AutoTerrainDesignations
         };
 
         internal static AccessSearchResult? LastExperimentalAccessSearch { get; private set; }
+        internal static AccessDesignationPlan? LastExperimentalAccessPlan { get; private set; }
 
         private static bool TryBuildExperimentalAccessSnapshot(
             IAreaManagingTower tower,
@@ -111,7 +112,7 @@ namespace AutoTerrainDesignations
                 maxHeight2 = Math.Max(maxHeight2, Math.Max(Math.Max(profile.Nw2, profile.Ne2), Math.Max(profile.Se2, profile.Sw2)));
             }
 
-            var durabilityCorners = BuildDurabilityCorners(fixedProfiles);
+            var durabilityCorners = BuildDurabilityCorners(fixedProfiles, s_buildingFixedHeights2ByTile);
             float landslideRunPerHeight = AutoTerrainDesignationsMod.AccessLandslideRunPerHeight;
             IPathabilityProvider provider = s_vehiclePathFindingManager.PathabilityProvider;
             VehiclePathFindingParams pathParams = s_excavatorPathFindingParams;
@@ -173,9 +174,20 @@ namespace AutoTerrainDesignations
             string reason = string.IsNullOrEmpty(result.FailureReason) ? "none" : result.FailureReason;
             string cost = result.Cost.ToString("0.##", CultureInfo.InvariantCulture);
             string landslideRun = snapshot.LandslideRunPerHeight.ToString("0.##", CultureInfo.InvariantCulture);
-            LogExperimentalAccessDebug($"[ATD Experimental Access] cluster={cluster.ClusterId} algorithm={(snapshot.UseAStar ? "A*" : "Dijkstra")} success={result.Success} reason={reason} start=({result.StartOrigin.X},{result.StartOrigin.Y}) goals={snapshot.GoalCount} landslideRun={landslideRun} cost={cost} visited={result.VisitedNodes} pathNodes={result.Path.Count} rejections=[{rejections}]");
+            LogExperimentalAccessDebug($"[ATD Experimental Access] cluster={cluster.ClusterId} algorithm={(snapshot.UseAStar ? "A*" : "Dijkstra")} success={result.Success} reason={reason} start=({result.StartOrigin.X},{result.StartOrigin.Y}) goals={snapshot.GoalCount} landslideRun={landslideRun} landslideSources={snapshot.LandslideSourceCount} cost={cost} visited={result.VisitedNodes} pathNodes={result.Path.Count} rejections=[{rejections}]");
             if (result.Success)
+            {
                 LogExperimentalAccessDebug($"[ATD Experimental Access Path] cluster={cluster.ClusterId} {FormatExperimentalPath(result)}");
+                AccessDesignationPlan plan = AccessPathMaterializer.Materialize(snapshot, result);
+                LastExperimentalAccessPlan = plan;
+                LogExperimentalAccessDebug($"[ATD Experimental Access Plan] cluster={cluster.ClusterId} valid={plan.IsValid} reason={(string.IsNullOrEmpty(plan.FailureReason) ? "none" : plan.FailureReason)} designations={plan.Designations.Count} reused={plan.ReusedNodeCount} groundNodes={plan.GroundNodeCount} handoff=({plan.HandoffGround.X},{plan.HandoffGround.Y})");
+                if (plan.IsValid)
+                    LogExperimentalAccessDebug($"[ATD Experimental Access Plan Tiles] cluster={cluster.ClusterId} {FormatExperimentalPlan(plan)}");
+            }
+            else
+            {
+                LastExperimentalAccessPlan = null;
+            }
             return result;
         }
 
@@ -208,6 +220,13 @@ namespace AutoTerrainDesignations
             }
         }
 
+        private static string FormatExperimentalPlan(AccessDesignationPlan plan)
+        {
+            return string.Join(" -> ", plan.Designations.Select(item =>
+                $"{FormatSearchMode(item.Mode)}@({item.Origin.X},{item.Origin.Y})" +
+                $"[{item.Profile.Nw2 / 2},{item.Profile.Ne2 / 2},{item.Profile.Se2 / 2},{item.Profile.Sw2 / 2}]"));
+        }
+
         private static AccessHeightProfile ProfileFromDesignation(TerrainDesignation designation)
         {
             DesignationData data = designation.Data;
@@ -219,7 +238,8 @@ namespace AutoTerrainDesignations
         }
 
         private static List<AccessDurabilityCorner> BuildDurabilityCorners(
-            Dictionary<Tile2i, AccessHeightProfile> profiles)
+            Dictionary<Tile2i, AccessHeightProfile> profiles,
+            IReadOnlyDictionary<Tile2i, HashSet<int>> buildingFixedHeights2ByTile)
         {
             var heightsByPosition = new Dictionary<Tile2i, HashSet<int>>();
             foreach (KeyValuePair<Tile2i, AccessHeightProfile> pair in profiles)
@@ -233,6 +253,17 @@ namespace AutoTerrainDesignations
                     }
                     heights.Add(height2);
                 });
+            }
+
+            foreach (KeyValuePair<Tile2i, HashSet<int>> pair in buildingFixedHeights2ByTile)
+            {
+                if (!heightsByPosition.TryGetValue(pair.Key, out HashSet<int> heights))
+                {
+                    heights = new HashSet<int>();
+                    heightsByPosition[pair.Key] = heights;
+                }
+                foreach (int height2 in pair.Value)
+                    heights.Add(height2);
             }
 
             return heightsByPosition

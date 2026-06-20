@@ -141,6 +141,8 @@ namespace AutoTerrainDesignations
         /// <see cref="BUILDING_OCCUPIED_TILES_CACHE_TICKS"/> farming ticks per tower.
         /// </summary>
         private static readonly HashSet<Tile2i> s_buildingOccupiedTiles = new HashSet<Tile2i>();
+        private static readonly Dictionary<Tile2i, HashSet<int>> s_buildingFixedHeights2ByTile =
+            new Dictionary<Tile2i, HashSet<int>>();
 
         /// <summary>
         /// Origin tile coordinates (4-tile-grid-aligned) of every terrain designation currently present in the
@@ -185,6 +187,7 @@ namespace AutoTerrainDesignations
             }
 
             s_buildingOccupiedTiles.Clear();
+            s_buildingFixedHeights2ByTile.Clear();
             if (s_entitiesManager == null)
             {
                 return;
@@ -193,6 +196,7 @@ namespace AutoTerrainDesignations
             foreach (IStaticEntity entity in s_entitiesManager.GetAllEntitiesOfType<IStaticEntity>())
             {
                 Tile2i center = entity.CenterTile.Xy;
+                int fixedHeight2 = entity.CenterTile.Z * 2;
                 var occupiedTiles = entity.OccupiedTiles;
                 for (int i = 0; i < occupiedTiles.Length; i++)
                 {
@@ -201,6 +205,12 @@ namespace AutoTerrainDesignations
                     if (tower.Area.ContainsTile(absCoord))
                     {
                         s_buildingOccupiedTiles.Add(absCoord);
+                        if (!s_buildingFixedHeights2ByTile.TryGetValue(absCoord, out HashSet<int> heights))
+                        {
+                            heights = new HashSet<int>();
+                            s_buildingFixedHeights2ByTile[absCoord] = heights;
+                        }
+                        heights.Add(fixedHeight2);
                     }
                 }
             }
@@ -308,6 +318,7 @@ namespace AutoTerrainDesignations
 
             AccessSearchSnapshot? experimentalSnapshot = null;
             LastExperimentalAccessSearch = null;
+            LastExperimentalAccessPlan = null;
             if (AutoTerrainDesignationsMod.TurningRampsExperimental && configuredRampWidth == 1)
             {
                 if (!TryBuildExperimentalAccessSnapshot(tower, tileDepths, cornerHeights, terrMgr,

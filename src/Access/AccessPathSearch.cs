@@ -93,6 +93,58 @@ namespace AutoTerrainDesignations.Access
                 || fixtureResult.Path[0].Mode != AccessSearchMode.Existing
                 || fixtureResult.Path[fixtureResult.Path.Count - 1].Mode != AccessSearchMode.Ground)
             { failure = "synthetic work-origin traversal and V-to-G Dijkstra fixture failed"; return false; }
+            AccessDesignationPlan reusedPlan = AccessPathMaterializer.Materialize(fixture, fixtureResult);
+            if (!reusedPlan.IsValid || reusedPlan.Designations.Count != 0 || reusedPlan.ReusedNodeCount != 1)
+            { failure = "synthetic reused-path materialization fixture failed"; return false; }
+
+            Tile2i generatedOrigin = new Tile2i(4, 8);
+            Tile2i generatedGoal = new Tile2i(6, 10);
+            var generatedFixture = new AccessSearchSnapshot(
+                new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
+                -2, 2, true, false, 1f, 1f,
+                groundHeights,
+                terrainCenters,
+                new Dictionary<Tile2i, AccessHeightProfile> { [fixtureStart] = flat },
+                new[] { fixtureStart },
+                new[] { generatedGoal },
+                new[] { generatedGoal },
+                Array.Empty<Tile2i>(),
+                Array.Empty<AccessDurabilityCorner>());
+            var generatedResult = new AccessSearchResult(true, string.Empty, fixtureStart,
+                new AccessSearchNode[]
+                {
+                    new AccessSearchNode(generatedOrigin, 0, AccessSearchMode.Flat),
+                    new AccessSearchNode(generatedGoal, 0, AccessSearchMode.Ground),
+                }, 6f, 2, new Dictionary<string, int>());
+            AccessDesignationPlan generatedPlan = AccessPathMaterializer.Materialize(generatedFixture, generatedResult);
+            if (!generatedPlan.IsValid || generatedPlan.Designations.Count != 1
+                || generatedPlan.Designations[0].Origin != generatedOrigin
+                || generatedPlan.Designations[0].Mode != AccessSearchMode.Flat)
+            { failure = "synthetic generated-path materialization fixture failed"; return false; }
+
+            Tile2i turnStart = new Tile2i(4, 12);
+            var turnFixture = new AccessSearchSnapshot(
+                new Tile2i(0, 0), new Tile2i(20, 20), new Tile2i(18, 18),
+                -2, 2, true, false, 1f, 1f,
+                groundHeights,
+                terrainCenters,
+                new Dictionary<Tile2i, AccessHeightProfile> { [turnStart] = flat },
+                new[] { turnStart },
+                new[] { fixtureGoal },
+                new[] { fixtureGoal },
+                Array.Empty<Tile2i>(),
+                Array.Empty<AccessDurabilityCorner>());
+            var turnResult = new AccessSearchResult(true, string.Empty, turnStart,
+                new AccessSearchNode[]
+                {
+                    new AccessSearchNode(new Tile2i(4, 8), 0, AccessSearchMode.Flat),
+                    new AccessSearchNode(new Tile2i(4, 4), 0, AccessSearchMode.Flat),
+                    new AccessSearchNode(new Tile2i(8, 4), 0, AccessSearchMode.Flat),
+                    new AccessSearchNode(fixtureGoal, 0, AccessSearchMode.Ground),
+                }, 14f, 4, new Dictionary<string, int>());
+            AccessDesignationPlan turnPlan = AccessPathMaterializer.Materialize(turnFixture, turnResult);
+            if (!turnPlan.IsValid || turnPlan.Designations.Count != 3)
+            { failure = "legal diagonal self-contact at flat turn should materialize"; return false; }
 
             failure = string.Empty;
             return true;
@@ -291,7 +343,7 @@ namespace AutoTerrainDesignations.Access
                 if (snapshot.IsGroundNode(corners[i])) yield return corners[i];
         }
 
-        private static bool ContainsHandoffTile(AccessSearchSnapshot snapshot, Tile2i origin,
+        internal static bool ContainsHandoffTile(AccessSearchSnapshot snapshot, Tile2i origin,
             AccessHeightProfile profile, Tile2i tile)
         {
             foreach (Tile2i candidate in GetHandoffTiles(snapshot, origin, profile))
@@ -322,14 +374,14 @@ namespace AutoTerrainDesignations.Access
             return true;
         }
 
-        private static bool EdgesMatch(AccessHeightProfile current, AccessHeightProfile next, Tile2i direction)
+        internal static bool EdgesMatch(AccessHeightProfile current, AccessHeightProfile next, Tile2i direction)
         {
             current.GetEdge(direction, out int a, out int b);
             next.GetEdge(new Tile2i(-direction.X, -direction.Y), out int c, out int d);
             return a == c && b == d;
         }
 
-        private static bool TryGetProfile(AccessSearchSnapshot snapshot, AccessSearchNode node, out AccessHeightProfile profile)
+        internal static bool TryGetProfile(AccessSearchSnapshot snapshot, AccessSearchNode node, out AccessHeightProfile profile)
         {
             if (node.Mode == AccessSearchMode.Existing)
                 return snapshot.TryGetFixedProfile(node.Position, out profile);

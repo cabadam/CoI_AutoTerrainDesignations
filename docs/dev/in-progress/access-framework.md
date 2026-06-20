@@ -395,6 +395,8 @@ Current files involved:
 * `src/Access/AccessDiagnostics.cs` - shared cluster/provider decision logging.
 * `src/Access/AccessSearchModels.cs` - immutable V1/G search state, profiles, snapshot, durability inputs, and result trace.
 * `src/Access/AccessPathSearch.cs` - deterministic Dijkstra/A* dry-run engine and transition fixtures.
+* `src/Access/AccessDesignationPlan.cs` - read-only generated-designation plan model.
+* `src/Access/AccessPathMaterializer.cs` - whole-path replay, materialization, and final plan validation without world mutation.
 * `src/ATD.ExperimentalAccessPathfinding.cs` - gated CoI-world snapshot builder and per-cluster dry-run adapter.
 * `src/ATD.RampGeneration.cs` - mining access generation and duplicate-access checks.
 * `src/ATD.Scan.cs` - mining designation scan and execution flow.
@@ -488,7 +490,7 @@ Implement the bounded heterogeneous graph from [Accessway Pathfinding](../planne
 
 **Implementation status:** the heterogeneous G/V state model, scaled profiles, mechanical transitions, fixed-profile reuse, V/G handoffs, bounds, durability/fight checks, additive cost, Dijkstra/A*, path reconstruction, rejection summary, final self-contact validation, and gated per-cluster dry-run hook are implemented. Executable transition and synthetic V-to-G fixtures run before snapshot construction. Representative straight-ramp and switchback save fixtures remain to be captured.
 
-### Phase 5 - Candidate materialization and safety validation
+### Phase 5 - Candidate materialization and safety validation (read-only materialization implemented; placement pending)
 
 Turn a successful V1 path into an ordinary framework candidate:
 
@@ -499,6 +501,8 @@ Turn a successful V1 path into an ordinary framework candidate:
 * Keep materialization transactional: validation failure places nothing, and placement failure cannot leave a partial candidate behind.
 
 **Exit gate:** every emitted path passes the same dry-run/final validation immediately before placement; invalid paths leave the world unchanged; the post-placement reachability flood reaches the intended cluster through the new provider.
+
+**Implementation status:** successful search paths are converted into explicit flat/slope designation plans. The materializer independently replays V/V and V/G transitions, rechecks generated-node feasibility, fixed-profile reuse, duplicate origins, nonconsecutive self-contact corner consistency, and final goal membership. Legal matching diagonal contact at a flat-landed turn is explicitly covered by a fixture. Active designation corners and occupied building foundations share the parameterized landslide-source index, while buildings remain hard traversal obstacles. Valid plans and exact corner heights are logged and cached in memory; no designation placement, replacement, or removal occurs yet. Candidate adaptation, immediate pre-placement revalidation, transactional placement/rollback, and post-placement reachability remain pending.
 
 ### Phase 6 - Experimental integration and fallback
 
