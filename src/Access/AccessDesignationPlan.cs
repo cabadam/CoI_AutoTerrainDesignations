@@ -24,25 +24,28 @@ namespace AutoTerrainDesignations.Access
         public string FailureReason { get; }
         public Tile2i StartOrigin { get; }
         public Tile2i HandoffGround { get; }
+        public AccessHandoffOperation HandoffOperation { get; }
         public IReadOnlyList<AccessPlannedDesignation> Designations { get; }
         public int ReusedNodeCount { get; }
         public int GroundNodeCount { get; }
 
         public AccessDesignationPlan(bool isValid, string failureReason, Tile2i startOrigin,
-            Tile2i handoffGround, IReadOnlyList<AccessPlannedDesignation> designations,
+            Tile2i handoffGround, AccessHandoffOperation handoffOperation,
+            IReadOnlyList<AccessPlannedDesignation> designations,
             int reusedNodeCount, int groundNodeCount)
         {
             IsValid = isValid;
             FailureReason = failureReason;
             StartOrigin = startOrigin;
             HandoffGround = handoffGround;
+            HandoffOperation = handoffOperation;
             Designations = designations;
             ReusedNodeCount = reusedNodeCount;
             GroundNodeCount = groundNodeCount;
         }
 
         public static AccessDesignationPlan Invalid(string reason, Tile2i startOrigin)
-            => new AccessDesignationPlan(false, reason, startOrigin, default,
+            => new AccessDesignationPlan(false, reason, startOrigin, default, AccessHandoffOperation.None,
                 Array.Empty<AccessPlannedDesignation>(), 0, 0);
     }
 

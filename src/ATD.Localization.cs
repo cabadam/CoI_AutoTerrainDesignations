@@ -126,7 +126,7 @@ namespace AutoTerrainDesignations
         public static LocStr SettingsAccessLandslideRunLabel =
             Loc.Str("settings.experimental_access.landslide_run.label", "Landslide protection slope factor", "Settings row label for the experimental landslide envelope scale.");
         public static LocStr SettingsAccessLandslideRunTooltip =
-            Loc.Str("settings.experimental_access.landslide_run.tooltip", "Horizontal exclusion distance per vertical terrain level. 1 translates to a 45-degree slope; higher values widen the exclusion zone (use in e.g. pure sand), while lower values narrow it. Range: 0.05-4; default: 1.", "Tooltip for experimental access landslide run setting.");
+            Loc.Str("settings.experimental_access.landslide_run.tooltip", "Horizontal exclusion distance per vertical terrain level. 1 translates to a 45-degree slope; higher values widen the exclusion zone (use in e.g. pure sand), while lower values narrow it. Range: 0.05-2; default: 1.", "Tooltip for experimental access landslide run setting.");
         public static LocStr SettingsMaxSlopeLabel =
             Loc.Str("settings.max_slope.label", "Max slope", "Settings row label for maximum designation slope.");
         public static LocStr SettingsMaxSlopeTooltip =

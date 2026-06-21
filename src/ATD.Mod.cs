@@ -115,7 +115,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
         SetRampNotificationsEnabled(true);
         SetAutoReleaseVehiclesWhenIdle(false);
         SetTurningRampsExperimental(true);
-        SetExperimentalAccessUseAStar(false);
+        SetExperimentalAccessUseAStar(true);
         SetAccessWorkDistanceScale(1f);
         SetAccessLandslideRunPerHeight(1f);
         SetCornerDesignationKey(KeyCode.K);
@@ -294,7 +294,7 @@ public sealed class AutoTerrainDesignationsMod : IMod, IDisposable
 
     public static void SetAccessLandslideRunPerHeight(float value)
     {
-        AccessLandslideRunPerHeight = Math.Max(0.05f, Math.Min(4f, value));
+        AccessLandslideRunPerHeight = Math.Max(0.05f, Math.Min(2f, value));
     }
 
     /// <summary>Key used to enter and toggle corner designation mode. Default: K.</summary>

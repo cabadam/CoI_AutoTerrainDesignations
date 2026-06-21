@@ -200,17 +200,23 @@ namespace AutoTerrainDesignations.Access
                 new[] { generatedGoal },
                 Array.Empty<Tile2i>(),
                 Array.Empty<Tile2i>(),
-                Array.Empty<AccessDurabilityCorner>());
+                Array.Empty<AccessDurabilityCorner>(),
+                (origin, profile, predecessorOrigin, predecessorProfile) => new[]
+                {
+                    new AccessGroundHandoff(generatedGoal, AccessHandoffOperation.Mining),
+                });
             var generatedResult = new AccessSearchResult(true, string.Empty, fixtureStart,
                 new AccessSearchNode[]
                 {
                     new AccessSearchNode(generatedOrigin, 0, AccessSearchMode.Flat),
-                    new AccessSearchNode(generatedGoal, 0, AccessSearchMode.Ground),
+                    new AccessSearchNode(generatedGoal, 0, AccessSearchMode.Ground,
+                        AccessHandoffOperation.Mining),
                 }, 6f, 2, new Dictionary<string, int>());
             AccessDesignationPlan generatedPlan = AccessPathMaterializer.Materialize(generatedFixture, generatedResult);
             if (!generatedPlan.IsValid || generatedPlan.Designations.Count != 1
                 || generatedPlan.Designations[0].Origin != generatedOrigin
-                || generatedPlan.Designations[0].Mode != AccessSearchMode.Flat)
+                || generatedPlan.Designations[0].Mode != AccessSearchMode.Flat
+                || generatedPlan.HandoffOperation != AccessHandoffOperation.Mining)
             { failure = "synthetic generated-path materialization fixture failed"; return false; }
 
             Tile2i turnStart = new Tile2i(4, 12);
@@ -269,6 +275,7 @@ namespace AutoTerrainDesignations.Access
             var distance = new Dictionary<AccessSearchNode, float>();
             var previous = new Dictionary<AccessSearchNode, AccessSearchNode>();
             var queue = new MinQueue();
+            var startNode = new AccessSearchNode(startOrigin, startProfile.Center2, AccessSearchMode.Existing);
             List<AccessSearchNode>? lastRejectedGoalPath = null;
             string lastGoalValidationReason = string.Empty;
             float lastRejectedGoalCost = 0f;
@@ -277,7 +284,8 @@ namespace AutoTerrainDesignations.Access
             {
                 Tile2i nextOrigin = new Tile2i(startOrigin.X + direction.X, startOrigin.Y + direction.Y);
                 AddOriginSuccessors(snapshot, startOrigin, startProfile, nextOrigin, direction,
-                    current: default, hasCurrent: false, baseCost: 0f, distance, previous, queue, rejections);
+                    current: startNode, hasCurrent: true, baseCost: 0f,
+                    distance, previous, queue, rejections);
             }
 
             if (queue.Count == 0)
@@ -294,7 +302,7 @@ namespace AutoTerrainDesignations.Access
                 visited++;
                 if (current.IsGround && snapshot.IsGoalGroundNode(current.Position))
                 {
-                    List<AccessSearchNode> path = Reconstruct(current, previous);
+                    List<AccessSearchNode> path = Reconstruct(current, startNode, previous);
                     if (!ValidateGeneratedPath(path, snapshot, out string validationReason))
                     {
                         Reject(rejections, "FinalSelfContact");
@@ -350,11 +358,21 @@ namespace AutoTerrainDesignations.Access
             Dictionary<AccessSearchNode, AccessSearchNode> previous,
             MinQueue queue, Dictionary<string, int> rejections)
         {
-            foreach (Tile2i groundTile in GetHandoffTiles(snapshot, current.Position, currentProfile))
+            AccessSearchNode predecessor = previous.TryGetValue(current, out AccessSearchNode predecessorNode)
+                ? predecessorNode
+                : current;
+            AccessHeightProfile predecessorProfile = !predecessor.IsGround
+                && TryGetProfile(snapshot, predecessor, out AccessHeightProfile foundPredecessorProfile)
+                    ? foundPredecessorProfile
+                    : currentProfile;
+            foreach (AccessGroundHandoff handoff in GetHandoffs(
+                snapshot, current.Position, currentProfile,
+                predecessor.Position, predecessorProfile))
             {
-                if (!snapshot.TryGetGroundHeight2(groundTile, out int groundHeight2)) continue;
-                var ground = new AccessSearchNode(groundTile, groundHeight2, AccessSearchMode.Ground);
-                Relax(snapshot, current, ground, currentCost + Manhattan(current.CostPosition, groundTile),
+                if (!snapshot.TryGetGroundHeight2(handoff.Tile, out int groundHeight2)) continue;
+                var ground = new AccessSearchNode(handoff.Tile, groundHeight2,
+                    AccessSearchMode.Ground, handoff.Operation);
+                Relax(snapshot, current, ground, currentCost + Manhattan(current.CostPosition, handoff.Tile),
                     distance, previous, queue);
             }
 
@@ -396,14 +414,22 @@ namespace AutoTerrainDesignations.Access
             {
                 if (!TrySolveSuccessor(currentProfile, direction, mode, out AccessHeightProfile nextProfile))
                 { Reject(rejections, "EdgeProfile"); continue; }
-                if (!snapshot.IsCandidateProfileFeasible(nextOrigin, nextProfile, out string reason))
+                bool useDirectionalDurability = hasCurrent
+                    && current.Mode != AccessSearchMode.Existing
+                    && current.Mode != AccessSearchMode.Ground;
+                string reason;
+                bool feasible = useDirectionalDurability
+                    ? snapshot.IsCandidateProfileFeasibleFromValidatedPredecessor(
+                        nextOrigin, nextProfile, currentOrigin, direction, out reason)
+                    : snapshot.IsCandidateProfileFeasible(nextOrigin, nextProfile, out reason);
+                if (!feasible)
                 { Reject(rejections, reason); continue; }
                 if (hasCurrent && !IsCompatibleWithPathHistory(
                     snapshot, nextOrigin, nextProfile, current, previous))
                 { Reject(rejections, "PathSelfContact"); continue; }
 
                 var next = new AccessSearchNode(nextOrigin, nextProfile.Center2, mode);
-                float work = Math.Abs(nextProfile.Center2 - snapshot.GetTerrainCenterHeight2(nextOrigin)) / 2f;
+                float work = EstimateWork(nextProfile.Center2, snapshot.GetTerrainCenterHeight2(nextOrigin));
                 float nextCost = baseCost + 4f + snapshot.WorkDistanceScale * work;
                 Relax(snapshot, current, next, nextCost, distance, previous, queue, hasCurrent);
             }
@@ -436,7 +462,7 @@ namespace AutoTerrainDesignations.Access
                         if (!IsCompatibleWithPathHistory(snapshot, origin, profile, current, previous))
                         { Reject(rejections, "PathSelfContact"); continue; }
                         var next = new AccessSearchNode(origin, profile.Center2, mode);
-                        float work = Math.Abs(profile.Center2 - center2) / 2f;
+                        float work = EstimateWork(profile.Center2, center2);
                         float cost = currentCost + Manhattan(current.Position, next.CostPosition)
                             + snapshot.WorkDistanceScale * work;
                         Relax(snapshot, current, next, cost, distance, previous, queue);
@@ -498,8 +524,18 @@ namespace AutoTerrainDesignations.Access
                     yield return candidate;
         }
 
-        private static IEnumerable<Tile2i> GetHandoffTiles(AccessSearchSnapshot snapshot, Tile2i origin, AccessHeightProfile profile)
+        private static IEnumerable<AccessGroundHandoff> GetHandoffs(
+            AccessSearchSnapshot snapshot, Tile2i origin, AccessHeightProfile profile,
+            Tile2i predecessorOrigin, AccessHeightProfile predecessorProfile)
         {
+            if (snapshot.HasWorkableHandoffEvaluator)
+            {
+                foreach (AccessGroundHandoff handoff in snapshot.GetWorkableHandoffs(
+                    origin, profile, predecessorOrigin, predecessorProfile))
+                    yield return handoff;
+                yield break;
+            }
+
             Tile2i center = origin + new RelTile2i(2, 2);
             Tile2i[] corners =
             {
@@ -518,16 +554,30 @@ namespace AutoTerrainDesignations.Access
             }
             if (!centerMatches && matchingCornerCount < 2) yield break;
 
-            if (centerMatches) yield return center;
+            if (centerMatches)
+                yield return new AccessGroundHandoff(center, AccessHandoffOperation.None);
             for (int i = 0; i < corners.Length; i++)
-                if (matchingCorners[i]) yield return corners[i];
+                if (matchingCorners[i])
+                    yield return new AccessGroundHandoff(corners[i], AccessHandoffOperation.None);
         }
 
         internal static bool ContainsHandoffTile(AccessSearchSnapshot snapshot, Tile2i origin,
             AccessHeightProfile profile, Tile2i tile)
         {
-            foreach (Tile2i candidate in GetHandoffTiles(snapshot, origin, profile))
-                if (candidate == tile) return true;
+            foreach (AccessGroundHandoff candidate in GetHandoffs(
+                snapshot, origin, profile, origin, profile))
+                if (candidate.Tile == tile) return true;
+            return false;
+        }
+
+        internal static bool ContainsHandoff(AccessSearchSnapshot snapshot, Tile2i origin,
+            AccessHeightProfile profile, Tile2i predecessorOrigin,
+            AccessHeightProfile predecessorProfile, Tile2i tile,
+            AccessHandoffOperation operation)
+        {
+            foreach (AccessGroundHandoff candidate in GetHandoffs(
+                snapshot, origin, profile, predecessorOrigin, predecessorProfile))
+                if (candidate.Tile == tile && candidate.Operation == operation) return true;
             return false;
         }
 
@@ -575,16 +625,29 @@ namespace AutoTerrainDesignations.Access
             if (distance.TryGetValue(next, out float existing) && existing <= nextCost + 0.0001f) return;
             distance[next] = nextCost;
             if (hasCurrent) previous[next] = current;
-            float heuristic = snapshot.UseAStar ? snapshot.GetGoalManhattanDistance(next.CostPosition) : 0f;
+            float heuristic = snapshot.UseAStar
+                ? snapshot.GetGoalTravelLowerBound(next.CostPosition, next.Height2)
+                : 0f;
             queue.Push(new QueueEntry(next, nextCost, nextCost + heuristic));
         }
 
+        private static float EstimateWork(int targetHeight2, int terrainHeight2)
+        {
+            float deltaHeight = Math.Abs(targetHeight2 - terrainHeight2) / 2f;
+            return 0.5f * deltaHeight * deltaHeight;
+        }
+
         private static List<AccessSearchNode> Reconstruct(AccessSearchNode end,
+            AccessSearchNode start,
             Dictionary<AccessSearchNode, AccessSearchNode> previous)
         {
-            var path = new List<AccessSearchNode> { end };
-            while (previous.TryGetValue(end, out AccessSearchNode parent))
-            { path.Add(parent); end = parent; }
+            var path = new List<AccessSearchNode>();
+            while (!end.Equals(start))
+            {
+                path.Add(end);
+                if (!previous.TryGetValue(end, out AccessSearchNode parent)) break;
+                end = parent;
+            }
             path.Reverse();
             return path;
         }

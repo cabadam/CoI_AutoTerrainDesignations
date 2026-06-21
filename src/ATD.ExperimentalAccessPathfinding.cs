@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Globalization;
 using System.Linq;
 using Mafi;
@@ -61,6 +62,7 @@ namespace AutoTerrainDesignations
             out AccessSearchSnapshot snapshot,
             out string failureReason)
         {
+            Stopwatch snapshotTimer = Stopwatch.StartNew();
             snapshot = null!;
             failureReason = string.Empty;
             if (!AccessPathSearch.ValidateCoreTransitions(out failureReason))
@@ -86,7 +88,7 @@ namespace AutoTerrainDesignations
             var fixedProfiles = new Dictionary<Tile2i, AccessHeightProfile>();
             var designatedOrigins = new HashSet<Tile2i>();
 
-            foreach (TerrainDesignation designation in s_desigManager.SelectDesignationsInArea(boundsMin, boundsMax))
+            foreach (TerrainDesignation designation in SelectDesignationsInAreaChunked(boundsMin, boundsMax))
             {
                 Tile2i origin = designation.OriginTileCoord;
                 designatedOrigins.Add(origin);
@@ -161,13 +163,18 @@ namespace AutoTerrainDesignations
                 if (provider.IsPathable(tile, pathParams.PathabilityQueryMask)) groundNodes.Add(tile);
             }
 
-            if (!TryFindNearestTile(groundNodes, towerCenter, out Tile2i groundStart))
+            if (!TryBuildTowerReachableGround(tower, boundsMin, boundsMax,
+                groundNodes, provider, pathParams,
+                out HashSet<Tile2i> towerReachableGround, out Tile2i groundStart))
             {
                 failureReason = "NoTowerGround";
                 return false;
             }
-
-            HashSet<Tile2i> towerReachableGround = FloodGround(groundNodes, groundStart);
+            if (towerReachableGround.Count == 0)
+            {
+                failureReason = "NoTowerReachableGround";
+                return false;
+            }
             if (minHeight2 == int.MaxValue) { minHeight2 = 0; maxHeight2 = 0; }
 
             snapshot = new AccessSearchSnapshot(
@@ -189,7 +196,17 @@ namespace AutoTerrainDesignations
                 towerReachableGround,
                 s_buildingOccupiedTiles,
                 oceanTiles,
-                durabilityCorners);
+                durabilityCorners,
+                (origin, profile, predecessorOrigin, predecessorProfile) =>
+                    BuildProspectiveWorkableHandoffs(
+                        origin, profile, predecessorOrigin, predecessorProfile,
+                        terrMgr, towerReachableGround));
+            snapshotTimer.Stop();
+            LogExperimentalAccessDebug(
+                $"[ATD Experimental Access Timing] phase=snapshot algorithm={(snapshot.UseAStar ? "A*" : "Dijkstra")} " +
+                $"elapsedMs={snapshotTimer.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture)} " +
+                $"goals={snapshot.GoalCount} towerGroundStart={groundStart} " +
+                $"landslideSources={snapshot.LandslideSourceCount}");
             return true;
         }
 
@@ -198,7 +215,9 @@ namespace AutoTerrainDesignations
             AccessOriginCluster cluster)
         {
             Tile2i[] origins = cluster.Origins.Select(origin => origin.Origin).ToArray();
+            Stopwatch searchTimer = Stopwatch.StartNew();
             AccessSearchResult result = AccessPathSearch.FindPath(snapshot, origins);
+            searchTimer.Stop();
             LastExperimentalAccessSearch = result;
             string rejections = result.Rejections.Count == 0
                 ? "none"
@@ -208,14 +227,18 @@ namespace AutoTerrainDesignations
                     .Select(pair => $"{pair.Key}:{pair.Value}"));
             string reason = string.IsNullOrEmpty(result.FailureReason) ? "none" : result.FailureReason;
             string cost = result.Cost.ToString("0.##", CultureInfo.InvariantCulture);
+            string searchMs = searchTimer.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture);
             string landslideRun = snapshot.LandslideRunPerHeight.ToString("0.##", CultureInfo.InvariantCulture);
-            LogExperimentalAccessDebug($"[ATD Experimental Access] cluster={cluster.ClusterId} algorithm={(snapshot.UseAStar ? "A*" : "Dijkstra")} success={result.Success} reason={reason} start=({result.StartOrigin.X},{result.StartOrigin.Y}) goals={snapshot.GoalCount} landslideRun={landslideRun} landslideSources={snapshot.LandslideSourceCount} cost={cost} visited={result.VisitedNodes} pathNodes={result.Path.Count} rejections=[{rejections}]");
+            LogExperimentalAccessDebug($"[ATD Experimental Access] cluster={cluster.ClusterId} algorithm={(snapshot.UseAStar ? "A*" : "Dijkstra")} success={result.Success} reason={reason} start=({result.StartOrigin.X},{result.StartOrigin.Y}) goals={snapshot.GoalCount} landslideRun={landslideRun} landslideSources={snapshot.LandslideSourceCount} cost={cost} visited={result.VisitedNodes} pathNodes={result.Path.Count} searchMs={searchMs} rejections=[{rejections}]");
             if (result.Success)
             {
                 LogExperimentalAccessDebug($"[ATD Experimental Access Path] cluster={cluster.ClusterId} {FormatExperimentalPath(result)}");
+                Stopwatch materializeTimer = Stopwatch.StartNew();
                 AccessDesignationPlan plan = AccessPathMaterializer.Materialize(snapshot, result);
+                materializeTimer.Stop();
                 LastExperimentalAccessPlan = plan;
-                LogExperimentalAccessDebug($"[ATD Experimental Access Plan] cluster={cluster.ClusterId} valid={plan.IsValid} reason={(string.IsNullOrEmpty(plan.FailureReason) ? "none" : plan.FailureReason)} designations={plan.Designations.Count} reused={plan.ReusedNodeCount} groundNodes={plan.GroundNodeCount} handoff=({plan.HandoffGround.X},{plan.HandoffGround.Y})");
+                string materializeMs = materializeTimer.Elapsed.TotalMilliseconds.ToString("0.###", CultureInfo.InvariantCulture);
+                LogExperimentalAccessDebug($"[ATD Experimental Access Plan] cluster={cluster.ClusterId} valid={plan.IsValid} reason={(string.IsNullOrEmpty(plan.FailureReason) ? "none" : plan.FailureReason)} designations={plan.Designations.Count} reused={plan.ReusedNodeCount} groundNodes={plan.GroundNodeCount} handoff=({plan.HandoffGround.X},{plan.HandoffGround.Y}) handoffOperation={plan.HandoffOperation} materializeMs={materializeMs}");
                 if (plan.IsValid)
                     LogExperimentalAccessDebug($"[ATD Experimental Access Plan Tiles] cluster={cluster.ClusterId} {FormatExperimentalPlan(plan)}");
             }
@@ -224,6 +247,53 @@ namespace AutoTerrainDesignations
                 LastExperimentalAccessPlan = null;
                 if (result.Path.Count > 0)
                     LogExperimentalAccessDebug($"[ATD Experimental Access Rejected Path] cluster={cluster.ClusterId} {FormatExperimentalPath(result)}");
+            }
+            return result;
+        }
+
+        private static IReadOnlyList<AccessGroundHandoff> BuildProspectiveWorkableHandoffs(
+            Tile2i origin,
+            AccessHeightProfile profile,
+            Tile2i predecessorOrigin,
+            AccessHeightProfile predecessorProfile,
+            TerrainManager terrMgr,
+            HashSet<Tile2i> towerReachableGround)
+        {
+            if (((profile.Nw2 | profile.Ne2 | profile.Se2 | profile.Sw2) & 1) != 0)
+                return Array.Empty<AccessGroundHandoff>();
+
+            var data = new DesignationData(origin,
+                new HeightTilesI(profile.Nw2 / 2),
+                new HeightTilesI(profile.Ne2 / 2),
+                new HeightTilesI(profile.Se2 / 2),
+                new HeightTilesI(profile.Sw2 / 2));
+            Tile2i predecessorCenter = predecessorOrigin + new RelTile2i(2, 2);
+            float predecessorGroundCenter = terrMgr.GetHeight(predecessorCenter).Value.ToFloat();
+            AccessHandoffOperation operation = predecessorProfile.Center2 / 2f < predecessorGroundCenter
+                ? AccessHandoffOperation.Mining
+                : AccessHandoffOperation.Dumping;
+            TerrainDesignationProto? proto = operation == AccessHandoffOperation.Mining
+                ? s_miningProto
+                : s_dumpingProto;
+            if (proto == null || !TryBuildProspectiveFulfilledBitmap(
+                proto, terrMgr, data, operation, out uint fulfilledBitmap))
+                return Array.Empty<AccessGroundHandoff>();
+            if (fulfilledBitmap == ALL_DESIGNATION_TILES_MASK
+                || (fulfilledBitmap & READY_PERIMETER_MASK) == 0)
+                return Array.Empty<AccessGroundHandoff>();
+
+            var result = new List<AccessGroundHandoff>();
+            for (int y = 0; y <= 4; y++)
+            {
+                for (int x = 0; x <= 4; x++)
+                {
+                    if (x != 0 && x != 4 && y != 0 && y != 4) continue;
+                    uint mask = GetDesignationMask(x, y);
+                    if ((fulfilledBitmap & mask) == 0) continue;
+                    Tile2i tile = origin + new RelTile2i(x, y);
+                    if (towerReachableGround.Contains(tile))
+                        result.Add(new AccessGroundHandoff(tile, operation));
+                }
             }
             return result;
         }
@@ -263,13 +333,8 @@ namespace AutoTerrainDesignations
         }
 
         private static bool TryPlaceExperimentalAccessCandidate(
-            IAreaManagingTower tower,
-            Dict<Tile2i, int> tileDepths,
-            Dict<Tile2i, int> cornerHeights,
-            TerrainManager terrMgr,
+            AccessSearchSnapshot snapshot,
             TerrainDesignationProto rampProto,
-            bool isMining,
-            bool allowsMixedWork,
             ExperimentalAccessCandidate candidate,
             List<Tile2i>? placedRampOrigins,
             HashSet<Tile2i>? reservedRampTiles,
@@ -283,23 +348,19 @@ namespace AutoTerrainDesignations
                 failureReason = "DesignationManagerUnavailable";
                 return false;
             }
-            if (!TryBuildExperimentalAccessSnapshot(tower, tileDepths, cornerHeights, terrMgr, isMining, allowsMixedWork,
-                out AccessSearchSnapshot freshSnapshot, out failureReason))
-                return false;
 
-            AccessDesignationPlan freshPlan = AccessPathMaterializer.Materialize(freshSnapshot, candidate.SearchResult);
-            if (!freshPlan.IsValid || freshPlan.Designations.Count == 0)
+            AccessDesignationPlan placementPlan = AccessPathMaterializer.Materialize(snapshot, candidate.SearchResult);
+            if (!placementPlan.IsValid || placementPlan.Designations.Count == 0)
             {
-                failureReason = freshPlan.IsValid ? "EmptyPlan" : freshPlan.FailureReason;
+                failureReason = placementPlan.IsValid ? "EmptyPlan" : placementPlan.FailureReason;
                 return false;
             }
 
             Tile2i terminalOrigin = default;
-            Tile2i terminalIncomingDirection = default;
             bool hasGeneratedTerminal = TryGetGeneratedTerminal(
-                candidate.SearchResult, out terminalOrigin, out terminalIncomingDirection);
-            var placedNow = new List<PlacedExperimentalDesignation>(freshPlan.Designations.Count);
-            foreach (AccessPlannedDesignation item in freshPlan.Designations)
+                candidate.SearchResult, out terminalOrigin);
+            var placedNow = new List<PlacedExperimentalDesignation>(placementPlan.Designations.Count);
+            foreach (AccessPlannedDesignation item in placementPlan.Designations)
             {
                 if (((item.Profile.Nw2 | item.Profile.Ne2 | item.Profile.Se2 | item.Profile.Sw2) & 1) != 0)
                 {
@@ -319,10 +380,22 @@ namespace AutoTerrainDesignations
                     new HeightTilesI(item.Profile.Ne2 / 2),
                     new HeightTilesI(item.Profile.Se2 / 2),
                     new HeightTilesI(item.Profile.Sw2 / 2));
-                TerrainDesignationProto itemProto = hasGeneratedTerminal && item.Origin == terminalOrigin
-                    ? SelectTerminalDesignationProto(
-                        rampProto, item.Profile, terminalIncomingDirection, terrMgr, data)
-                    : rampProto;
+                TerrainDesignationProto itemProto = rampProto;
+                if (hasGeneratedTerminal && item.Origin == terminalOrigin)
+                {
+                    TerrainDesignationProto? terminalProto = placementPlan.HandoffOperation == AccessHandoffOperation.Mining
+                        ? s_miningProto
+                        : placementPlan.HandoffOperation == AccessHandoffOperation.Dumping
+                            ? s_dumpingProto
+                            : null;
+                    if (terminalProto == null)
+                    {
+                        failureReason = "MissingHandoffOperationProto";
+                        RollBackExperimentalDesignations(placedNow, reservedRampTiles);
+                        return false;
+                    }
+                    itemProto = terminalProto;
+                }
                 if (!s_desigManager.AddOrReplaceDesignation(itemProto, data))
                 {
                     failureReason = "PlacementFailed";
@@ -339,8 +412,8 @@ namespace AutoTerrainDesignations
             }
 
             placedRampOrigins?.AddRange(placedNow.Select(item => item.Origin));
-            topRowTile = freshPlan.Designations[freshPlan.Designations.Count - 1].Origin;
-            LastExperimentalAccessPlan = freshPlan;
+            topRowTile = placementPlan.Designations[placementPlan.Designations.Count - 1].Origin;
+            LastExperimentalAccessPlan = placementPlan;
             return true;
         }
 
@@ -377,88 +450,15 @@ namespace AutoTerrainDesignations
 
         private static bool TryGetGeneratedTerminal(
             AccessSearchResult result,
-            out Tile2i terminalOrigin,
-            out Tile2i incomingDirection)
+            out Tile2i terminalOrigin)
         {
             terminalOrigin = default;
-            incomingDirection = default;
-            if (result.Path.Count < 3) return false;
+            if (result.Path.Count < 2) return false;
             AccessSearchNode terminal = result.Path[result.Path.Count - 2];
-            AccessSearchNode predecessor = result.Path[result.Path.Count - 3];
-            if (terminal.IsGround || terminal.Mode == AccessSearchMode.Existing || predecessor.IsGround)
+            if (terminal.IsGround || terminal.Mode == AccessSearchMode.Existing)
                 return false;
             terminalOrigin = terminal.Position;
-            incomingDirection = new Tile2i(
-                predecessor.Position.X - terminal.Position.X,
-                predecessor.Position.Y - terminal.Position.Y);
-            return Math.Abs(incomingDirection.X) + Math.Abs(incomingDirection.Y) == 4;
-        }
-
-        private static TerrainDesignationProto SelectTerminalDesignationProto(
-            TerrainDesignationProto levelingProto,
-            AccessHeightProfile profile,
-            Tile2i incomingDirection,
-            TerrainManager terrMgr,
-            DesignationData data)
-        {
-            GetProfileEdgeSamples(data.OriginTile, profile, incomingDirection,
-                out Tile2i firstPosition, out int firstTarget2,
-                out Tile2i secondPosition, out int secondTarget2);
-            float firstDelta = firstTarget2 / 2f - terrMgr.GetHeight(firstPosition).Value.ToFloat();
-            float secondDelta = secondTarget2 / 2f - terrMgr.GetHeight(secondPosition).Value.ToFloat();
-
-            const float tolerance = 0.01f;
-            TerrainDesignationProto? candidateProto;
-            if (firstDelta > tolerance && secondDelta > tolerance)
-                candidateProto = s_dumpingProto;
-            else if (firstDelta < -tolerance && secondDelta < -tolerance)
-                candidateProto = s_miningProto;
-            else
-            {
-                Tile2i center = data.OriginTile + new RelTile2i(2, 2);
-                float centerDelta = profile.Center2 / 2f - terrMgr.GetHeight(center).Value.ToFloat();
-                candidateProto = centerDelta > tolerance
-                    ? s_dumpingProto
-                    : centerDelta < -tolerance ? s_miningProto : null;
-            }
-
-            if (candidateProto == null) return levelingProto;
-            bool isReady = candidateProto == s_miningProto
-                ? IsProspectiveMiningDesignationReady(candidateProto, terrMgr, data)
-                : candidateProto == s_dumpingProto
-                    && IsProspectiveDumpingDesignationReady(candidateProto, terrMgr, data);
-            return isReady ? candidateProto : levelingProto;
-        }
-
-        private static void GetProfileEdgeSamples(
-            Tile2i origin,
-            AccessHeightProfile profile,
-            Tile2i direction,
-            out Tile2i firstPosition,
-            out int firstTarget2,
-            out Tile2i secondPosition,
-            out int secondTarget2)
-        {
-            if (direction.X > 0)
-            {
-                firstPosition = origin + new RelTile2i(4, 0); firstTarget2 = profile.Ne2;
-                secondPosition = origin + new RelTile2i(4, 4); secondTarget2 = profile.Se2;
-            }
-            else if (direction.X < 0)
-            {
-                firstPosition = origin; firstTarget2 = profile.Nw2;
-                secondPosition = origin + new RelTile2i(0, 4); secondTarget2 = profile.Sw2;
-            }
-            else if (direction.Y > 0)
-            {
-                firstPosition = origin + new RelTile2i(0, 4); firstTarget2 = profile.Sw2;
-                secondPosition = origin + new RelTile2i(4, 4); secondTarget2 = profile.Se2;
-            }
-            else
-            {
-                firstPosition = origin; firstTarget2 = profile.Nw2;
-                secondPosition = origin + new RelTile2i(4, 0); secondTarget2 = profile.Ne2;
-            }
+            return true;
         }
 
         private static string FormatExperimentalPath(AccessSearchResult result)
@@ -511,18 +511,27 @@ namespace AutoTerrainDesignations
             Dictionary<Tile2i, AccessHeightProfile> profiles,
             IReadOnlyDictionary<Tile2i, HashSet<int>> buildingFixedHeights2ByTile)
         {
-            var heightsByPosition = new Dictionary<Tile2i, HashSet<int>>();
+            var designationHeightsByPosition = new Dictionary<Tile2i, HashSet<int>>();
             foreach (KeyValuePair<Tile2i, AccessHeightProfile> pair in profiles)
             {
                 pair.Value.AddWorldCorners(pair.Key, (position, height2) =>
                 {
-                    if (!heightsByPosition.TryGetValue(position, out HashSet<int> heights))
+                    if (!designationHeightsByPosition.TryGetValue(position, out HashSet<int> heights))
                     {
                         heights = new HashSet<int>();
-                        heightsByPosition[position] = heights;
+                        designationHeightsByPosition[position] = heights;
                     }
                     heights.Add(height2);
                 });
+            }
+
+            var heightsByPosition = new Dictionary<Tile2i, HashSet<int>>();
+            foreach (KeyValuePair<Tile2i, HashSet<int>> pair in designationHeightsByPosition)
+            {
+                // Four surrounding compatible origins make this a strictly interior
+                // corner. Their stable profiles contain its exclusion envelope.
+                if (pair.Value.Count == 1 && IsStrictlyInteriorDesignationCorner(pair.Key, profiles)) continue;
+                heightsByPosition[pair.Key] = new HashSet<int>(pair.Value);
             }
 
             foreach (KeyValuePair<Tile2i, HashSet<int>> pair in buildingFixedHeights2ByTile)
@@ -539,6 +548,29 @@ namespace AutoTerrainDesignations
             return heightsByPosition
                 .SelectMany(pair => pair.Value.Select(height2 => new AccessDurabilityCorner(pair.Key, height2)))
                 .ToList();
+        }
+
+        private static bool IsStrictlyInteriorDesignationCorner(Tile2i corner,
+            IReadOnlyDictionary<Tile2i, AccessHeightProfile> profiles)
+        {
+            if (!profiles.TryGetValue(corner + new RelTile2i(-4, -4), out AccessHeightProfile nw)
+                || !profiles.TryGetValue(corner + new RelTile2i(0, -4), out AccessHeightProfile ne)
+                || !profiles.TryGetValue(corner + new RelTile2i(-4, 0), out AccessHeightProfile sw)
+                || !profiles.TryGetValue(corner, out AccessHeightProfile se))
+                return false;
+
+            return ProfilesShareEdge(nw, ne, new Tile2i(1, 0))
+                && ProfilesShareEdge(nw, sw, new Tile2i(0, 1))
+                && ProfilesShareEdge(ne, se, new Tile2i(0, 1))
+                && ProfilesShareEdge(sw, se, new Tile2i(1, 0));
+        }
+
+        private static bool ProfilesShareEdge(AccessHeightProfile first,
+            AccessHeightProfile second, Tile2i direction)
+        {
+            first.GetEdge(direction, out int firstA, out int firstB);
+            second.GetEdge(new Tile2i(-direction.X, -direction.Y), out int secondA, out int secondB);
+            return firstA == secondA && firstB == secondB;
         }
 
         private static bool IsDurabilityBlocked(Tile2i position, int height2,
@@ -559,34 +591,55 @@ namespace AutoTerrainDesignations
                 && tower.Area.ContainsTile(origin + new RelTile2i(0, 3))
                 && tower.Area.ContainsTile(origin + new RelTile2i(3, 3));
 
-        private static bool TryFindNearestTile(HashSet<Tile2i> tiles, Tile2i target, out Tile2i nearest)
+        private static bool TryBuildTowerReachableGround(
+            IAreaManagingTower tower,
+            Tile2i boundsMin,
+            Tile2i boundsMax,
+            HashSet<Tile2i> groundNodes,
+            IPathabilityProvider provider,
+            VehiclePathFindingParams pathParams,
+            out HashSet<Tile2i> reachedGround,
+            out Tile2i start)
         {
-            nearest = default;
-            int best = int.MaxValue;
-            foreach (Tile2i tile in tiles)
-            {
-                int distance = Math.Abs(tile.X - target.X) + Math.Abs(tile.Y - target.Y);
-                if (distance < best || (distance == best && (tile.X < nearest.X || (tile.X == nearest.X && tile.Y < nearest.Y))))
-                { nearest = tile; best = distance; }
-            }
-            return best != int.MaxValue;
-        }
+            reachedGround = new HashSet<Tile2i>();
+            Tile2i towerPosition = GetTowerPosition(tower, boundsMin, boundsMax);
+            if (!TryFindNearestPathableTile(provider, pathParams, towerPosition, out start))
+                return false;
 
-        private static HashSet<Tile2i> FloodGround(HashSet<Tile2i> groundNodes, Tile2i start)
-        {
-            var reached = new HashSet<Tile2i> { start };
+            int minX = Math.Min(boundsMin.X, towerPosition.X) - RAMP_ACCESS_SEARCH_MARGIN_TILES;
+            int minY = Math.Min(boundsMin.Y, towerPosition.Y) - RAMP_ACCESS_SEARCH_MARGIN_TILES;
+            int maxX = Math.Max(boundsMax.X, towerPosition.X) + RAMP_ACCESS_SEARCH_MARGIN_TILES;
+            int maxY = Math.Max(boundsMax.Y, towerPosition.Y) + RAMP_ACCESS_SEARCH_MARGIN_TILES;
+
+            var visited = new HashSet<Tile2i> { start };
             var queue = new Queue<Tile2i>();
             queue.Enqueue(start);
             while (queue.Count > 0)
             {
                 Tile2i current = queue.Dequeue();
+                if (groundNodes.Contains(current)) reachedGround.Add(current);
                 foreach (RelTile2i direction in s_experimentalGroundDirections)
                 {
                     Tile2i next = current + direction;
-                    if (groundNodes.Contains(next) && reached.Add(next)) queue.Enqueue(next);
+                    if (next.X < minX || next.X > maxX || next.Y < minY || next.Y > maxY
+                        || visited.Contains(next))
+                        continue;
+
+                    bool insideManagedArea = tower.Area.ContainsTile(next);
+                    if (insideManagedArea)
+                    {
+                        if (!groundNodes.Contains(next)) continue;
+                    }
+                    else if (!provider.IsPathable(next, pathParams.PathabilityQueryMask))
+                    {
+                        continue;
+                    }
+
+                    visited.Add(next);
+                    queue.Enqueue(next);
                 }
             }
-            return reached;
+            return true;
         }
 
         private static int ToHeight2(float height)

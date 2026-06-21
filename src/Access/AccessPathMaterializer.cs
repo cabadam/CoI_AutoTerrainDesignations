@@ -17,10 +17,13 @@ namespace AutoTerrainDesignations.Access
             var generatedByOrigin = new Dictionary<Tile2i, AccessPlannedDesignation>();
             var cornerHeights = new Dictionary<Tile2i, int>();
             Tile2i previousPosition = result.StartOrigin;
+            Tile2i previousVPredecessorPosition = result.StartOrigin;
+            AccessHeightProfile previousVPredecessorProfile = previousProfile;
             bool previousWasGround = false;
             int reusedNodes = 0;
             int groundNodes = 0;
             Tile2i handoffGround = default;
+            AccessHandoffOperation handoffOperation = AccessHandoffOperation.None;
 
             for (int pathIndex = 0; pathIndex < result.Path.Count; pathIndex++)
             {
@@ -34,7 +37,10 @@ namespace AutoTerrainDesignations.Access
                         if (Manhattan(previousPosition, node.Position) != 1)
                             return Invalid("PlanGroundDiscontinuity", result, designations, reusedNodes, groundNodes);
                     }
-                    else if (!AccessPathSearch.ContainsHandoffTile(snapshot, previousPosition, previousProfile, node.Position))
+                    else if (!AccessPathSearch.ContainsHandoff(
+                        snapshot, previousPosition, previousProfile,
+                        previousVPredecessorPosition, previousVPredecessorProfile,
+                        node.Position, node.HandoffOperation))
                     {
                         return Invalid("PlanVToGHandoff", result, designations, reusedNodes, groundNodes);
                     }
@@ -42,6 +48,7 @@ namespace AutoTerrainDesignations.Access
                     previousWasGround = true;
                     previousPosition = node.Position;
                     handoffGround = node.Position;
+                    handoffOperation = node.HandoffOperation;
                     groundNodes++;
                     continue;
                 }
@@ -99,6 +106,11 @@ namespace AutoTerrainDesignations.Access
                     }
                 }
 
+                if (!previousWasGround)
+                {
+                    previousVPredecessorPosition = previousPosition;
+                    previousVPredecessorProfile = previousProfile;
+                }
                 previousWasGround = false;
                 previousPosition = node.Position;
                 previousProfile = profile;
@@ -109,12 +121,14 @@ namespace AutoTerrainDesignations.Access
                 return Invalid("PlanGoalMissing", result, designations, reusedNodes, groundNodes);
 
             return new AccessDesignationPlan(true, string.Empty, result.StartOrigin, handoffGround,
+                handoffOperation,
                 designations, reusedNodes, groundNodes);
         }
 
         private static AccessDesignationPlan Invalid(string reason, AccessSearchResult result,
             IReadOnlyList<AccessPlannedDesignation> designations, int reusedNodes, int groundNodes)
             => new AccessDesignationPlan(false, reason, result.StartOrigin, default,
+                AccessHandoffOperation.None,
                 designations, reusedNodes, groundNodes);
 
         private static bool IsOriginStep(Tile2i direction)

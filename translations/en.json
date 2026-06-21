@@ -169,7 +169,7 @@
   ],
   [
     "settings.experimental_access.landslide_run.tooltip",
-    "Horizontal exclusion distance per vertical terrain level. 1 is a 45-degree slope; higher values widen the exclusion hourglass, while lower values narrow it. Range: 0.05-4; default: 1."
+    "Horizontal exclusion distance per vertical terrain level. 1 is a 45-degree slope; higher values widen the exclusion hourglass, while lower values narrow it. Range: 0.05-2; default: 1."
   ],
   [
     "settings.max_slope.label",

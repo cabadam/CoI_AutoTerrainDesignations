@@ -15,24 +15,47 @@ namespace AutoTerrainDesignations.Access
         Existing
     }
 
+    internal enum AccessHandoffOperation
+    {
+        None,
+        Mining,
+        Dumping
+    }
+
+    internal readonly struct AccessGroundHandoff
+    {
+        public Tile2i Tile { get; }
+        public AccessHandoffOperation Operation { get; }
+
+        public AccessGroundHandoff(Tile2i tile, AccessHandoffOperation operation)
+        {
+            Tile = tile;
+            Operation = operation;
+        }
+    }
+
     internal readonly struct AccessSearchNode : IEquatable<AccessSearchNode>
     {
         public Tile2i Position { get; }
         public int Height2 { get; }
         public AccessSearchMode Mode { get; }
+        public AccessHandoffOperation HandoffOperation { get; }
 
-        public AccessSearchNode(Tile2i position, int height2, AccessSearchMode mode)
+        public AccessSearchNode(Tile2i position, int height2, AccessSearchMode mode,
+            AccessHandoffOperation handoffOperation = AccessHandoffOperation.None)
         {
             Position = position;
             Height2 = height2;
             Mode = mode;
+            HandoffOperation = handoffOperation;
         }
 
         public bool IsGround => Mode == AccessSearchMode.Ground;
         public Tile2i CostPosition => IsGround ? Position : Position + new RelTile2i(2, 2);
 
         public bool Equals(AccessSearchNode other)
-            => Position == other.Position && Height2 == other.Height2 && Mode == other.Mode;
+            => Position == other.Position && Height2 == other.Height2 && Mode == other.Mode
+                && HandoffOperation == other.HandoffOperation;
 
         public override bool Equals(object? obj) => obj is AccessSearchNode other && Equals(other);
 
@@ -43,11 +66,12 @@ namespace AutoTerrainDesignations.Access
                 int hash = Position.GetHashCode();
                 hash = (hash * 397) ^ Height2;
                 hash = (hash * 397) ^ (int)Mode;
+                hash = (hash * 397) ^ (int)HandoffOperation;
                 return hash;
             }
         }
 
-        public override string ToString() => $"{Mode}@{Position}/h2={Height2}";
+        public override string ToString() => $"{Mode}@{Position}/h2={Height2}/handoff={HandoffOperation}";
     }
 
     internal readonly struct AccessHeightProfile
@@ -150,8 +174,12 @@ namespace AutoTerrainDesignations.Access
         private readonly HashSet<Tile2i> m_occupiedTiles;
         private readonly HashSet<Tile2i> m_oceanTiles;
         private readonly HashSet<Tile2i> m_validOrigins;
-        private readonly Dictionary<Tile2i, int> m_goalDistance;
+        private readonly Dictionary<int, int[]> m_goalDistancesByHeight2;
+        private readonly int m_goalDistanceWidth;
+        private readonly int m_goalDistanceHeight;
         private readonly AccessDurabilityCorner[] m_durabilityCorners;
+        private readonly Func<Tile2i, AccessHeightProfile, Tile2i, AccessHeightProfile,
+            IReadOnlyList<AccessGroundHandoff>>? m_workableHandoffs;
 
         public Tile2i BoundsMin { get; }
         public Tile2i BoundsMax { get; }
@@ -185,7 +213,9 @@ namespace AutoTerrainDesignations.Access
             IEnumerable<Tile2i> goalGroundNodes,
             IEnumerable<Tile2i> occupiedTiles,
             IEnumerable<Tile2i> oceanTiles,
-            IEnumerable<AccessDurabilityCorner> durabilityCorners)
+            IEnumerable<AccessDurabilityCorner> durabilityCorners,
+            Func<Tile2i, AccessHeightProfile, Tile2i, AccessHeightProfile,
+                IReadOnlyList<AccessGroundHandoff>>? workableHandoffs = null)
         {
             BoundsMin = boundsMin;
             BoundsMax = boundsMax;
@@ -206,8 +236,13 @@ namespace AutoTerrainDesignations.Access
             m_occupiedTiles = new HashSet<Tile2i>(occupiedTiles);
             m_oceanTiles = new HashSet<Tile2i>(oceanTiles);
             m_validOrigins = new HashSet<Tile2i>(m_terrainCenterHeight2.Keys);
-            m_goalDistance = useAStar ? BuildGoalDistance(boundsMin, boundsMax, m_goalGroundNodes) : new Dictionary<Tile2i, int>();
+            m_goalDistanceWidth = boundsMax.X - boundsMin.X + 1;
+            m_goalDistanceHeight = boundsMax.Y - boundsMin.Y + 1;
+            m_goalDistancesByHeight2 = useAStar
+                ? BuildGoalDistancesByHeight(boundsMin, boundsMax, m_goalGroundNodes, m_groundHeight2)
+                : new Dictionary<int, int[]>();
             m_durabilityCorners = new List<AccessDurabilityCorner>(durabilityCorners).ToArray();
+            m_workableHandoffs = workableHandoffs;
         }
 
         public bool IsOriginInside(Tile2i origin) => m_validOrigins.Contains(origin);
@@ -220,12 +255,30 @@ namespace AutoTerrainDesignations.Access
         public bool TryGetFixedProfile(Tile2i origin, out AccessHeightProfile profile) => m_fixedProfiles.TryGetValue(origin, out profile);
         public bool IsGroundNode(Tile2i tile) => m_groundNodes.Contains(tile);
         public bool IsGoalGroundNode(Tile2i tile) => m_goalGroundNodes.Contains(tile);
-        public int GetGoalManhattanDistance(Tile2i tile)
+        public int GetGoalTravelLowerBound(Tile2i tile, int height2)
         {
-            return m_goalDistance.TryGetValue(tile, out int distance) ? distance : 0;
+            int x = tile.X - BoundsMin.X;
+            int y = tile.Y - BoundsMin.Y;
+            if (x < 0 || x >= m_goalDistanceWidth || y < 0 || y >= m_goalDistanceHeight) return 0;
+            int index = y * m_goalDistanceWidth + x;
+            int best = int.MaxValue;
+            foreach (KeyValuePair<int, int[]> entry in m_goalDistancesByHeight2)
+            {
+                int horizontalDistance = entry.Value[index];
+                if (horizontalDistance < 0) continue;
+                int verticalDistance = Math.Abs(height2 - entry.Key);
+                best = Math.Min(best, Math.Max(horizontalDistance, verticalDistance));
+            }
+            return best == int.MaxValue ? 0 : best;
         }
         public bool TryGetGroundHeight2(Tile2i tile, out int height2) => m_groundHeight2.TryGetValue(tile, out height2);
         public int GetTerrainCenterHeight2(Tile2i origin) => m_terrainCenterHeight2.TryGetValue(origin, out int h2) ? h2 : 0;
+        public bool HasWorkableHandoffEvaluator => m_workableHandoffs != null;
+        public IReadOnlyList<AccessGroundHandoff> GetWorkableHandoffs(
+            Tile2i origin, AccessHeightProfile profile,
+            Tile2i predecessorOrigin, AccessHeightProfile predecessorProfile)
+            => m_workableHandoffs?.Invoke(origin, profile, predecessorOrigin, predecessorProfile)
+                ?? Array.Empty<AccessGroundHandoff>();
 
         public bool IsProfileOceanBlocked(Tile2i origin, AccessHeightProfile profile)
         {
@@ -239,6 +292,16 @@ namespace AutoTerrainDesignations.Access
         }
 
         public bool IsCandidateProfileFeasible(Tile2i origin, AccessHeightProfile profile, out string reason)
+            => IsCandidateProfileFeasible(origin, profile, default, default, false, out reason);
+
+        public bool IsCandidateProfileFeasibleFromValidatedPredecessor(
+            Tile2i origin, AccessHeightProfile profile, Tile2i predecessorOrigin,
+            Tile2i direction, out string reason)
+            => IsCandidateProfileFeasible(origin, profile, predecessorOrigin, direction, true, out reason);
+
+        private bool IsCandidateProfileFeasible(Tile2i origin, AccessHeightProfile profile,
+            Tile2i predecessorOrigin, Tile2i direction, bool directionalDurabilityCheck,
+            out string reason)
         {
             if (!IsOriginInside(origin)) { reason = "HorizontalBounds"; return false; }
             if (m_workOrigins.Contains(origin)) { reason = "WorkOrigin"; return false; }
@@ -277,7 +340,10 @@ namespace AutoTerrainDesignations.Access
             bool durabilityBlocked = false;
             profile.AddWorldCorners(origin, (corner, height2) =>
             {
-                if (!durabilityBlocked && IsDurabilityBlocked(corner, height2)) durabilityBlocked = true;
+                if (durabilityBlocked) return;
+                durabilityBlocked = directionalDurabilityCheck
+                    ? IsDurabilityBlockedAhead(corner, height2, predecessorOrigin, direction)
+                    : IsDurabilityBlocked(corner, height2);
             });
             if (durabilityBlocked) { reason = "Durability"; return false; }
 
@@ -292,6 +358,20 @@ namespace AutoTerrainDesignations.Access
             {
                 if (corner.Blocks(position, height2, LandslideRunPerHeight))
                     return true;
+            }
+            return false;
+        }
+
+        private bool IsDurabilityBlockedAhead(Tile2i position, int height2,
+            Tile2i predecessorOrigin, Tile2i direction)
+        {
+            foreach (AccessDurabilityCorner corner in m_durabilityCorners)
+            {
+                bool ahead = direction.X > 0 ? corner.Position.X > predecessorOrigin.X
+                    : direction.X < 0 ? corner.Position.X < predecessorOrigin.X
+                    : direction.Y > 0 ? corner.Position.Y > predecessorOrigin.Y
+                    : corner.Position.Y < predecessorOrigin.Y;
+                if (ahead && corner.Blocks(position, height2, LandslideRunPerHeight)) return true;
             }
             return false;
         }
@@ -318,33 +398,56 @@ namespace AutoTerrainDesignations.Access
             return true;
         }
 
-        private static Dictionary<Tile2i, int> BuildGoalDistance(Tile2i boundsMin, Tile2i boundsMax,
-            HashSet<Tile2i> goals)
+        private static Dictionary<int, int[]> BuildGoalDistancesByHeight(
+            Tile2i boundsMin, Tile2i boundsMax, HashSet<Tile2i> goals,
+            Dictionary<Tile2i, int> groundHeight2)
         {
-            var result = new Dictionary<Tile2i, int>();
-            var queue = new Queue<Tile2i>();
+            var goalsByHeight2 = new Dictionary<int, HashSet<Tile2i>>();
             foreach (Tile2i goal in goals)
             {
-                result[goal] = 0;
-                queue.Enqueue(goal);
+                if (!groundHeight2.TryGetValue(goal, out int height2)) continue;
+                if (!goalsByHeight2.TryGetValue(height2, out HashSet<Tile2i>? sameHeightGoals))
+                {
+                    sameHeightGoals = new HashSet<Tile2i>();
+                    goalsByHeight2.Add(height2, sameHeightGoals);
+                }
+                sameHeightGoals.Add(goal);
             }
-            RelTile2i[] directions =
+
+            var result = new Dictionary<int, int[]>();
+            foreach (KeyValuePair<int, HashSet<Tile2i>> entry in goalsByHeight2)
+                result.Add(entry.Key, BuildGoalDistance(boundsMin, boundsMax, entry.Value));
+            return result;
+        }
+
+        private static int[] BuildGoalDistance(Tile2i boundsMin, Tile2i boundsMax,
+            HashSet<Tile2i> goals)
+        {
+            int width = boundsMax.X - boundsMin.X + 1;
+            int height = boundsMax.Y - boundsMin.Y + 1;
+            var result = new int[width * height];
+            for (int i = 0; i < result.Length; i++) result[i] = -1;
+            var queue = new Queue<int>();
+            foreach (Tile2i goal in goals)
             {
-                new RelTile2i(1, 0), new RelTile2i(-1, 0), new RelTile2i(0, 1), new RelTile2i(0, -1)
-            };
+                int index = (goal.Y - boundsMin.Y) * width + goal.X - boundsMin.X;
+                result[index] = 0;
+                queue.Enqueue(index);
+            }
             while (queue.Count > 0)
             {
-                Tile2i current = queue.Dequeue();
+                int current = queue.Dequeue();
+                int x = current % width;
+                int y = current / width;
                 int nextDistance = result[current] + 1;
-                foreach (RelTile2i direction in directions)
-                {
-                    Tile2i next = current + direction;
-                    if (next.X < boundsMin.X || next.X > boundsMax.X
-                        || next.Y < boundsMin.Y || next.Y > boundsMax.Y
-                        || result.ContainsKey(next)) continue;
-                    result[next] = nextDistance;
-                    queue.Enqueue(next);
-                }
+                if (x > 0 && result[current - 1] < 0)
+                { result[current - 1] = nextDistance; queue.Enqueue(current - 1); }
+                if (x + 1 < width && result[current + 1] < 0)
+                { result[current + 1] = nextDistance; queue.Enqueue(current + 1); }
+                if (y > 0 && result[current - width] < 0)
+                { result[current - width] = nextDistance; queue.Enqueue(current - width); }
+                if (y + 1 < height && result[current + width] < 0)
+                { result[current + width] = nextDistance; queue.Enqueue(current + width); }
             }
             return result;
         }

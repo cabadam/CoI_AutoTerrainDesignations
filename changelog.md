@@ -1,3 +1,15 @@
+v0.4.5a | 2026-06-21
+* Improved: experimental turning accessways now hand off to ground using vanilla's prospective mining/dumping workability checks instead of requiring exact terrain-height contact; the final accessway tile uses the matching mining or dumping designation while mixed cut/fill route bodies continue to use leveling designations
+* Fixed: V-to-G operation selection now uses the predecessor tile's relation to current terrain, allowing a route to crest uneven ground instead of continuing through unnecessary V tiles near the surface
+* Fixed: tower-reachable ground is now flooded from actual vanilla-pathable terrain near the tower, including when the tower lies outside its managed area; the previous nearest-in-area seed could select a disconnected ground component
+* Fixed: experimental paths can no longer revisit an earlier V origin or travel below the minimum ocean height
+* Improved: active terrain designations and building foundations share the symmetric mining/dumping landslide exclusion model; durability checks use perimeter sources and direction-aware pruning with the public slope factor constrained to the validated `0.05..2` range
+* Improved: A* is now the default experimental search and uses an admissible combined horizontal/height travel lower bound; work cost uses the documented quadratic center-height estimate
+* Improved: difficult access searches are substantially faster through corrected goal flooding, durability-source pruning, and snapshot reuse; snapshot, search, and materialization runtimes are included in experimental diagnostics
+* Fixed: large mine tower areas are scanned through non-overlapping chunks within vanilla's 192-tile designation-query limit, preventing clamping warnings and omitted existing designations
+* Changed: accessway placement rematerializes against the unchanged search snapshot instead of rebuilding an identical snapshot immediately before placement; successful placement remains transactional and the next cluster receives a fresh snapshot
+* Updated: access framework, pathfinding design, roadmap, English localization, and Chinese localization for the refined V1 behavior and settings limits
+
 v0.4.4 | 2026-06-20 [packaged]
 * Added: **Experimental turning & switchback accessways** (least-work corridor pathfinding) for mine towers, enabled by default (only active when the tower's **Ramp Width** setting is set to 1) 
   - Uses a new 2.5D pathfinding search (supports reference Dijkstra and optimized A*) over the terrain heightfield to evaluate and select the cheapest access route

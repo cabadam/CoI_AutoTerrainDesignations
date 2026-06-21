@@ -159,7 +159,7 @@ namespace AutoTerrainDesignations
         internal enum RampPlacementOutcome { Failed, Truncated, Crested, NotAccessible }
 
         private const uint ALL_DESIGNATION_TILES_MASK = 0x1FFFFFF;
-        private const uint READY_TO_MINE_MASK = 0x1F8C63F;
+        private const uint READY_PERIMETER_MASK = 0x1F8C63F;
 
         // How many farming ticks to reuse a cached s_buildingOccupiedTiles result for the same
         // tower. Buildings inside an active designation area almost never change, so a ~60-second
@@ -225,11 +225,42 @@ namespace AutoTerrainDesignations
         private static void BuildDesignationOriginsInArea(IAreaManagingTower tower)
         {
             s_designationOriginsInArea.Clear();
-            if (s_desigManager == null) return;
-            foreach (TerrainDesignation designation in s_desigManager.SelectDesignationsInArea(
+            foreach (TerrainDesignation designation in SelectDesignationsInAreaChunked(
                 tower.Area.BoundingBoxMin, tower.Area.BoundingBoxMax))
             {
                 s_designationOriginsInArea.Add(designation.OriginTileCoord);
+            }
+        }
+
+        private const int MAX_DESIGNATION_QUERY_ORIGIN_SPAN = 192;
+        private const int DESIGNATION_QUERY_CHUNK_STRIDE = MAX_DESIGNATION_QUERY_ORIGIN_SPAN + 4;
+
+        private static IEnumerable<TerrainDesignation> SelectDesignationsInAreaChunked(
+            Tile2i fromCoord, Tile2i toCoord)
+        {
+            if (s_desigManager == null) yield break;
+
+            var rawMin = new Tile2i(
+                Math.Min(fromCoord.X, toCoord.X),
+                Math.Min(fromCoord.Y, toCoord.Y));
+            var rawMax = new Tile2i(
+                Math.Max(fromCoord.X, toCoord.X),
+                Math.Max(fromCoord.Y, toCoord.Y));
+            Tile2i minOrigin = TerrainDesignation.GetOrigin(rawMin);
+            Tile2i maxOrigin = TerrainDesignation.GetOrigin(rawMax);
+
+            for (int y = minOrigin.Y; y <= maxOrigin.Y; y += DESIGNATION_QUERY_CHUNK_STRIDE)
+            {
+                int chunkMaxY = Math.Min(y + MAX_DESIGNATION_QUERY_ORIGIN_SPAN, maxOrigin.Y);
+                for (int x = minOrigin.X; x <= maxOrigin.X; x += DESIGNATION_QUERY_CHUNK_STRIDE)
+                {
+                    int chunkMaxX = Math.Min(x + MAX_DESIGNATION_QUERY_ORIGIN_SPAN, maxOrigin.X);
+                    foreach (TerrainDesignation designation in s_desigManager.SelectDesignationsInArea(
+                        new Tile2i(x, y), new Tile2i(chunkMaxX, chunkMaxY)))
+                    {
+                        yield return designation;
+                    }
+                }
             }
         }
 
@@ -337,16 +368,10 @@ namespace AutoTerrainDesignations
             LastExperimentalAccessSearch = null;
             LastExperimentalAccessPlan = null;
             bool experimentalOperationSupported = TryGetExperimentalOperation(sourceWorkProto, out bool experimentalIsMining);
-            if (AutoTerrainDesignationsMod.TurningRampsExperimental && configuredRampWidth == 1 && experimentalOperationSupported)
-            {
-                if (!TryBuildExperimentalAccessSnapshot(tower, tileDepths, cornerHeights, terrMgr,
-                    experimentalIsMining, accesswayAllowsMixedWork,
-                    out experimentalSnapshot, out string snapshotFailure))
-                {
-                    LogExperimentalAccessDebug($"[ATD Experimental Access] snapshot unavailable: {snapshotFailure}");
-                }
-            }
-            else if (AutoTerrainDesignationsMod.TurningRampsExperimental)
+            bool experimentalSearchEnabled = AutoTerrainDesignationsMod.TurningRampsExperimental
+                && configuredRampWidth == 1
+                && experimentalOperationSupported;
+            if (AutoTerrainDesignationsMod.TurningRampsExperimental && !experimentalSearchEnabled)
             {
                 string reason = configuredRampWidth != 1
                     ? $"tower ramp width is {configuredRampWidth}; V1 requires 1"
@@ -438,20 +463,21 @@ namespace AutoTerrainDesignations
                 }
 
                 EvaluatedAccessCandidate? experimentalCandidate = null;
-                if (experimentalSnapshot != null)
+                if (experimentalSearchEnabled)
                 {
                     if (TryBuildExperimentalAccessSnapshot(tower, tileDepths, cornerHeights, terrMgr,
                         experimentalIsMining, accesswayAllowsMixedWork,
                         out AccessSearchSnapshot refreshedSnapshot, out string refreshFailure))
                     {
                         experimentalSnapshot = refreshedSnapshot;
-                        AccessSearchResult experimentalResult = RunExperimentalAccessDryRun(experimentalSnapshot, cluster);
+                        AccessSearchResult experimentalResult = RunExperimentalAccessDryRun(refreshedSnapshot, cluster);
                         experimentalCandidate = EvaluateExperimentalAccessCandidate(
                             experimentalResult, LastExperimentalAccessPlan, towerPos, terrMgr);
                     }
                     else
                     {
                         experimentalSnapshot = null;
+                        experimentalSearchEnabled = false;
                         LogExperimentalAccessDebug($"[ATD Experimental Access] snapshot refresh failed: {refreshFailure}");
                     }
                 }
@@ -536,13 +562,8 @@ namespace AutoTerrainDesignations
                     var source = (ExperimentalAccessCandidate)experimentalCandidate!.SourceCandidate;
                     var localPlacedOrigins = new List<Tile2i>();
                     if (TryPlaceExperimentalAccessCandidate(
-                        tower,
-                        tileDepths,
-                        cornerHeights,
-                        terrMgr,
+                        experimentalSnapshot!,
                         accesswayProto,
-                        experimentalIsMining,
-                        accesswayAllowsMixedWork,
                         source,
                         localPlacedOrigins,
                         reservedRampTiles,
@@ -1640,27 +1661,12 @@ namespace AutoTerrainDesignations
             TerrainManager terrMgr,
             DesignationData data)
         {
-            if (s_desigManager == null || !rampProto.IsFulfilledMiningFn.HasValue)
+            if (!TryBuildProspectiveFulfilledBitmap(rampProto, terrMgr, data,
+                AccessHandoffOperation.Mining, out uint miningFulfilledBitmap))
                 return false;
 
-            uint miningFulfilledBitmap = 0;
-            for (int y = 0; y <= 4; y++)
-            {
-                for (int x = 0; x <= 4; x++)
-                {
-                    Tile2i tile = data.OriginTile + new RelTile2i(x, y);
-                    Tile2iAndIndex tileAndIndex = terrMgr.ExtendTileIndex(tile);
-                    HeightTilesF targetHeight = GetDesignationTargetHeightAt(data, x, y);
-                    bool upperEdge = x == 4 || y == 4;
-                    if (rampProto.IsFulfilledMiningFn.Value(s_desigManager, tileAndIndex, targetHeight, upperEdge))
-                    {
-                        miningFulfilledBitmap |= GetDesignationMask(x, y);
-                    }
-                }
-            }
-
             return miningFulfilledBitmap != ALL_DESIGNATION_TILES_MASK
-                && (miningFulfilledBitmap & READY_TO_MINE_MASK) != 0;
+                && (miningFulfilledBitmap & READY_PERIMETER_MASK) != 0;
         }
 
         private static bool RowHasReadyDumpingDesignation(
@@ -1695,10 +1701,29 @@ namespace AutoTerrainDesignations
             TerrainManager terrMgr,
             DesignationData data)
         {
-            if (s_desigManager == null || !rampProto.IsFulfilledDumpingFn.HasValue)
+            if (!TryBuildProspectiveFulfilledBitmap(rampProto, terrMgr, data,
+                AccessHandoffOperation.Dumping, out uint dumpingFulfilledBitmap))
                 return false;
 
-            uint dumpingFulfilledBitmap = 0;
+            return dumpingFulfilledBitmap != ALL_DESIGNATION_TILES_MASK
+                && (dumpingFulfilledBitmap & READY_PERIMETER_MASK) != 0;
+        }
+
+        private static bool TryBuildProspectiveFulfilledBitmap(
+            TerrainDesignationProto proto,
+            TerrainManager terrMgr,
+            DesignationData data,
+            AccessHandoffOperation operation,
+            out uint fulfilledBitmap)
+        {
+            fulfilledBitmap = 0;
+            if (s_desigManager == null) return false;
+            if (operation == AccessHandoffOperation.Mining && !proto.IsFulfilledMiningFn.HasValue)
+                return false;
+            if (operation == AccessHandoffOperation.Dumping && !proto.IsFulfilledDumpingFn.HasValue)
+                return false;
+            if (operation == AccessHandoffOperation.None) return false;
+
             for (int y = 0; y <= 4; y++)
             {
                 for (int x = 0; x <= 4; x++)
@@ -1707,15 +1732,13 @@ namespace AutoTerrainDesignations
                     Tile2iAndIndex tileAndIndex = terrMgr.ExtendTileIndex(tile);
                     HeightTilesF targetHeight = GetDesignationTargetHeightAt(data, x, y);
                     bool upperEdge = x == 4 || y == 4;
-                    if (rampProto.IsFulfilledDumpingFn.Value(s_desigManager, tileAndIndex, targetHeight, upperEdge))
-                    {
-                        dumpingFulfilledBitmap |= GetDesignationMask(x, y);
-                    }
+                    bool fulfilled = operation == AccessHandoffOperation.Mining
+                        ? proto.IsFulfilledMiningFn.Value(s_desigManager, tileAndIndex, targetHeight, upperEdge)
+                        : proto.IsFulfilledDumpingFn.Value(s_desigManager, tileAndIndex, targetHeight, upperEdge);
+                    if (fulfilled) fulfilledBitmap |= GetDesignationMask(x, y);
                 }
             }
-
-            return dumpingFulfilledBitmap != ALL_DESIGNATION_TILES_MASK
-                && (dumpingFulfilledBitmap & READY_TO_MINE_MASK) != 0;
+            return true;
         }
 
         private static HeightTilesF GetDesignationTargetHeightAt(DesignationData data, int x, int y)

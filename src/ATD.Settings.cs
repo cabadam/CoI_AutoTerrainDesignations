@@ -820,7 +820,7 @@ namespace AutoTerrainDesignations
             sb.AppendLine("  \"_comment_accessWorkDistanceScale\": \"Tile-distance cost assigned to one unit of center-height terrain work in experimental access search. Range: 0-100. Default: 1.\",");
             sb.AppendLine($"  \"accessWorkDistanceScale\": {FloatToJsonStr(AutoTerrainDesignationsMod.AccessWorkDistanceScale)},");
             sb.AppendLine();
-            sb.AppendLine("  \"_comment_accessLandslideRunPerHeight\": \"Horizontal exclusion distance per vertical terrain level for the experimental landslide hourglass. 1 = 45 degrees; higher values are wider and more conservative, lower values are narrower. Range: 0.05-4. Default: 1.\",");
+            sb.AppendLine("  \"_comment_accessLandslideRunPerHeight\": \"Horizontal exclusion distance per vertical terrain level for the experimental landslide hourglass. 1 = 45 degrees; higher values are wider and more conservative, lower values are narrower. Range: 0.05-2. Default: 1.\",");
             sb.AppendLine($"  \"accessLandslideRunPerHeight\": {FloatToJsonStr(AutoTerrainDesignationsMod.AccessLandslideRunPerHeight)},");
             sb.AppendLine();
             sb.AppendLine("  \"_comment_cornerDesignationKey\": \"Key used to enter and toggle corner designation mode. Use a Unity KeyCode name (e.g. K, Alpha1, F1). Default: K.\",");

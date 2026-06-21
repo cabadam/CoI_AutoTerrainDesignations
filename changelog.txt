@@ -1,3 +1,12 @@
+v0.4.5a | 2026-06-21
+* Improved: Experimental turning accessways connect to uneven ground using vanilla mining and dumping workability rules, with the correct designation type on the final tile
+* Fixed: Turning accessways can crest onto usable ground instead of unnecessarily continuing close to the surface
+* Fixed: Ground reachability is now traced from the actual mine tower, including towers outside their managed area
+* Fixed: Experimental routes no longer revisit earlier corridor tiles or travel below the minimum ocean height
+* Improved: Safer landslide checks account for active designations and building foundations for both mining and dumping routes
+* Improved: A* is now the default experimental search, with substantially faster difficult-route searches and reduced repeated snapshot work
+* Fixed: Large mine tower areas no longer trigger designation-area clamping or omit existing designations from accessway analysis
+
 v0.4.4 | 2026-06-20
 * Added: Experimental turning and switchback accessways (least-work corridor pathfinding) for mine towers, enabled by default (only active when the tower's **Ramp Width** setting is set to 1)
 * Changed: Changed default starting **Ramp Width** default setting for new mine towers from 2 to 1 so the new experimental turning and switchback pathfinding is active by default

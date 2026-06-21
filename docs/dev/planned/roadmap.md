@@ -3,8 +3,10 @@
 Planned and candidate improvements for Kayser's Automatic Terrain Designations.
 
 # Planned
-* Climb cliff?
+* Climb cliff? (i.e. path A->B)
 * Cut/Copy/Paste/Blueprint designations?
+* rail incline (12.5%) designations
+* Avoid ocean toggle, including landslide predictor
 
 ## Ramp safety margin — low priority
 
